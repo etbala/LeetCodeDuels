@@ -1,8 +1,8 @@
+# Author: Ethan Balakumar, based on code by Bishal Sarang
 import json
 import time
 import bs4
 import requests
-from ebooklib import epub
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
@@ -14,12 +14,11 @@ from selenium.webdriver.chrome.service import Service
 import writer
 from utils import *
 
-
 # Setup Selenium Webdriver
 CHROMEDRIVER_PATH = r"./driver/chromedriver.exe"
 service = Service(CHROMEDRIVER_PATH)
 options = Options()
-options.headless = True
+options.add_argument("--headless=new");
 
 # Disable warning, error and info logs, show only fatal errors
 options.add_argument("--log-level=3")
@@ -27,7 +26,6 @@ driver = webdriver.Chrome(service=service, options=options)
 
 # Get upto which problem it is already scraped from track.conf file
 completed_upto = read_tracker("track.conf")
-
 
 def scrape_tags(problem_num, url):
     print(f"Fetching problem num {problem_num} at {url} ")
@@ -49,10 +47,10 @@ def scrape_tags(problem_num, url):
                 driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
                 time.sleep(0.1)
 
-            #print(" Skipped Dynamic Layout Tutorial")
+            # print(" Skipped Dynamic Layout Tutorial")
         except Exception as e:
             pass
-            #print(" No Dynamic Layout Tutorial Detected")
+            # print(" No Dynamic Layout Tutorial Detected")
 
         # Get current tab page source
         html = driver.page_source
@@ -86,11 +84,6 @@ def main():
     algorithms_problems_json = requests.get(ALGORITHMS_ENDPOINT_URL).content
     algorithms_problems_json = json.loads(algorithms_problems_json)
 
-    styles_str = "<style>pre{white-space:pre-wrap;background:#f7f9fa;padding:10px 15px;color:#263238;line-height:1.6;font-size:13px;border-radius:3px margin-top: 0;margin-bottom:1em;overflow:auto}b,strong{font-weight:bolder}#title{font-size:16px;color:#212121;font-weight:600;margin-bottom:10px}hr{height:10px;border:0;box-shadow:0 10px 10px -10px #8c8b8b inset}</style>"
-    with open("out.html", "ab") as f:
-            f.write(styles_str.encode(encoding="utf-8"))
-
-    # List to store question_title_slug
     links = []
     for child in algorithms_problems_json["stat_status_pairs"]:
             # Only process free problems
@@ -110,26 +103,26 @@ def main():
 
                 links.append((question_title_slug, difficulty, frontend_question_id, question_title, question_article_slug))
 
-    # Sort by difficulty follwed by problem id in ascending order
+    # Sort by problem id in ascending order
     links = sorted(links, key=lambda x: (x[2]))
 
     try: 
         for i in range(completed_upto + 1, len(links)):
-            question_title_slug, difficulty, question_num, problem_name, description = links[i]
+            question_title_slug, difficulty, problem_num, problem_name, description = links[i]
             
             url = ALGORITHMS_BASE_URL + question_title_slug
             
             # Scrape Tags
-            tags = scrape_tags(question_num, url)
-            print(f"Scraped Question {question_num}. {problem_name} with {difficulty} difficulty with tags {tags} at {url}\n")
+            tags = scrape_tags(problem_num, url)
+            print(f"Scraped Question {problem_num}. {problem_name} with {difficulty} difficulty with tags {tags} at {url}\n")
+
+            writer.addProblem(problem_num, problem_name, url, difficulty, tags)
 
             # Sleep for 4 secs between each problem
             time.sleep(4)
 
     finally:
         driver.quit()
-
-
 
 
 if __name__ == "__main__":
