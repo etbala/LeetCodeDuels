@@ -1,4 +1,3 @@
-# Author: Ethan Balakumar, based on code by Bishal Sarang
 import json
 import time
 import bs4
@@ -10,9 +9,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
-
-import writer
 from utils import *
+import writer
 
 # Setup Selenium Webdriver
 CHROMEDRIVER_PATH = r"./driver/chromedriver.exe"
@@ -24,11 +22,11 @@ options.add_argument("--headless=new");
 options.add_argument("--log-level=3")
 driver = webdriver.Chrome(service=service, options=options)
 
-# Get upto which problem it is already scraped from track.conf file
+# Skip problems it is already scraped based on track.conf file
 completed_upto = read_tracker("track.conf")
 
 def scrape_tags(problem_num, url):
-    print(f"Fetching problem num {problem_num} at {url} ")
+    print(f"Fetching tags of problem {problem_num} at {url} ")
 
     try:
         driver.get(url)
@@ -60,19 +58,14 @@ def scrape_tags(problem_num, url):
         tag_elems = soup.find_all('a', class_="no-underline hover:text-current relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full bg-fill-secondary text-text-secondary")
         tags = [tag.get_text(strip=True) for tag in tag_elems]
         
-        # Update upto which the problem is downloaded
-        update_tracker('track.conf', problem_num)
-        print(f"Writing problem num {problem_num} with url {url} successfull")
-
-        return tags
+        return tags, None
 
     except Exception as e:
-        print(f"Failed Writing!!  {e} ")
         driver.quit()
+        return None, e
 
 
 def main():
-
     # Leetcode API URL to get json of problems on algorithms categories
     ALGORITHMS_ENDPOINT_URL = "https://leetcode.com/api/problems/algorithms/"
 
@@ -109,17 +102,27 @@ def main():
     try: 
         for i in range(completed_upto + 1, len(links)):
             question_title_slug, difficulty, problem_num, problem_name, description = links[i]
-            
             url = ALGORITHMS_BASE_URL + question_title_slug
             
             # Scrape Tags
-            tags = scrape_tags(problem_num, url)
-            print(f"Scraped Question {problem_num}. {problem_name} with {difficulty} difficulty with tags {tags} at {url}\n")
+            tags, error = scrape_tags(problem_num, url)
+            if error is None:
+                print(f"Scraped problem {problem_num}. '{problem_name}' with {difficulty} difficulty with tags {tags} at {url}\n")
+                writer.addProblem(i, problem_num, problem_name, url, difficulty, tags)
+            else:
+                # If Error is found, clear cookies and wait 5 min, then tries to scrape it again
+                print(f"Failure to scrape problem: {error}")
+                i -= 1
+                driver.delete_all_cookies()
+                time.sleep(300)
 
-            writer.addProblem(problem_num, problem_name, url, difficulty, tags)
-
-            # Sleep for 4 secs between each problem
-            time.sleep(4)
+            # Sleep for 10 secs between each problem, or 2 minutes every 30 problems
+            if i % 30 == 0 and i is not 0:
+                print(f"Sleeping 2 min...\n")
+                time.sleep(120)
+            else:
+                print(f"Sleeping 20 sec...\n")
+                time.sleep(5)
 
     finally:
         driver.quit()

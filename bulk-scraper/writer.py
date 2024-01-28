@@ -1,11 +1,12 @@
 import json
+from utils import *
 
 """
     Store Information as JSON (Temporary - Make Database Later)
     Store Problem Number, Name, URL, Difficulty, Tags
 """
 
-def addProblem(problem_num, problem_name, problem_link, problem_difficulty, problem_tags):
+def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, problem_tags):
     # File path
     file_path = 'lc_problems.json'
 
@@ -17,8 +18,9 @@ def addProblem(problem_num, problem_name, problem_link, problem_difficulty, prob
             problems = {}
 
     # Add or update the problem
-    problems[problem_num] = {
+    problems[id] = {
         'name': problem_name,
+        'num': problem_num,
         'url': problem_link,
         'difficulty': problem_difficulty,
         'tags': problem_tags
@@ -28,6 +30,9 @@ def addProblem(problem_num, problem_name, problem_link, problem_difficulty, prob
     with open(file_path, 'w') as file:
         json.dump(problems, file, indent=4)
 
+    update_tracker('track.conf', id)
+
+    return True
 
 def updateProblem():
     return
