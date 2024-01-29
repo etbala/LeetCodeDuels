@@ -139,6 +139,7 @@ def main():
     links = sorted(links, key=lambda x: (x[2]))
 
     try: 
+        failed_attempts = 0
         for i in range(completed_upto + 1, len(links)):
             question_title_slug, difficulty, problem_num, problem_name, description = links[i]
             url = ALGORITHMS_BASE_URL + question_title_slug
@@ -148,18 +149,26 @@ def main():
             if error is None:
                 print(f"Scraped problem {problem_num} '{problem_name}' with {difficulty} difficulty and tags {tags} at {url}\n")
                 writer.addProblem(i, problem_num, problem_name, url, difficulty, tags)
+                failed_attempts = 0
             else:
-                # If Error is found, reset driver and wait 5 min, then try to scrape it again
+                # If Error is found, reset driver and wait 5 min, then try to scrape it again (close if failed 5 times in a row)
                 print(f"Failure to scrape problem: {error}")
+
+                failed_attempts += 1
+                if failed_attempts > 5:
+                    print(f"Too many failed attempts, closing program")
+                    exit(1)
+
                 i -= 1
                 reset_driver()
+                print(f"Sleeping 5 min...\n")
                 time.sleep(300)
 
             # Sleep for 5 secs between each problem, or 2 minutes every 30 problems (Resets driver when waits 2 min)
             if i % 30 == 0 and i != 0:
                 print(f"Sleeping 2 min...\n")
-                reset_driver()
                 time.sleep(120)
+                reset_driver()
             else:
                 print(f"Sleeping 5 sec...\n")
                 time.sleep(5)
