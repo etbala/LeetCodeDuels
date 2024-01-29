@@ -6,6 +6,29 @@ from utils import *
     Store Problem Number, Name, URL, Difficulty, Tags
 """
 
+"""
+    When stored in database, have 3 tables with the following schema:
+
+    CREATE TABLE problems (
+        problem_id SERIAL PRIMARY KEY,
+        problem_num SMALLINT, (Unsure if needed)
+        name VARCHAR(127),
+        url VARCHAR(127),
+        difficulty VARCHAR(10)
+    );
+
+    CREATE TABLE tags (
+        tag_id SERIAL PRIMARY KEY,
+        tag_name VARCHAR(50)
+    );
+
+    CREATE TABLE problem_tags (
+        problem_id INT REFERENCES problems(problem_id),
+        tag_id INT REFERENCES tags(tag_id),
+        PRIMARY KEY (problem_id, tag_id)
+    );
+"""
+
 def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, problem_tags):
     # File path
     file_path = 'lc_problems.json'
@@ -36,7 +59,6 @@ def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, 
 
 def updateProblem():
     return
-
 
 def main():
     # Print out lc_problems.json
