@@ -11,7 +11,6 @@ from utils import *
 
     CREATE TABLE problems (
         problem_id SERIAL PRIMARY KEY,
-        problem_num SMALLINT, (Unsure if needed)
         name VARCHAR(127),
         url VARCHAR(127),
         difficulty VARCHAR(10)
