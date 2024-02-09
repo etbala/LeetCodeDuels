@@ -1,0 +1,58 @@
+/* FILEPATH: /Users/edenbendheim/Dropbox/LeetCodeDuels/extensions/hello.css */
+
+/* Styles for header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f2f2f2;
+  }
+  
+  #loginButton,
+  #helpButton,
+  #submitLogin {
+    padding: 5px 10px;
+    margin-right: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  /* Styles for main */
+  main {
+    padding: 20px;
+  }
+  
+  #username,
+  #password {
+    padding: 5px 5px;
+    margin: 5px 0;
+    color: #fff;
+    border-radius: 5px;
+    border-color: #202020;
+    cursor: pointer;
+  }
+
+  #loginForm{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Styles for footer */
+  footer {
+    padding: 10px;
+    background-color: #f2f2f2;
+    text-align: center;
+  }
+  
+  /* Styles for paragraph inside footer */
+  footer p {
+    margin: 0;
+    font-size: 14px;
+    color: #888;
+  }
+  
