@@ -2,13 +2,16 @@
 <html>
 <head>
     <title>My Extension</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">
     <link rel="stylesheet" type="text/css" href="hello.css">
 </head>
 <body>
     <header>
         <a href="login.html"><button id="loginButton">Log In</button></a>
-        <button id="helpButton">Help</button>
+        <div>
+            <button id="helpButton">Friends</button>
+            <button id="helpButton">Help</button>
+        </div>
     </header>
     <main>
         <button id="matchmakeButton">Matchmake</button>

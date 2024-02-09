@@ -1,6 +1,9 @@
 /* FILEPATH: /Users/edenbendheim/Dropbox/LeetCodeDuels/extensions/hello.css */
-
 /* Styles for header */
+body{
+    height: 5%;
+    width: 400px;
+}
 header {
   display: flex;
   justify-content: space-between;
@@ -12,7 +15,6 @@ header {
 #loginButton,
 #helpButton {
   padding: 5px 10px;
-  margin-right: 10px;
   background-color: #007bff;
   color: #fff;
   border: none;
@@ -23,6 +25,9 @@ header {
 /* Styles for main */
 main {
   padding: 20px;
+  display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 #matchmakeButton {
@@ -32,6 +37,7 @@ main {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  margin: auto;
 }
 
 /* Styles for footer */

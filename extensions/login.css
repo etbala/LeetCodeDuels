@@ -1,6 +1,12 @@
 /* FILEPATH: /Users/edenbendheim/Dropbox/LeetCodeDuels/extensions/hello.css */
 
 /* Styles for header */
+
+body{
+    height: 5%;
+    width: 400px;
+}
+
 header {
     display: flex;
     justify-content: space-between;
