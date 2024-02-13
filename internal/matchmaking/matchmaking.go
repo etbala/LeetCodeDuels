@@ -2,8 +2,8 @@ package matchmaking
 
 import (
     "fmt"
-    "matchmaking-system/internal/model"
     "time"
+    "leetcodeduels/model"
 )
 
 func MatchmakingRequest(player *model.Player, pool *MatchmakingPool, timeout time.Duration) {

@@ -2,9 +2,8 @@ package matchmaking
 
 import (
     "fmt"
-    "matchmaking-system/internal/model"
     "sync"
-    "time"
+    "leetcodeduels/model"
 )
 
 type MatchmakingPool struct {
