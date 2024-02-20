@@ -1,7 +1,9 @@
-package postgres
+package sql
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"pms/pkg/models"
 )
 
@@ -11,10 +13,21 @@ type Store struct {
 
 // NewStore creates a new Store with a database connection.
 func NewStore(databaseURL string) (*Store, error) {
-	db, err := sql.Open("postgres", databaseURL)
+
+	server := "lc_duels-db.database.windows.net"
+	database := "lc_duels"
+	user := "CloudSAb22a1f85"
+	password := "gF7eV^c)aP]_L3M"
+
+	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;database=%s;encrypt=disable", server, user, password, database)
+
+	// Open connection
+	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
-		return nil, err
+		log.Fatal("Error creating connection pool: ", err.Error())
 	}
+	defer db.Close()
+
 	return &Store{db: db}, nil
 }
 
