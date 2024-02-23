@@ -18,42 +18,49 @@ func NewMatchmakingPool() *MatchmakingPool {
 func (mp *MatchmakingPool) AddPlayer(player *model.Player) {
     mp.Lock()
     defer mp.Unlock()
+
     mp.Players = append(mp.Players, player)
-    go mp.tryMatch(player)
+    // Trigger matchmaking whenever a new player is added
+    mp.triggerMatchmaking()
 }
 
-func (mp *MatchmakingPool) tryMatch(player *model.Player) {
-    mp.Lock()
-    defer mp.Unlock()
+func (mp *MatchmakingPool) triggerMatchmaking() {
+    // Simplified example: trying to match the first two players if they have the same Tag
+    if len(mp.Players) >= 2 && mp.Players[0].Tag == mp.Players[1].Tag {
+        player1 := mp.Players[0]
+        player2 := mp.Players[1]
 
-    for i, p := range mp.Players {
-        if p.ID != player.ID && p.Tag == player.Tag {
-            // Create a lobby and notify both players
-            lobby := &model.Lobby{Player1: player, Player2: p}
-            player.Matched <- lobby
-            p.Matched <- lobby
+        // Notify the players that they have been matched
+        lobby := &model.Lobby{Player1: player1, Player2: player2}
+        player1.Matched <- lobby
+        player2.Matched <- lobby
 
-            // Remove matched players from the pool
-            mp.removePlayers(player.ID, p.ID)
-            fmt.Printf("Matched %s and %s\n", player.ID, p.ID)
-            return
-        }
+        fmt.Printf("Matched %s and %s\n", player1.ID, player2.ID)
+
+        // Remove the matched players from the pool
+        mp.removePlayers(player1.ID, player2.ID)
     }
 }
 
 func (mp *MatchmakingPool) removePlayers(ids ...string) {
     var newPlayers []*model.Player
-    for _, p := range mp.Players {
+    for _, player := range mp.Players {
         keep := true
         for _, id := range ids {
-            if p.ID == id {
+            if player.ID == id {
                 keep = false
                 break
             }
         }
         if keep {
-            newPlayers = append(newPlayers, p)
+            newPlayers = append(newPlayers, player)
         }
     }
     mp.Players = newPlayers
+}
+
+func (mp *MatchmakingPool) Size() int {
+    mp.Lock()
+    defer mp.Unlock()
+    return len(mp.Players)
 }
