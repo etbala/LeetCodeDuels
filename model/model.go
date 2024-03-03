@@ -1,15 +1,19 @@
 package model
 
+import "time"
+
 type Player struct {
-    ID      string
-    Tag     string
-    Matched chan *Lobby
+    ID          string
+    Matched     chan *Lobby
+    Tags        []string    // A slice of tags/flags for matchmaking
+    JoinedAt    time.Time   // The time when the player joined the matchmaking pool
+    ForceMatch  bool        // Whether the player has opted for forced matching after a timeout
 }
 
-func NewPlayer(id, tag string) *Player {
+func NewPlayer(id string, tags []string) *Player {
     return &Player{
         ID:      id,
-        Tag:     tag,
+        Tags:    tags, 
         Matched: make(chan *Lobby, 1),
     }
 }
