@@ -2,22 +2,42 @@
 <html>
 <head>
     <title>My Extension</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' http://localhost:8080;">
     <link rel="stylesheet" type="text/css" href="hello.css">
 </head>
 <body>
     <header>
         <a href="login.html"><button id="loginButton">Log In</button></a>
         <div>
-            <button id="helpButton">Friends</button>
+            <button id="friendsButton">Friends</button>
             <button id="helpButton">Help</button>
         </div>
     </header>
     <main>
+        <!-- Matchmake button to initiate the matchmaking process -->
         <button id="matchmakeButton">Matchmake</button>
     </main>
     <footer>
-        <p>&copy; Leetcode Duals</p>
+        <p>&copy; Leetcode Duels</p>
     </footer>
+
+<script>
+    document.getElementById('matchmakeButton').addEventListener('click', function() {
+        fetch('http://localhost:8080/matchmake')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Match found:', data);
+            })
+            .catch(error => {
+                console.error('There has been a problem with your fetch operation:', error);
+            });
+    });
+</script>
+
 </body>
 </html>

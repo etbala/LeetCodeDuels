@@ -1,9 +1,13 @@
 package matchmaking
 
 import (
-    "leetcodeduels/model"
+    "encoding/json"
+    "fmt"
+    "log"
+    "net/http"
     "sync"
     "time"
+    "leetcodeduels/model"
 )
 
 type MatchmakingPool struct {
@@ -14,7 +18,7 @@ type MatchmakingPool struct {
 
 func NewMatchmakingPool() *MatchmakingPool {
     mp := &MatchmakingPool{
-        MatchCheck: 1 * time.Second, // Check for matches every 5 seconds
+        MatchCheck: 1 * time.Second, // Check for matches every 1 second
     }
     go mp.periodicMatchmaking() // Start the periodic matchmaking routine
     return mp
@@ -28,7 +32,7 @@ func (mp *MatchmakingPool) AddPlayer(player *model.Player) {
 
 func (mp *MatchmakingPool) periodicMatchmaking() {
     for {
-        time.Sleep(mp.MatchCheck) // Wait for the specified duration before checking for matches
+        time.Sleep(mp.MatchCheck)
         mp.Lock()
         i := 0
         for i < len(mp.Players) {
@@ -40,20 +44,18 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
                     mp.notifyMatch(player1, player2)
                     mp.removePlayers(player1.ID, player2.ID)
                     matchFound = true
-                    break // Exit the inner loop as we've found a match
+                    break
                 }
             }
             if !matchFound {
-                i++ // Only increment if no match was found to avoid skipping players
+                i++
             }
-            // If a match was found, don't increment i as the next player will have shifted to the current index
         }
         mp.Unlock()
     }
 }
 
 func (mp *MatchmakingPool) shouldMatch(player1, player2 *model.Player) bool {
-    // Check for overlapping flags or if force match is enabled after a timeout
     for _, tag1 := range player1.Tags {
         for _, tag2 := range player2.Tags {
             if tag1 == tag2 {
@@ -61,9 +63,8 @@ func (mp *MatchmakingPool) shouldMatch(player1, player2 *model.Player) bool {
             }
         }
     }
-    // Check if force matching is triggered (assuming a 'ForceMatch' field in Player model)
     if time.Since(player1.JoinedAt) >= mp.MatchCheck && player1.ForceMatch ||
-        time.Since(player2.JoinedAt) >= mp.MatchCheck && player2.ForceMatch {
+       time.Since(player2.JoinedAt) >= mp.MatchCheck && player2.ForceMatch {
         return true
     }
     return false
@@ -96,4 +97,53 @@ func (mp *MatchmakingPool) Size() int {
     mp.Lock()
     defer mp.Unlock()
     return len(mp.Players)
+}
+
+func allowCORS(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+        if r.Method == "OPTIONS" {
+            return
+        }
+        next(w, r)
+    }
+}
+
+func matchmakeHandler(pool *MatchmakingPool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        player := &model.Player{
+            ID:       fmt.Sprintf("Player%d", pool.Size()+1),
+            Tags:     []string{"Tag1"},
+            Matched:  make(chan *model.Lobby, 1),
+            JoinedAt: time.Now(),
+        }
+
+        pool.AddPlayer(player)
+
+        select {
+        case lobby := <-player.Matched:
+            json.NewEncoder(w).Encode(lobby)
+        case <-time.After(30 * time.Second):
+            w.WriteHeader(http.StatusRequestTimeout)
+            fmt.Fprintln(w, "No match found")
+        }
+    }
+}
+
+func main() {
+    pool := NewMatchmakingPool()
+    
+    // Add a dummy player to the matchmaking pool
+    dummyPlayer := &model.Player{
+        ID:       "DummyPlayer",
+        Tags:     []string{"Tag1"},
+        Matched:  make(chan *model.Lobby, 1),
+        JoinedAt: time.Now(),
+    }
+    pool.AddPlayer(dummyPlayer)
+
+    http.Handle("/matchmake", allowCORS(matchmakeHandler(pool)))
+    log.Fatal(http.ListenAndServe(":8080", nil))
 }
