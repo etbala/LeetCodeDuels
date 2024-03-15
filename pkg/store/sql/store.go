@@ -1,10 +1,12 @@
 package sql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
-	"pms/pkg/models"
+	"leetcodeduels/pkg/models"
+
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 type Store struct {
@@ -14,19 +16,27 @@ type Store struct {
 // NewStore creates a new Store with a database connection.
 func NewStore(databaseURL string) (*Store, error) {
 
-	server := "lc_duels-db.database.windows.net"
+	server := "lcduels-db.database.windows.net"
 	database := "lc_duels"
+	port := 1433
 	user := "CloudSAb22a1f85"
 	password := "gF7eV^c)aP]_L3M"
 
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;database=%s;encrypt=disable", server, user, password, database)
-
-	// Open connection
+	// Build connection string
+	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
+		server, user, password, port, database)
+	var err error
+	// Create connection pool
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
-		log.Fatal("Error creating connection pool: ", err.Error())
+		return nil, fmt.Errorf("error creating connection pool: %v", err)
 	}
-	defer db.Close()
+	ctx := context.Background()
+	err = db.PingContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error: %v", err)
+	}
+	fmt.Printf("Connected!")
 
 	return &Store{db: db}, nil
 }

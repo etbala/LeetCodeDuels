@@ -1,4 +1,4 @@
-package http
+package https
 
 /*
 Contains the HTTP handlers that use the store interface to interact with the
@@ -7,8 +7,8 @@ database and return the data to the client. This is where you would
 
 import (
 	"encoding/json"
+	"leetcodeduels/pkg/store"
 	"net/http"
-	"pms/pkg/store"
 	"strconv"
 )
 
@@ -26,7 +26,7 @@ func NewHandler(store store.Store) *Handler {
 func (h *Handler) GetAllProblems(w http.ResponseWriter, r *http.Request) {
 	problems, err := h.store.GetAllProblems()
 	if err != nil {
-		http.Error(w, "Failed to fetch problems", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch problems: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -37,7 +37,7 @@ func (h *Handler) GetAllProblems(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetRandomProblem(w http.ResponseWriter, r *http.Request) {
 	problem, err := h.store.GetRandomProblem()
 	if err != nil {
-		http.Error(w, "Failed to fetch a random problem", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch a random problem: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -6,7 +6,7 @@ this interface. This allows for easy swapping of the database backend if needed
 without changing the business logic.
 */
 
-import "pms/pkg/models"
+import "leetcodeduels/pkg/models"
 
 // Store is an interface for datastore operations.
 type Store interface {

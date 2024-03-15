@@ -1,7 +1,7 @@
-package http
+package https
 
 import (
-	"pms/pkg/store"
+	"leetcodeduels/pkg/store"
 
 	"github.com/gorilla/mux"
 )
