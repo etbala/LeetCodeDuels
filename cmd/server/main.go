@@ -3,19 +3,20 @@ package main
 import (
 	"context"
 	"flag"
+	"leetcodeduels/pkg/config"
+	"leetcodeduels/pkg/https"
+	"leetcodeduels/pkg/store/sql"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"pms/pkg/config"
-	"pms/pkg/http"
-	"pms/pkg/store/postgres"
 	"syscall"
 	"time"
 )
 
 func main() {
 	var port string
+
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
 
@@ -24,12 +25,12 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	store, err := postgres.NewStore(cfg.DatabaseURL)
+	store, err := sql.NewStore(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize the database: %v", err)
 	}
 
-	router := http.NewRouter(store)
+	router := https.NewRouter(store)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
