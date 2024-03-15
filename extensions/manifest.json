@@ -8,6 +8,8 @@
       "default_icon": "icon.png"
     },
     "background": {
-      "service_worker": "background.js"
-    }
+      "service_worker": "./scripts/background.js"
+    },
+    "permissions": ["scripting"],
+    "host_permissions": ["<all_urls>"]
   }
