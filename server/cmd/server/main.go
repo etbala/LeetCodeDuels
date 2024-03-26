@@ -5,7 +5,7 @@ import (
 	"flag"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/https"
-	"leetcodeduels/pkg/store/sql"
+	"leetcodeduels/pkg/store/db"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	store, err := sql.NewStore(cfg.DatabaseURL)
+	store, err := db.NewStore(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize the database: %v", err)
 	}
