@@ -14,13 +14,13 @@ type Store struct {
 }
 
 // NewStore creates a new Store with a database connection.
-func NewStore(databaseURL string) (*Store, error) {
+func NewStore(db_url string, db_user string, db_pass string) (*Store, error) {
 
-	server := "lcduels-db.database.windows.net"
+	server := db_url
+	user := db_user
+	password := db_pass
 	database := "lc_duels"
 	port := 1433
-	user := "CloudSAb22a1f85"
-	password := "gF7eV^c)aP]_L3M"
 
 	// Build connection string
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
