@@ -1,7 +1,7 @@
 package matchmaking
 
 import (
-	"leetcodeduels/pkg/models"
+	"leetcodeduels/api/matchmaking/models"
 	"sync"
 	"time"
 )

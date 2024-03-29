@@ -2,7 +2,7 @@ package matchmaking
 
 import (
 	"fmt"
-	"leetcodeduels/pkg/models"
+	"leetcodeduels/api/matchmaking/models"
 	"time"
 )
 
