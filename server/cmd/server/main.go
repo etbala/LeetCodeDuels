@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	store, err := db.NewStore(cfg.DB_URL, cfg.DB_USER, cfg.DB_PASS)
+	store, err := db.NewStore(cfg.DB_URL)
 	if err != nil {
 		log.Fatalf("Failed to initialize the database: %v", err)
 	}

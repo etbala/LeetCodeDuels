@@ -1,12 +1,12 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
+	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
 
-	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/lib/pq"
 )
 
 type Store struct {
@@ -14,41 +14,32 @@ type Store struct {
 }
 
 // NewStore creates a new Store with a database connection.
-func NewStore(db_url string, db_user string, db_pass string) (*Store, error) {
-
-	server := db_url
-	user := db_user
-	password := db_pass
-	database := "lc_duels"
-	port := 1433
-
-	// Build connection string
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
-		server, user, password, port, database)
-	var err error
-	// Create connection pool
-	db, err := sql.Open("sqlserver", connString)
+func NewStore(db_url string) (*Store, error) {
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error creating connection pool: %v", err)
+		panic(err)
 	}
-	ctx := context.Background()
-	err = db.PingContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error: %v", err)
-	}
-	fmt.Printf("Connected!")
 
+	connStr := cfg.DB_URL
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		panic(err)
+	}
+	//defer db.Close()
+
+	var version string
+	if err = db.QueryRow("select version()").Scan(&version); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("version=%s\n", version)
 	return &Store{db: db}, nil
 }
 
 // GetAllProblems retrieves all problems from the database.
 func (s *Store) GetAllProblems() ([]models.Problem, error) {
-	const query = `
-		SELECT problem_id, name, url, difficulty
-		FROM problems
-	`
-
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query("SELECT id, num, name, slug, difficulty
+							FROM problems")
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +48,7 @@ func (s *Store) GetAllProblems() ([]models.Problem, error) {
 	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
-		if err := rows.Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
 		problems = append(problems, p)
@@ -68,14 +59,10 @@ func (s *Store) GetAllProblems() ([]models.Problem, error) {
 // Retrieve Random Problem from DB
 func (s *Store) GetRandomProblem() (*models.Problem, error) {
 	var p models.Problem
-	const query = `
-		SELECT problem_id, name, url, difficulty
-		FROM problems
-		ORDER BY RANDOM()
-		LIMIT 1
-	`
-
-	err := s.db.QueryRow(query).Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty)
+	err := s.db.QueryRow("SELECT problem_num, name, slug, difficulty 
+						  FROM problems 
+						  ORDER BY RANDOM() 
+						  LIMIT 1").Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -84,15 +71,11 @@ func (s *Store) GetRandomProblem() (*models.Problem, error) {
 
 // Retrieve All Problems with specific tag from DB
 func (s *Store) GetProblemsByTag(tagID int) ([]models.Problem, error) {
-	const query = `
-		SELECT p.problem_id, p.name, p.url, p.difficulty
-		FROM problems p
-		INNER JOIN problem_tags pt
-		ON p.problem_id = pt.problem_id
-		WHERE pt.tag_id = $1
-	`
-
-	rows, err := s.db.Query(query, tagID)
+	rows, err := s.db.Query("SELECT p.problem_id, p.name, p.url, p.difficulty
+							 FROM problems p
+							 INNER JOIN problem_tags pt
+							 ON p.problem_id = pt.problem_id
+							 WHERE pt.tag_id = $1", tagID)
 	if err != nil {
 		return nil, err
 	}

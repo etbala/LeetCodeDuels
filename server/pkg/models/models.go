@@ -1,11 +1,13 @@
 package models
 
-// Database & HTTPS Models
+/*
+	Database & HTTPS Models
+*/
 
 type Problem struct {
-	ProblemID  int    `json:"problem_id"`
+	ID         int    `json:"id"`
 	Name       string `json:"name"`
-	URL        string `json:"url"`
+	Slug       string `json:"slug"`
 	Difficulty string `json:"difficulty"`
 }
 
@@ -21,11 +23,11 @@ type User struct {
 	Friends  []string
 }
 
-func NewProblem(problemID int, name string, url string, difficulty string) *Problem {
+func NewProblem(ID int, name string, slug string, difficulty string) *Problem {
 	return &Problem{
-		ProblemID:  problemID,
+		ID:         ID,
 		Name:       name,
-		URL:        url,
+		Slug:       slug,
 		Difficulty: difficulty,
 	}
 }
