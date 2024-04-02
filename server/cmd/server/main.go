@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/https"
 	"leetcodeduels/pkg/store/db"
 	"log"
@@ -20,12 +19,7 @@ func main() {
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
 
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
-
-	store, err := db.NewStore(cfg.DB_URL)
+	store, err := db.NewStore()
 	if err != nil {
 		log.Fatalf("Failed to initialize the database: %v", err)
 	}

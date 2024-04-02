@@ -6,42 +6,44 @@ package models
 
 type Problem struct {
 	ID         int    `json:"id"`
+	FrontendID int    `json:"frontend_id"`
 	Name       string `json:"name"`
 	Slug       string `json:"slug"`
 	Difficulty string `json:"difficulty"`
 }
 
 type Tag struct {
-	TagID   int    `json:"tag_id"`
-	TagName string `json:"tag_name"`
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 type User struct {
-	UserID   int
+	ID       int
 	Username string
 	Rating   int
 	Friends  []string
 }
 
-func NewProblem(ID int, name string, slug string, difficulty string) *Problem {
+func NewProblem(ID int, frontendID int, name string, slug string, difficulty string) *Problem {
 	return &Problem{
 		ID:         ID,
+		FrontendID: frontendID,
 		Name:       name,
 		Slug:       slug,
 		Difficulty: difficulty,
 	}
 }
 
-func NewTag(tagID int, tagName string) *Tag {
+func NewTag(ID int, Name string) *Tag {
 	return &Tag{
-		TagID:   tagID,
-		TagName: tagName,
+		ID:   ID,
+		Name: Name,
 	}
 }
 
-func NewUser(userID int, username string, rating int, friends []string) *User {
+func NewUser(ID int, username string, rating int, friends []string) *User {
 	return &User{
-		UserID:   userID,
+		ID:       ID,
 		Username: username,
 		Rating:   rating,
 		Friends:  friends,
