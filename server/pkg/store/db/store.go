@@ -14,7 +14,7 @@ type Store struct {
 }
 
 // NewStore creates a new Store with a database connection.
-func NewStore(db_url string) (*Store, error) {
+func NewStore() (*Store, error) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
@@ -25,7 +25,6 @@ func NewStore(db_url string) (*Store, error) {
 	if err != nil {
 		panic(err)
 	}
-	//defer db.Close()
 
 	var version string
 	if err = db.QueryRow("select version()").Scan(&version); err != nil {
@@ -38,8 +37,8 @@ func NewStore(db_url string) (*Store, error) {
 
 // GetAllProblems retrieves all problems from the database.
 func (s *Store) GetAllProblems() ([]models.Problem, error) {
-	rows, err := s.db.Query("SELECT id, num, name, slug, difficulty
-							FROM problems")
+	rows, err := s.db.Query(`SELECT id, frontend_id, name, slug, difficulty
+							FROM problems`)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +47,7 @@ func (s *Store) GetAllProblems() ([]models.Problem, error) {
 	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
-		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		if err := rows.Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
 		problems = append(problems, p)
@@ -59,10 +58,10 @@ func (s *Store) GetAllProblems() ([]models.Problem, error) {
 // Retrieve Random Problem from DB
 func (s *Store) GetRandomProblem() (*models.Problem, error) {
 	var p models.Problem
-	err := s.db.QueryRow("SELECT problem_num, name, slug, difficulty 
-						  FROM problems 
-						  ORDER BY RANDOM() 
-						  LIMIT 1").Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty)
+	err := s.db.QueryRow(`SELECT id, frontend_id, name, slug, difficulty
+						FROM problems
+						ORDER BY RANDOM()
+						LIMIT 1`).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +70,12 @@ func (s *Store) GetRandomProblem() (*models.Problem, error) {
 
 // Retrieve All Problems with specific tag from DB
 func (s *Store) GetProblemsByTag(tagID int) ([]models.Problem, error) {
-	rows, err := s.db.Query("SELECT p.problem_id, p.name, p.url, p.difficulty
-							 FROM problems p
-							 INNER JOIN problem_tags pt
-							 ON p.problem_id = pt.problem_id
-							 WHERE pt.tag_id = $1", tagID)
+	rows, err := s.db.Query(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+							FROM problems p
+							INNER JOIN problem_tags pt
+							ON p.frontend_id = pt.problem_num
+							WHERE pt.tag_num = $1`, tagID)
+
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (s *Store) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
-		if err := rows.Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty); err != nil {
+		if err := rows.Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
 		problems = append(problems, p)
@@ -95,16 +95,13 @@ func (s *Store) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 // Retrieve Random Problem with specific tag from DB
 func (s *Store) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	var p models.Problem
-	const query = `
-		SELECT p.problem_id, p.name, p.url, p.difficulty
-		FROM problems p
-		INNER JOIN problem_tags pt
-		ON p.problem_id = pt.problem_id
-		WHERE pt.tag_id = $1
-		ORDER BY RANDOM()
-		LIMIT 1
-	`
-	err := s.db.QueryRow(query, tagID).Scan(&p.ProblemID, &p.Name, &p.URL, &p.Difficulty)
+	err := s.db.QueryRow(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+						FROM problems p 
+						INNER JOIN problem_tags pt 
+						ON p.problem_id = pt.problem_id 
+						WHERE pt.tag_id = $1 
+						ORDER BY RANDOM() 
+						LIMIT 1`, tagID).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +110,8 @@ func (s *Store) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 
 // GetAllTags retrieves all unique tags from the database.
 func (s *Store) GetAllTags() ([]string, error) {
-	const query = `
-		SELECT DISTINCT tag_name
-		FROM tags
-	`
-
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(`SELECT DISTINCT tag_name 
+							 FROM tags`)
 	if err != nil {
 		return nil, err
 	}
@@ -137,14 +130,11 @@ func (s *Store) GetAllTags() ([]string, error) {
 
 // GetTagsByProblem retrieves all tags associated with a specific problem.
 func (s *Store) GetTagsByProblem(problemID int) ([]string, error) {
-	const query = `
-        SELECT t.tag_name
-        FROM tags t
-        INNER JOIN problem_tags pt ON t.tag_id = pt.tag_id
-        WHERE pt.problem_id = $1
-    `
+	rows, err := s.db.Query(`SELECT t.name \
+							FROM tags t \
+							INNER JOIN problem_tags pt ON t.id = pt.tag_id \
+							WHERE pt.problem_id = $1`, problemID)
 
-	rows, err := s.db.Query(query, problemID)
 	if err != nil {
 		return nil, err
 	}
