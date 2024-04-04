@@ -19,6 +19,8 @@ type Tag struct {
 type User struct {
 	UserID   int
 	Username string
+    PasswordHash string
+    Email String
 	Rating   int
 	Friends  []string
 }
