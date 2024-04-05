@@ -20,5 +20,34 @@
     <footer>
         <p>&copy; Leetcode Duals</p>
     </footer>
+    <script>
+        document.getElementById('submitLogin').addEventListener('click', function(event) {
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: username, password: password }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();  // Assuming the server responds with JSON data
+                } else {
+                    throw new Error('Failed to login');
+                }
+            })
+            .then(data => {
+                console.log('Login successful', data);
+                // Handle login success, redirect or update UI as needed
+            })
+            .catch(error => {
+                console.error('Error during login:', error);
+                // Handle login errors, show message to the user
+            });
+        });
+    </script>
 </body>
 </html>
