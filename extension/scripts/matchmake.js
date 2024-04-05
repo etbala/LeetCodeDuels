@@ -28,11 +28,6 @@ function handleClick() {
 }
 
 function getUserId() {
-  // Implement logic to retrieve the user's ID
-  // This could involve:
-  // - Checking local storage for a stored ID
-  // - Retrieving the ID from a cookie
-  // - Other mechanisms depending on your authentication setup
-  // ...
+    // Eventually impelented in backend
   return userId; // Replace with the actual user ID
 }
