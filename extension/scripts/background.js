@@ -6,7 +6,7 @@ try{
     if(changeInfo.status == 'complete'){
     //if (changeInfo.url) {
       chrome.scripting.executeScript({
-        files: ['contentScript.js'],
+        files: ['./contentScript.js'],
         target: {tabId: tab.id}
       });
     //}

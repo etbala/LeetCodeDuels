@@ -1,15 +1,20 @@
-{
+  {
     "manifest_version": 3,
-    "name": "Hello Extensions",
-    "description": "Base Level Extension",
+    "name": "Hello Injector",
     "version": "1.0",
+    "description": "Injects a div into the page.",
+    "permissions": ["activeTab"],
+    "background": {
+      "service_worker": "scripts/background.js"
+    },
     "action": {
       "default_popup": "hello.html",
       "default_icon": "icon.png"
     },
-    "background": {
-      "service_worker": "./scripts/background.js"
-    },
-    "permissions": ["scripting"],
-    "host_permissions": ["<all_urls>"]
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["scripts/contentScript.js"]
+      }
+    ]
   }
