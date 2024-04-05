@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
 
@@ -31,13 +30,13 @@ func NewStore() (*Store, error) {
 		panic(err)
 	}
 
-	fmt.Printf("version=%s\n", version)
+	//fmt.Printf("version=%s\n", version)
 	return &Store{db: db}, nil
 }
 
 // GetAllProblems retrieves all problems from the database.
 func (s *Store) GetAllProblems() ([]models.Problem, error) {
-	rows, err := s.db.Query(`SELECT id, frontend_id, name, slug, difficulty
+	rows, err := s.db.Query(`SELECT id, frontend_id, name, slug, difficulty 
 							FROM problems`)
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func (s *Store) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	err := s.db.QueryRow(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
 						INNER JOIN problem_tags pt 
-						ON p.problem_id = pt.problem_id 
+						ON p.frontend_id = pt.problem_id 
 						WHERE pt.tag_id = $1 
 						ORDER BY RANDOM() 
 						LIMIT 1`, tagID).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
@@ -110,7 +109,7 @@ func (s *Store) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 
 // GetAllTags retrieves all unique tags from the database.
 func (s *Store) GetAllTags() ([]string, error) {
-	rows, err := s.db.Query(`SELECT DISTINCT tag_name 
+	rows, err := s.db.Query(`SELECT DISTINCT name 
 							 FROM tags`)
 	if err != nil {
 		return nil, err
@@ -130,9 +129,9 @@ func (s *Store) GetAllTags() ([]string, error) {
 
 // GetTagsByProblem retrieves all tags associated with a specific problem.
 func (s *Store) GetTagsByProblem(problemID int) ([]string, error) {
-	rows, err := s.db.Query(`SELECT t.name \
-							FROM tags t \
-							INNER JOIN problem_tags pt ON t.id = pt.tag_id \
+	rows, err := s.db.Query(`SELECT t.name
+							FROM tags t
+							INNER JOIN problem_tags pt ON t.id = pt.tag_id
 							WHERE pt.problem_id = $1`, problemID)
 
 	if err != nil {

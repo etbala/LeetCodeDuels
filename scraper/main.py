@@ -148,7 +148,7 @@ def main():
             tags, error = scrape_tags(problem_num, url)
             if error is None:
                 print(f"Scraped problem {problem_num} '{problem_name}' with {difficulty} difficulty and tags {tags} at {url}\n")
-                writer.addProblem(i, problem_num, problem_name, url, difficulty, tags)
+                writer.addProblem(i, problem_num, problem_name, question_title_slug, difficulty, tags)
                 failed_attempts = 0
             else:
                 # If Error is found, reset driver and wait 5 min, then try to scrape it again (close if failed 5 times in a row)

@@ -15,10 +15,10 @@ func NewRouter(store store.Store) *mux.Router {
 	// Register routes and handlers
 	r.HandleFunc("/problems", handler.GetAllProblems).Methods("GET")
 	r.HandleFunc("/random-problem", handler.GetRandomProblem).Methods("GET")
-	r.HandleFunc("/problems-by-tag", handler.GetProblemsByTag).Methods("POST")
-	r.HandleFunc("/random-problem-by-tag", handler.GetRandomProblemByTag).Methods("POST")
+	r.HandleFunc("/problems-by-tag", handler.GetProblemsByTag).Methods("GET", "POST")
+	r.HandleFunc("/random-problem-by-tag", handler.GetRandomProblemByTag).Methods("GET", "POST")
 	r.HandleFunc("/tags", handler.GetAllTags).Methods("GET")
-	r.HandleFunc("/tags-of-problem", handler.GetTagsByProblem).Methods("POST")
+	r.HandleFunc("/tags-of-problem", handler.GetTagsByProblem).Methods("GET", "POST")
 
 	return r
 }

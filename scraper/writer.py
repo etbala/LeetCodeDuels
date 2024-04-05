@@ -2,11 +2,11 @@ import json
 from utils import *
 
 """
-    Store Information as JSON (Temporary - Make Database Later)
-    Store Problem Number, Name, URL, Difficulty, Tags
+    Store Information in Database (JSON ATM -> Needs to change)
+    Store Problem Number, Name, Slug, Difficulty, Tags
 """
 
-def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, problem_tags):
+def addProblem(id, problem_num, problem_name, slug, problem_difficulty, problem_tags):
     # File path
     file_path = 'lc_problems.json'
 
@@ -21,7 +21,7 @@ def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, 
     problems[id] = {
         'name': problem_name,
         'num': problem_num,
-        'url': problem_link,
+        'slug': slug,
         'difficulty': problem_difficulty,
         'tags': problem_tags
     }
@@ -31,8 +31,6 @@ def addProblem(id, problem_num, problem_name, problem_link, problem_difficulty, 
         json.dump(problems, file, indent=4)
 
     update_tracker('track.conf', id)
-
-    return True
 
 def updateProblem():
     return
