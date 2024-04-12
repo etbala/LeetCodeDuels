@@ -2,8 +2,10 @@ package models
 
 import "time"
 
+const BASE_PROBLEM_URL string = "https://leetcode.com/problemset/"
+
 type Player struct {
-	ID       int
+	UUID     string
 	Username string
 	RoomID   string
 }
@@ -20,4 +22,15 @@ type PlayerSubmission struct {
 	Question Question
 	Pass     bool
 	Time     time.Time
+}
+
+type Session struct {
+	ID          int
+	InProgress  bool
+	Question    Question
+	Players     []Player
+	Submissions [][]PlayerSubmission
+	Winner      Player
+	StartTime   time.Time
+	EndTime     time.Time
 }

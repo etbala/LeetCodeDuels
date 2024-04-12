@@ -18,12 +18,12 @@ type Tag struct {
 }
 
 type User struct {
-	ID       int
-	Username string
-    PasswordHash string
-    Email String
-	Rating   int
-	Friends  []string
+	UUID         string
+	Username     string
+	PasswordHash string
+	Email        string
+	Rating       int
+	Friends      []string
 }
 
 func NewProblem(ID int, frontendID int, name string, slug string, difficulty string) *Problem {
@@ -43,9 +43,9 @@ func NewTag(ID int, Name string) *Tag {
 	}
 }
 
-func NewUser(ID int, username string, rating int, friends []string) *User {
+func NewUser(UUID string, username string, rating int, friends []string) *User {
 	return &User{
-		ID:       ID,
+		UUID:     UUID,
 		Username: username,
 		Rating:   rating,
 		Friends:  friends,
