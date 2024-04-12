@@ -1,22 +1,34 @@
 package auth
 
 import (
-	"leetcodeduels/pkg/models"
+    "leetcodeduels/pkg/models"
+    "net/http"
 
-	"golang.org/x/crypto/bcrypt"
+    "golang.org/x/crypto/bcrypt"
 )
 
-func (s *Store) CreateUser(user models.User) error {
-	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
+func (s *Store) CreateUser(w http.ResponseWriter, user models.User) error {
+    // Hash the password
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), bcrypt.DefaultCost)
+    if err != nil {
+        return err
+    }
 
-	// Insert the user into the database
-	_, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
-		user.Username, string(hashedPassword), user.Email, user.Rating)
-	return err
+    // Insert the user into the database
+    _, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
+        user.Username, string(hashedPassword), user.Email, user.Rating)
+    if err != nil {
+        return err
+    }
+
+    // Set cookie to indicate successful sign-up
+    http.SetCookie(w, &http.Cookie{
+        Name:  "loggedIn",
+        Value: "true",
+        Path:  "/", // Cookie is valid for all paths
+    })
+
+    return nil
 }
 
 func (s *Store) AuthenticateUser(username, password string) (bool, error) {
