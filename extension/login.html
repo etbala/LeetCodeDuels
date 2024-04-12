@@ -34,7 +34,7 @@
             })
             .then(response => {
                 if (response.ok) {
-                    return response.json();  // Assuming the server responds with JSON data
+                    return response.json();  
                 } else {
                     throw new Error('Failed to login');
                 }
