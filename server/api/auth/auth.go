@@ -31,21 +31,27 @@ func (s *Store) CreateUser(w http.ResponseWriter, user models.User) error {
     return nil
 }
 
-func (s *Store) AuthenticateUser(username, password string) (bool, error) {
-	var hashedPassword string
-	err := s.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&hashedPassword)
-	if err != nil {
-		// User not found or other error
-		return false, err
-	}
+func (s *Store) AuthenticateUser(w http.ResponseWriter, username, password string) (bool, error) {
+    var hashedPassword string
+    err := s.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&hashedPassword)
+    if err != nil {
+        // User not found or other error
+        return false, err
+    }
 
-	// Compare the provided password with the stored hash
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	if err != nil {
-		// Password does not match
-		return false, nil
-	}
+    // Compare the provided password with the stored hash
+    err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+    if err != nil {
+        // Password does not match
+        return false, nil
+    }
 
-	// Authentication successful
-	return true, nil
+    // Authentication successful, set cookie
+    http.SetCookie(w, &http.Cookie{
+        Name:  "loggedIn",
+        Value: "true",
+        Path:  "/", // Cookie is valid for all paths
+    })
+
+    return true, nil
 }

@@ -34,14 +34,21 @@
             })
             .then(response => {
                 if (response.ok) {
-                    return response.json();  
+                    // Check if the 'loggedIn' cookie is set
+                    var cookies = document.cookie.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i].trim();
+                        if (cookie.startsWith('loggedIn=true')) {
+                            // Redirect to another page or update UI as needed
+                            console.log('User logged in');
+                            return;
+                        }
+                    }
+                    // Handle case where cookie is not set
+                    console.log('User not logged in');
                 } else {
                     throw new Error('Failed to login');
                 }
-            })
-            .then(data => {
-                console.log('Login successful', data);
-                // Handle login success, redirect or update UI as needed
             })
             .catch(error => {
                 console.error('Error during login:', error);
