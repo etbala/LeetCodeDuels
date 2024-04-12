@@ -1,14 +1,13 @@
 package matchmaking
 
 import (
-	"leetcodeduels/api/matchmaking/models"
 	"sync"
 	"time"
 )
 
 type MatchmakingPool struct {
 	sync.Mutex
-	Players    []*models.Player
+	Players    []*Player
 	MatchCheck time.Duration
 }
 
@@ -20,7 +19,7 @@ func NewMatchmakingPool() *MatchmakingPool {
 	return mp
 }
 
-func (mp *MatchmakingPool) AddPlayer(player *models.Player) {
+func (mp *MatchmakingPool) AddPlayer(player *Player) {
 	mp.Lock()
 	mp.Players = append(mp.Players, player)
 	mp.Unlock()
@@ -52,7 +51,7 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 	}
 }
 
-func (mp *MatchmakingPool) shouldMatch(player1, player2 *models.Player) bool {
+func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
 	// Check for overlapping flags or if force match is enabled after a timeout
 	for _, tag1 := range player1.Tags {
 		for _, tag2 := range player2.Tags {
@@ -69,14 +68,14 @@ func (mp *MatchmakingPool) shouldMatch(player1, player2 *models.Player) bool {
 	return false
 }
 
-func (mp *MatchmakingPool) notifyMatch(player1, player2 *models.Player) {
-	lobby := &models.Lobby{Player1: player1, Player2: player2}
+func (mp *MatchmakingPool) notifyMatch(player1, player2 *Player) {
+	lobby := &Lobby{Player1: player1, Player2: player2}
 	player1.Matched <- lobby
 	player2.Matched <- lobby
 }
 
 func (mp *MatchmakingPool) removePlayers(ids ...string) {
-	var newPlayers []*models.Player
+	var newPlayers []*Player
 	for _, player := range mp.Players {
 		keep := true
 		for _, id := range ids {

@@ -1,8 +1,6 @@
 package game
 
 import (
-	"leetcodeduels/api/game/models"
-	"leetcodeduels/api/matchmaking"
 	"sync"
 	"time"
 )
@@ -14,39 +12,42 @@ import (
 
 type GameManager struct {
 	sync.Mutex
-	Sessions map[int]*models.Session // Map session ID to Session
-	Players  map[int]string          // Map player ID to session ID
+	Sessions map[int]*Session // Map session ID to Session
+	Players  map[string]int   // Map player ID to session ID
 }
 
 func NewGameManager() *GameManager {
 	return &GameManager{
-		Sessions: make(map[int]*models.Session),
-		Players:  make(map[int]string),
+		Sessions: make(map[int]*Session),
+		Players:  make(map[string]int),
 	}
 }
 
-func (gm *GameManager) CreateSession(lobby *matchmaking.Lobby, question *models.Question) *models.Session {
+func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, question *Question) *Session {
 	gm.Lock()
 	defer gm.Unlock()
 
-	sessionID := len(gm.Sessions) + 1 // Simple ID generation, consider a more robust method
-	session := &models.Session{
-		ID:          sessionID,
-		InProgress:  true,
-		Question:    *question,
-		Players:     []models.Player{*lobby.Player1, *lobby.Player2},
-		Submissions: make([][]models.PlayerSubmission, 2), // Assuming 2 players for now
+	sessionID := len(gm.Sessions) + 1
+	session := &Session{
+		ID:         sessionID,
+		InProgress: true,
+		Question:   *question,
+		Players: []Player{
+			{UUID: player1.GetID(), Username: player1.GetUsername(), RoomID: sessionID},
+			{UUID: player2.GetID(), Username: player2.GetUsername(), RoomID: sessionID},
+		},
+		Submissions: make([][]PlayerSubmission, 2),
 		StartTime:   time.Now(),
 	}
 
 	gm.Sessions[sessionID] = session
-	gm.Players[lobby.Player1.ID] = sessionID
-	gm.Players[lobby.Player2.ID] = sessionID
+	gm.Players[player1.GetID()] = sessionID
+	gm.Players[player2.GetID()] = sessionID
 
 	return session
 }
 
-func (gm *GameManager) UpdateSessionForPlayer(playerID int, submission models.PlayerSubmission) {
+func (gm *GameManager) UpdateSessionForPlayer(playerID string, submission PlayerSubmission) {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -64,7 +65,7 @@ func (gm *GameManager) UpdateSessionForPlayer(playerID int, submission models.Pl
 
 	// Assuming player1 is always at index 0 and player2 at index 1 for simplicity
 	playerIndex := 0
-	if session.Players[1].ID == playerID {
+	if session.Players[1].UUID == playerID {
 		playerIndex = 1
 	}
 
@@ -72,7 +73,7 @@ func (gm *GameManager) UpdateSessionForPlayer(playerID int, submission models.Pl
 	// Additional logic to check if the session ends, determine winner, etc., could be here
 }
 
-func (gm *GameManager) IsPlayerInSession(playerID int) bool {
+func (gm *GameManager) IsPlayerInSession(playerID string) bool {
 	gm.Lock()
 	defer gm.Unlock()
 

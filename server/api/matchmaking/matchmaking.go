@@ -2,11 +2,10 @@ package matchmaking
 
 import (
 	"fmt"
-	"leetcodeduels/api/matchmaking/models"
 	"time"
 )
 
-func MatchmakingRequest(player *models.Player, pool *MatchmakingPool, timeout time.Duration) {
+func MatchmakingRequest(player *Player, pool *MatchmakingPool, timeout time.Duration) {
 	select {
 	case lobby := <-player.Matched:
 		fmt.Printf("Match found for %s: %s and %s\n", player.ID, lobby.Player1.ID, lobby.Player2.ID)
