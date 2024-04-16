@@ -63,7 +63,7 @@ func (gm *GameManager) UpdateSessionForPlayer(playerID string, submission Player
 		return
 	}
 
-	// Assuming player1 is always at index 0 and player2 at index 1 for simplicity
+	// Assuming player1 is always at index 0 and player2 at index 1
 	playerIndex := 0
 	if session.Players[1].UUID == playerID {
 		playerIndex = 1

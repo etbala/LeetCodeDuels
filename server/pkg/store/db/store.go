@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
 
@@ -158,7 +159,16 @@ func (s *Store) CreateUser(username, password, email string) (bool, error) {
 		return false, err
 	}
 
-	// Check if user is already in database here (TODO)
+	// Check if user is already in database
+	var exists int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2", username, email).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	if exists > 0 {
+		return false, fmt.Errorf("user with given username or email already exists")
+	}
 
 	// Insert the user into the database
 	_, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",

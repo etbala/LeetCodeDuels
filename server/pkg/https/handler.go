@@ -7,6 +7,7 @@ database and return the data to the client. This is where you would
 
 import (
 	"encoding/json"
+	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/store"
 	"net/http"
 	"strconv"
@@ -114,13 +115,13 @@ func (h *Handler) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	pass := r.URL.Query().Get("pass")
 
+	// Just goes straight to DB query for now, may change in future
 	success, err := h.store.AuthenticateUser(user, pass)
 	if err != nil {
 		http.Error(w, "Error logging in", http.StatusInternalServerError)
 	}
 
 	respondWithJSON(w, http.StatusOK, success)
-
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -128,12 +129,23 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	pass := r.URL.Query().Get("pass")
 	email := r.URL.Query().Get("email")
 
+	// Just goes straight to DB query for now, may change in future
 	success, err := h.store.CreateUser(user, pass, email)
 	if err != nil {
 		http.Error(w, "Error logging in", http.StatusInternalServerError)
 	}
 
 	respondWithJSON(w, http.StatusOK, success)
+}
+
+func (h *Handler) IsUserInGame(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("userID")
+
+	// This Doesn't work atm, need to figure out a way to access the game sessions outside of main better
+	success := game.IsPlayerInSession(userID)
+
+	respondWithJSON(w, http.StatusOK, success)
+
 }
 
 // Helper function to respond with JSON.

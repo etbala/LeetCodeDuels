@@ -9,21 +9,18 @@ import (
 // NewRouter initializes and returns a new router with configured routes.
 func NewRouter(store store.Store) *mux.Router {
 	handler := NewHandler(store)
-
 	r := mux.NewRouter()
 
-	// Register routes and handlers
 	r.HandleFunc("/tags", handler.GetAllTags).Methods("GET")
 	r.HandleFunc("/login", handler.AuthenticateUser).Methods("GET", "POST")
 	r.HandleFunc("/sign-up", handler.CreateUser).Methods("GET", "POST")
+	r.HandleFunc("/check-user-ingame", handler.IsUserInGame).Methods("GET", "POST")
 
 	/* Routes to be added
 	// Game Session Handling
 	r.HandleFunc("/check-user-ingame", handler.IsUserInGame).Methods("GET", "POST")
 	r.HandleFunc("/matchmake", handler.AddPlayerToPool).Methods("PUT")
 	r.HandleFunc("/cancel-matchmake", handler.RemovePlayerFromPool).Methods("PUT")
-
-
 
 	*/
 
