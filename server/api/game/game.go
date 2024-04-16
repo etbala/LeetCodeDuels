@@ -47,6 +47,57 @@ func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, question *Ques
 	return session
 }
 
+func (gm *GameManager) EndSession(sessionID int) {
+	gm.Lock()
+	defer gm.Unlock()
+
+	session, exists := gm.Sessions[sessionID]
+	if !exists {
+		return // Handle error: session not found
+	}
+
+	// Determine winner and update session state
+	session.InProgress = false
+	session.EndTime = time.Now()
+	// Logic to determine winner could be here
+
+	// Remove session from active sessions and clear player mappings
+	delete(gm.Sessions, sessionID)
+	for _, player := range session.Players {
+		delete(gm.Players, player.UUID)
+	}
+}
+
+func (gm *GameManager) ForceEndSession(sessionID int) {
+	gm.Lock()
+	defer gm.Unlock()
+
+	session, exists := gm.Sessions[sessionID]
+	if !exists {
+		return // Handle error: session not found
+	}
+
+	session.InProgress = false
+	session.EndTime = time.Now()
+	// Possible additional clean-up logic
+
+	delete(gm.Sessions, sessionID)
+	for _, player := range session.Players {
+		delete(gm.Players, player.UUID)
+	}
+}
+
+func (gm *GameManager) ListSessions() []*Session {
+	gm.Lock()
+	defer gm.Unlock()
+
+	var sessions []*Session
+	for _, session := range gm.Sessions {
+		sessions = append(sessions, session)
+	}
+	return sessions
+}
+
 func (gm *GameManager) UpdateSessionForPlayer(playerID string, submission PlayerSubmission) {
 	gm.Lock()
 	defer gm.Unlock()
