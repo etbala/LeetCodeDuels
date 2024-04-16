@@ -12,12 +12,24 @@ func NewRouter(store store.Store) *mux.Router {
 
 	r := mux.NewRouter()
 
-	// Register routes and handlers (To be in production)
-	r.HandleFunc("/random-problem", handler.GetRandomProblem).Methods("GET")
-	r.HandleFunc("/random-problem-by-tag", handler.GetRandomProblemByTag).Methods("GET", "POST")
+	// Register routes and handlers
 	r.HandleFunc("/tags", handler.GetAllTags).Methods("GET")
+	r.HandleFunc("/login", handler.AuthenticateUser).Methods("GET", "POST")
+	r.HandleFunc("/sign-up", handler.CreateUser).Methods("GET", "POST")
+
+	/* Routes to be added
+	// Game Session Handling
+	r.HandleFunc("/check-user-ingame", handler.IsUserInGame).Methods("GET", "POST")
+	r.HandleFunc("/matchmake", handler.AddPlayerToPool).Methods("PUT")
+	r.HandleFunc("/cancel-matchmake", handler.RemovePlayerFromPool).Methods("PUT")
+
+
+
+	*/
 
 	// Testing Funcs
+	r.HandleFunc("/random-problem", handler.GetRandomProblem).Methods("GET")
+	r.HandleFunc("/random-problem-by-tag", handler.GetRandomProblemByTag).Methods("GET", "POST")
 	r.HandleFunc("/problems", handler.GetAllProblems).Methods("GET")
 	r.HandleFunc("/problems-by-tag", handler.GetProblemsByTag).Methods("GET", "POST")
 	r.HandleFunc("/tags-of-problem", handler.GetTagsByProblem).Methods("GET", "POST")

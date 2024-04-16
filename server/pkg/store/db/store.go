@@ -151,17 +151,23 @@ func (s *Store) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
-func (s *Store) CreateUser(user models.User) error {
-	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), bcrypt.DefaultCost)
+func (s *Store) CreateUser(username, password, email string) (bool, error) {
+	default_rating := 1000
+	hashed_pass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return false, err
 	}
+
+	// Check if user is already in database here (TODO)
 
 	// Insert the user into the database
 	_, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
-		user.Username, string(hashedPassword), user.Email, user.Rating)
-	return err
+		username, string(hashed_pass), email, default_rating)
+	if err != nil {
+		return false, err
+	}
+
+	return true, err
 }
 
 func (s *Store) AuthenticateUser(username, password string) (bool, error) {

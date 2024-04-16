@@ -109,6 +109,33 @@ func (h *Handler) GetTagsByProblem(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, tags)
 }
 
+// Handles Login Attempts
+func (h *Handler) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	pass := r.URL.Query().Get("pass")
+
+	success, err := h.store.AuthenticateUser(user, pass)
+	if err != nil {
+		http.Error(w, "Error logging in", http.StatusInternalServerError)
+	}
+
+	respondWithJSON(w, http.StatusOK, success)
+
+}
+
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	pass := r.URL.Query().Get("pass")
+	email := r.URL.Query().Get("email")
+
+	success, err := h.store.CreateUser(user, pass, email)
+	if err != nil {
+		http.Error(w, "Error logging in", http.StatusInternalServerError)
+	}
+
+	respondWithJSON(w, http.StatusOK, success)
+}
+
 // Helper function to respond with JSON.
 func respondWithJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	response, err := json.Marshal(data)

@@ -10,4 +10,6 @@ type Store interface {
 	GetRandomProblemByTag(tagID int) (*models.Problem, error)
 	GetAllTags() ([]string, error)
 	GetTagsByProblem(problemID int) ([]string, error)
+	CreateUser(username, password, email string) (bool, error)
+	AuthenticateUser(username, password string) (bool, error)
 }
