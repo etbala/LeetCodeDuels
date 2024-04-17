@@ -152,43 +152,32 @@ func (s *Store) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
+func (s *Store) CreateUser(username, password, email string) (bool, error) {
+	default_rating := 1000
+	hashed_pass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return false, err
+	}
 
-func (s *Store) CreateUser(w http.ResponseWriter, username, password, email string) (bool, error) {
-    defaultRating := 1000
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-    if err != nil {
-        return false, err
-    }
+	// Check if user is already in database
+	var exists int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2", username, email).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
 
-    // Check if user is already in the database
-    var exists int
-    err = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2", username, email).Scan(&exists)
-    if err != nil {
-        return false, err
-    }
+	if exists > 0 {
+		return false, fmt.Errorf("user with given username or email already exists")
+	}
 
-    if exists > 0 {
-        return false, fmt.Errorf("user with given username or email already exists")
-    }
+	// Insert the user into the database
+	_, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
+		username, string(hashed_pass), email, default_rating)
+	if err != nil {
+		return false, err
+	}
 
-    // Insert the user into the database
-    _, err = s.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
-        username, string(hashedPassword), email, defaultRating)
-    if err != nil {
-        return false, err
-    }
-
-    // Set a cookie to indicate successful sign-up
-    http.SetCookie(w, &http.Cookie{
-        Name:  "loggedIn",
-        Value: "true",
-        Path:  "/",    // Cookie is valid for all paths
-        HttpOnly: true, // The cookie cannot be accessed by client-side APIs, like JavaScript.
-        Secure: true,   // Ensure this cookie is only sent over HTTPS.
-        MaxAge: 86400,  // Sets the cookie to expire after 1 day (86400 seconds).
-    })
-
-    return true, nil
+	return true, err
 }
 
 func (s *Store) AuthenticateUser(username, password string) (bool, error) {
