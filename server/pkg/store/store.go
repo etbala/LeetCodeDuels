@@ -1,7 +1,9 @@
 package store
 
-import "leetcodeduels/pkg/models"
-import "leetcodeduels/pkg/https"
+import (
+    "leetcodeduels/pkg/models"
+    "net/http"
+)
 
 // Store is an interface for database operations.
 type Store interface {
