@@ -14,5 +14,5 @@ type Store interface {
 	GetAllTags() ([]string, error)
 	GetTagsByProblem(problemID int) ([]string, error)
     CreateUser(w http.ResponseWriter, username, password, email string) (bool, error)
-	AuthenticateUser(username, password string) (bool, error)
+	AuthenticateUser(w http.ResponseWriter, username, password string) (bool, error)
 }

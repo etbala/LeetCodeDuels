@@ -112,16 +112,39 @@ func (h *Handler) GetTagsByProblem(w http.ResponseWriter, r *http.Request) {
 
 // Handles Login Attempts
 func (h *Handler) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
-	user := r.URL.Query().Get("user")
-	pass := r.URL.Query().Get("pass")
+    // Assuming this should only be called with POST for security reasons
+    if r.Method != "POST" {
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	// Just goes straight to DB query for now, may change in future
-	success, err := h.store.AuthenticateUser(user, pass)
-	if err != nil {
-		http.Error(w, "Error logging in", http.StatusInternalServerError)
-	}
+    username := r.FormValue("user")
+    password := r.FormValue("pass")
 
-	respondWithJSON(w, http.StatusOK, success)
+    success, err := h.store.AuthenticateUser(username, password)
+    if err != nil {
+        // More specific error handling can be added here based on error type
+        http.Error(w, "Error logging in: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    if !success {
+        http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+        return
+    }
+
+    // Set a cookie to indicate successful authentication
+    http.SetCookie(w, &http.Cookie{
+        Name:     "loggedIn",
+        Value:    "true",
+        Path:     "/",
+        HttpOnly: true, // Protects against XSS attacks by not allowing JS access
+        Secure:   true, // Ensures cookie is sent over HTTPS
+        MaxAge:   86400, // Expires after one day
+    })
+
+    // Respond with JSON on successful authentication
+    respondWithJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {

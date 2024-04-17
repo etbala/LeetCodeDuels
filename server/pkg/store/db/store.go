@@ -191,20 +191,16 @@ func (s *Store) CreateUser(w http.ResponseWriter, username, password, email stri
 }
 
 func (s *Store) AuthenticateUser(username, password string) (bool, error) {
-	var hashedPassword string
-	err := s.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&hashedPassword)
-	if err != nil {
-		// User not found or other error
-		return false, err
-	}
+    var hashedPassword string
+    err := s.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&hashedPassword)
+    if err != nil {
+        return false, err  // User not found or other database error
+    }
 
-	// Compare the provided password with the stored hash
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	if err != nil {
-		// Password does not match
-		return false, nil
-	}
+    err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+    if err != nil {
+        return false, fmt.Errorf("invalid password")  // Specific error for password mismatch
+    }
 
-	// Authentication successful
-	return true, nil
+    return true, nil
 }
