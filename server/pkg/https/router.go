@@ -13,7 +13,7 @@ func NewRouter(store store.Store) *mux.Router {
 
 	r.HandleFunc("/tags", handler.GetAllTags).Methods("GET")
 	r.HandleFunc("/login", handler.AuthenticateUser).Methods("GET", "POST")
-	r.HandleFunc("/sign-up", handler.CreateUser).Methods("GET", "POST")
+	r.HandleFunc("/sign-up", handler.CreateUser).Methods("POST")
 	r.HandleFunc("/check-user-ingame", handler.IsUserInGame).Methods("GET", "POST")
 
 	/* Routes to be added

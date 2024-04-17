@@ -125,17 +125,31 @@ func (h *Handler) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	user := r.URL.Query().Get("user")
-	pass := r.URL.Query().Get("pass")
-	email := r.URL.Query().Get("email")
+    // Assume this is a POST request; handle method checking if necessary
+    if r.Method != "POST" {
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	// Just goes straight to DB query for now, may change in future
-	success, err := h.store.CreateUser(user, pass, email)
-	if err != nil {
-		http.Error(w, "Error logging in", http.StatusInternalServerError)
-	}
+    // Extract user information from form data instead of the query string
+    username := r.FormValue("user")
+    password := r.FormValue("pass")
+    email := r.FormValue("email")
 
-	respondWithJSON(w, http.StatusOK, success)
+    // Create user and handle the response
+    success, err := h.store.CreateUser(w, username, password, email)
+    if err != nil {
+        http.Error(w, "Error creating user: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    if !success {
+        http.Error(w, "Failed to create user", http.StatusBadRequest)
+        return
+    }
+
+    // Respond with JSON on successful creation
+    respondWithJSON(w, http.StatusOK, map[string]bool{"success": success})
 }
 
 func (h *Handler) IsUserInGame(w http.ResponseWriter, r *http.Request) {
