@@ -19,6 +19,8 @@ The frontend is built as a browser extension and includes HTML, CSS, and JavaScr
   - `background.js` - Handles background tasks for the browser extension.
   - `contentScript.js` - Scripts that run in the context of web pages loaded by the browser.
   - `matchmake.js` - Handles the logic for matchmaking users for duels.
+  - `signup.js` - Handles the logic for signing up users. This mainly includes adding their credentials to the DB (through the backend).
+  - `login.js` - Handles the logic for logging in users. This mainly includes comparing their credientials to the DB (through the backend).
 
 ### Backend (Server)
 The backend server is implemented in Go and handles API requests, located in the `server` directory:
