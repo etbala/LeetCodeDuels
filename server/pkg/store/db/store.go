@@ -204,3 +204,12 @@ func (s *Store) AuthenticateUser(username, password string) (bool, error) {
 
     return true, nil
 }
+
+func (s *Store) UpdateUserRating(UUID string, newRating int) error {
+    query := `UPDATE users SET rating = $1 WHERE uuid = $2`
+    _, err := s.db.Exec(query, newRating, UUID)
+    if err != nil {
+        return fmt.Errorf("error updating user rating: %w", err)
+    }
+    return nil
+}
