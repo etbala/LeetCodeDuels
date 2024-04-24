@@ -28,6 +28,18 @@ function handleClick() {
 }
 
 function getUserId() {
-    // Eventually impelented in backend
-  return userId; // Replace with the actual user ID
+  return fetch('https://your-backend-url/user', { // User API endpoint not yet available
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    return data.userId;
+  })
+  .catch(error => {
+    console.error("Failed to get user ID:", error);
+    // Handle network errors or other unexpected issues
+  });
 }

@@ -2,7 +2,7 @@
 (function() {
   // Create the new div element
   const newDiv = document.createElement('div');
-  newDiv.innerHTML = "<strong>Hello, this is the injected div!</strong>";
+  newDiv.innerHTML = "<strong>Opponent: 76% runtime | 33% Memory</strong>";
   newDiv.style.position = 'fixed';
   newDiv.style.bottom = '20px';
   newDiv.style.right = '20px';
