@@ -43,3 +43,33 @@ function getUserId() {
     // Handle network errors or other unexpected issues
   });
 }
+
+// onclick event listener for the each button from the extension popup
+document.getElementById('easy').addEventListener('click', function() {
+  console.log('Easy button clicked');
+  findQuestion('easy');
+});
+
+document.getElementById('medium').addEventListener('click', function() {
+  findQuestion('medium');
+});
+
+document.getElementById('hard').addEventListener('click', function() {
+  findQuestion('hard');
+});
+
+
+function findQuestion(difficulty) {
+  // Get the json from ../../scraper/lc_problems.json
+  fetch('../../scraper/lc_problems.json')
+  .then(response => response.json())
+  .then(data => {
+    // Filter the data based on the difficulty
+    const questions = data.filter(question => question.difficulty === difficulty);
+    console.log(questions);
+    // Get a random question from the filtered data
+    const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+    // Redirect to the question URL
+    window.location.href = randomQuestion.url;
+  })
+}

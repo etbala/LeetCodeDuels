@@ -53,7 +53,7 @@
 function sendMatchmakingInfo(runtime, memory, percentValue1, percentValue2) {
   // Send the runtime, memory, and percentage values to the backend
   console.log("Sending stats to backend...");
-  fetch('https://localhost:3000/matchmakeinfo', { // Endpoint not yet available
+  fetch('https://localhost:8080/matchmakeinfo', { // Endpoint not yet available
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

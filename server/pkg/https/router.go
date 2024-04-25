@@ -20,7 +20,7 @@ func NewRouter(store store.Store) *mux.Router {
 	// Game Session Handling
 	r.HandleFunc("/matchmake", handler.AddPlayerToPool).Methods("PUT")
 	r.HandleFunc("/cancel-matchmake", handler.RemovePlayerFromPool).Methods("PUT")
-
+	r.HandleFunc("/matchmake", handler.GetMatch).Methods("POST") Post request sent that gives the submssion info
 	*/
 
 	// Testing Funcs

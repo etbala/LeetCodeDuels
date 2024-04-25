@@ -53,3 +53,19 @@ footer p {
   font-size: 14px;
   color: #888;
 }
+
+#difficulties {
+  display: flex;
+  /* make the conetet fit the width of  the div */
+  width: 50%;
+  justify-content: space-around;
+}
+
+.difficultyButton {
+  padding: 5px 10px;
+  background-color: #00695f;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
