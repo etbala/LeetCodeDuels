@@ -39,11 +39,12 @@
           // Update the div with the new stats
           const currentStatsDiv = document.getElementById('current-stats');
           currentStatsDiv.innerHTML = `<strong>Runtime: ${statsText[0]}ms (${percentValue1}) | Memory: ${statsText[1]}MB (${percentValue2})</strong>`;
+
+          // Call the function in matchmake.js
+          window.sendMatchmakingInfo(statsText[0], statsText[1], percentValue1, percentValue2);
         }, 7000);
       });
     });
   }, 5000);
 
 })();
-
-

@@ -43,3 +43,30 @@ function getUserId() {
     // Handle network errors or other unexpected issues
   });
 }
+
+function sendMatchmakingInfo(runtime, memory, percentValue1, percentValue2) {
+  // Send the runtime, memory, and percentage values to the backend
+  fetch('https://your-backend-url/stats', { // Stats API endpoint not yet available
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      runtime: runtime,
+      memory: memory,
+      percentValue1: percentValue1,
+      percentValue2: percentValue2
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log("Stats sent successfully");
+    } else {
+      console.log("Failed to send stats:", data.error);
+    }
+  })
+  .catch(error => {
+    console.error("Stats send error:", error);
+  });
+}
