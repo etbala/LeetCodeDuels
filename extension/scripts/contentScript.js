@@ -28,10 +28,17 @@
           console.log(stats);
           const statsArray = Array.from(stats);
           const statsText = statsArray.map(stat => stat.innerText);
+          const textWithPercentage = Array.from(document.querySelectorAll('span')).filter(span => span.innerText.includes('%'));
+          console.log('.');
+          console.log(textWithPercentage);
+          // Get the percentage value from the two spans in the textWithPercentage array
+          const percentValue1 = textWithPercentage[0].innerHTML;
+          const percentValue2 = textWithPercentage[1].innerHTML;
+
           console.log(statsText);
           // Update the div with the new stats
           const currentStatsDiv = document.getElementById('current-stats');
-          currentStatsDiv.innerHTML = statsText.join('<br>');
+          currentStatsDiv.innerHTML = `<strong>Runtime: ${statsText[0]}ms (${percentValue1}) | Memory: ${statsText[1]}MB (${percentValue2})</strong>`;
         }, 7000);
       });
     });
