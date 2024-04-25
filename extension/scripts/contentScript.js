@@ -1,3 +1,5 @@
+// Reference matchmake.js file for sendmatchmakinginfo function
+
 // Content script to inject a div
 (function() {
   // Create the new div element
@@ -41,10 +43,37 @@
           currentStatsDiv.innerHTML = `<strong>Runtime: ${statsText[0]}ms (${percentValue1}) | Memory: ${statsText[1]}MB (${percentValue2})</strong>`;
 
           // Call the function in matchmake.js
-          window.sendMatchmakingInfo(statsText[0], statsText[1], percentValue1, percentValue2);
+          sendMatchmakingInfo(statsText[0], statsText[1], percentValue1, percentValue2);
         }, 7000);
       });
     });
   }, 5000);
 
 })();
+function sendMatchmakingInfo(runtime, memory, percentValue1, percentValue2) {
+  // Send the runtime, memory, and percentage values to the backend
+  console.log("Sending stats to backend...");
+  fetch('https://localhost:3000/matchmakeinfo', { // Endpoint not yet available
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      runtime: runtime,
+      memory: memory,
+      percentValue1: percentValue1,
+      percentValue2: percentValue2
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log("Stats sent successfully");
+    } else {
+      console.log("Failed to send stats:", data.error);
+    }
+  })
+  .catch(error => {
+    console.error("Stats send error:", error);
+  });
+}
