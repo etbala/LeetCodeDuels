@@ -50,6 +50,19 @@ Open your browser and navigate to the extensions management page:
 2. Enable Developer Mode (usually a toggle in the top-right corner).
 3. Click on "Load Unpacked" (Chrome) or "Load Temporary Add-on" (Firefox) and select the extension directory from the LeetCodeDuels repository.
 
+## Using the extension
+
+While most of the endpoints the extension needs to work are not yet implemented, there is functionality that currently comes out of it.
+
+When you open a leetcode page, you will see the injected html coming from the extension saying "No Stats Yet".
+<!-- Make a bullet point list -->
+- Go ahead and open up a leetcode question of your choice.
+- Complete the question as you normally would.
+- Once you submit the question, the extension will update the html to show the stats of the question you just completed.
+
+<!-- make this bold -->
+While the extension is not fully functional, this is a small example of what it can do, and how we can use it to deliver information to the user from leeetcode.
+
 ### Setting up the Scraper
 Navigate back to the scraper directory and install required Python packages:
 
