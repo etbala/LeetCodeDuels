@@ -69,3 +69,21 @@ footer p {
   border-radius: 5px;
   cursor: pointer;
 }
+
+#questions {
+  display: flex;
+  /* make the conetet fit the width of  the div */
+  width: 75%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.questionButton {
+  padding: 5px 10px;
+  background-color: #00a796;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 3px;
+}

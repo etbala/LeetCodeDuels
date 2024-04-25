@@ -17,8 +17,8 @@ The frontend is built as a browser extension and includes HTML, CSS, and JavaScr
   - `signup.css` - Styles for the signup page.
 - **JavaScript Files**:
   - `background.js` - Handles background tasks for the browser extension.
-  - `contentScript.js` - Scripts that run in the context of web pages loaded by the browser.
-  - `matchmake.js` - Handles the logic for matchmaking users for duels.
+  - `contentScript.js` - Scripts that run in the context of web pages loaded by the browser and can interact with the page.
+  - `matchmake.js` - Handles the logic for matchmaking users for duels and for loading questions.
   - `signup.js` - Handles the logic for signing up users. This mainly includes adding their credentials to the DB (through the backend).
   - `login.js` - Handles the logic for logging in users. This mainly includes comparing their credientials to the DB (through the backend).
 

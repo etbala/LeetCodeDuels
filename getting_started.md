@@ -60,8 +60,10 @@ When you open a leetcode page, you will see the injected html coming from the ex
 - Complete the question as you normally would.
 - Once you submit the question, the extension will update the html to show the stats of the question you just completed.
 
-<!-- make this bold -->
+
 While the extension is not fully functional, this is a small example of what it can do, and how we can use it to deliver information to the user from leeetcode.
+
+The extension can also be used to find a question from the given difficulty and tag.
 
 ### Setting up the Scraper
 Navigate back to the scraper directory and install required Python packages:
