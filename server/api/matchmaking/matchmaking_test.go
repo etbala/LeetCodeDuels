@@ -6,7 +6,8 @@ import (
 )
 
 func TestMatchmaking(t *testing.T) {
-	pool := NewMatchmakingPool()
+	resetMatchmakingPool()
+	pool := GetMatchmakingPool()
 
 	player1 := &Player{ID: "Player1", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
 	player2 := &Player{ID: "Player2", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
@@ -19,7 +20,8 @@ func TestMatchmaking(t *testing.T) {
 }
 
 func TestMatchmakingWithOverlappingFlags(t *testing.T) {
-	pool := NewMatchmakingPool()
+	resetMatchmakingPool()
+	pool := GetMatchmakingPool()
 
 	player1 := &Player{ID: "Player1", Tags: []string{"Tag1", "Tag2"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
 	player2 := &Player{ID: "Player2", Tags: []string{"Tag2", "Tag3"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
@@ -32,7 +34,8 @@ func TestMatchmakingWithOverlappingFlags(t *testing.T) {
 }
 
 func TestMatchmakingWithNoCommonFlagsAndTimeout(t *testing.T) {
-	pool := NewMatchmakingPool()
+	resetMatchmakingPool()
+	pool := GetMatchmakingPool()
 
 	player1 := &Player{ID: "Player1", Tags: []string{"Tag4"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: true}
 	player2 := &Player{ID: "Player2", Tags: []string{"Tag5"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now().Add(1 * time.Second), ForceMatch: true}
@@ -49,7 +52,8 @@ func TestMatchmakingWithNoCommonFlagsAndTimeout(t *testing.T) {
 }
 
 func TestMatchmakingPrioritizesOldestPlayer(t *testing.T) {
-	pool := NewMatchmakingPool()
+	resetMatchmakingPool()
+	pool := GetMatchmakingPool()
 
 	oldestPlayer := &Player{ID: "OldestPlayer", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now()}
 	time.Sleep(1 * time.Second) // Ensure there's a noticeable difference in JoinedAt times

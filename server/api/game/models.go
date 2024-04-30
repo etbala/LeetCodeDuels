@@ -24,9 +24,16 @@ type Question struct {
 }
 
 type PlayerSubmission struct {
-	Question Question
-	Pass     bool
-	Time     time.Time
+	Question          Question
+	PassedTestCases   int
+	TotalTestCases    int
+	TimeLimitExceeded bool
+	RuntimeError      bool
+	WrongAnswer       bool
+	CompileError      bool
+	Accepted          bool
+	Runtime           int
+	Time              time.Time
 }
 
 type Session struct {

@@ -1,13 +1,13 @@
 package https
 
 import (
-	"leetcodeduels/pkg/store"
+	"leetcodeduels/pkg/store/db"
 
 	"github.com/gorilla/mux"
 )
 
 // NewRouter initializes and returns a new router with configured routes.
-func NewRouter(store store.Store) *mux.Router {
+func NewRouter(store *db.Store) *mux.Router {
 	handler := NewHandler(store)
 	r := mux.NewRouter()
 

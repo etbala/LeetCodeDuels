@@ -19,20 +19,10 @@ func (mpi MockPlayerInfo) GetUsername() string {
 	return mpi.username
 }
 
-// TestNewGameManager tests the instantiation of a new GameManager
-func TestNewGameManager(t *testing.T) {
-	gm := NewGameManager()
-	if gm == nil {
-		t.Error("NewGameManager() failed, got nil")
-	}
-	if len(gm.Sessions) != 0 || len(gm.Players) != 0 {
-		t.Error("NewGameManager() should initialize empty maps")
-	}
-}
-
 // TestCreateSession tests creating a new session correctly adds sessions and updates player mapping
 func TestCreateSession(t *testing.T) {
-	gm := NewGameManager()
+	resetGameManager()
+	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
 	question := &Question{
@@ -66,7 +56,8 @@ func TestCreateSession(t *testing.T) {
 
 // TestUpdateSessionForPlayer tests updating session submissions for a player
 func TestUpdateSessionForPlayer(t *testing.T) {
-	gm := NewGameManager()
+	resetGameManager()
+	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
 	question := &Question{
@@ -79,7 +70,7 @@ func TestUpdateSessionForPlayer(t *testing.T) {
 
 	submission := PlayerSubmission{
 		Question: *question,
-		Pass:     true,
+		Accepted: true,
 		Time:     time.Now(),
 	}
 
@@ -91,7 +82,8 @@ func TestUpdateSessionForPlayer(t *testing.T) {
 
 // TestIsPlayerInSession tests the check for a player's session existence
 func TestIsPlayerInSession(t *testing.T) {
-	gm := NewGameManager()
+	resetGameManager()
+	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
 	question := &Question{

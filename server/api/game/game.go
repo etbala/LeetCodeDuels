@@ -1,10 +1,10 @@
 package game
 
 import (
+	"leetcodeduels/pkg/store"
+	"math"
 	"sync"
 	"time"
-    "math"
-    "leetcodeduels/pkg/store"
 )
 
 // Handles Game Sessions
@@ -18,11 +18,24 @@ type GameManager struct {
 	Players  map[string]int   // Map player ID to session ID
 }
 
-func NewGameManager() *GameManager {
-	return &GameManager{
-		Sessions: make(map[int]*Session),
-		Players:  make(map[string]int),
-	}
+var (
+	instance *GameManager
+	once     sync.Once
+)
+
+func GetGameManager() *GameManager {
+	once.Do(func() {
+		instance = &GameManager{
+			Sessions: make(map[int]*Session),
+			Players:  make(map[string]int),
+		}
+	})
+	return instance
+}
+
+func resetGameManager() {
+	instance = nil
+	once = sync.Once{}
 }
 
 func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, question *Question) *Session {
@@ -135,42 +148,42 @@ func (gm *GameManager) IsPlayerInSession(playerID string) bool {
 }
 
 func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID string, store *store.Store) error {
-    player1, player2 := gm.Sessions[gm.Players[player1UUID]].Players[0], gm.Sessions[gm.Players[player2UUID]].Players[1]
+	player1, player2 := gm.Sessions[gm.Players[player1UUID]].Players[0], gm.Sessions[gm.Players[player2UUID]].Players[1]
 
-    kFactor := 32
-    rating1 := float64(player1.Rating)
-    rating2 := float64(player2.Rating)
+	kFactor := 32
+	rating1 := float64(player1.Rating)
+	rating2 := float64(player2.Rating)
 
-    // Calculate expected scores
-    expScore1 := 1 / (1 + math.Pow(10, (rating2-rating1)/400))
-    expScore2 := 1 - expScore1
+	// Calculate expected scores
+	expScore1 := 1 / (1 + math.Pow(10, (rating2-rating1)/400))
+	expScore2 := 1 - expScore1
 
-    // Actual scores
-    var actualScore1, actualScore2 float64
-    if winnerUUID == player1UUID {
-        actualScore1 = 1 // player1 wins
-        actualScore2 = 0 // player2 loses
-    } else if winnerUUID == player2UUID {
-        actualScore1 = 0 // player1 loses
-        actualScore2 = 1 // player2 wins
-    } else {
-        actualScore1 = 0.5 // draw
-        actualScore2 = 0.5 // draw
-    }
+	// Actual scores
+	var actualScore1, actualScore2 float64
+	if winnerUUID == player1UUID {
+		actualScore1 = 1 // player1 wins
+		actualScore2 = 0 // player2 loses
+	} else if winnerUUID == player2UUID {
+		actualScore1 = 0 // player1 loses
+		actualScore2 = 1 // player2 wins
+	} else {
+		actualScore1 = 0.5 // draw
+		actualScore2 = 0.5 // draw
+	}
 
-    // Calculate new ratings
-    newRating1 := int(rating1 + float64(kFactor)*(actualScore1-expScore1))
-    newRating2 := int(rating2 + float64(kFactor)*(actualScore2-expScore2))
+	// Calculate new ratings
+	newRating1 := int(rating1 + float64(kFactor)*(actualScore1-expScore1))
+	newRating2 := int(rating2 + float64(kFactor)*(actualScore2-expScore2))
 
-    // Update the ratings in your database/store
-    err := store.UpdateUserRating(player1.UUID, newRating1)
-    if err != nil {
-        return err
-    }
-    err = store.UpdateUserRating(player2.UUID, newRating2)
-    if err != nil {
-        return err
-    }
+	// Update the ratings in your database/store
+	err := store.UpdateUserRating(player1.UUID, newRating1)
+	if err != nil {
+		return err
+	}
+	err = store.UpdateUserRating(player2.UUID, newRating2)
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }

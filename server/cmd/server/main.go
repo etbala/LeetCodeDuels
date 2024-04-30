@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/https"
 	"leetcodeduels/pkg/store/db"
 	"log"
@@ -31,8 +30,6 @@ func main() {
 		Addr:    ":" + port,
 		Handler: router,
 	}
-
-	game_sessions := game.NewGameManager()
 
 	// Start server in a goroutine
 	go func() {

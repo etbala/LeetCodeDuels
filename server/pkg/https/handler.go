@@ -8,18 +8,18 @@ database and return the data to the client. This is where you would
 import (
 	"encoding/json"
 	"leetcodeduels/api/game"
-	"leetcodeduels/pkg/store"
+	"leetcodeduels/pkg/store/db"
 	"net/http"
 	"strconv"
 )
 
 // Handler struct holds dependencies for HTTP handlers, e.g., the data store.
 type Handler struct {
-	store store.Store
+	store *db.Store
 }
 
 // NewHandler creates a new HTTP handler with dependencies.
-func NewHandler(store store.Store) *Handler {
+func NewHandler(store *db.Store) *Handler {
 	return &Handler{store: store}
 }
 
@@ -112,74 +112,74 @@ func (h *Handler) GetTagsByProblem(w http.ResponseWriter, r *http.Request) {
 
 // Handles Login Attempts
 func (h *Handler) AuthenticateUser(w http.ResponseWriter, r *http.Request) {
-    // Assuming this should only be called with POST for security reasons
-    if r.Method != "POST" {
-        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	// Assuming this should only be called with POST for security reasons
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    username := r.FormValue("user")
-    password := r.FormValue("pass")
+	username := r.FormValue("user")
+	password := r.FormValue("pass")
 
-    success, err := h.store.AuthenticateUser(username, password)
-    if err != nil {
-        // More specific error handling can be added here based on error type
-        http.Error(w, "Error logging in: "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	success, err := h.store.AuthenticateUser(username, password)
+	if err != nil {
+		// More specific error handling can be added here based on error type
+		http.Error(w, "Error logging in: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    if !success {
-        http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-        return
-    }
+	if !success {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
 
-    // Set a cookie to indicate successful authentication
-    http.SetCookie(w, &http.Cookie{
-        Name:     "loggedIn",
-        Value:    "true",
-        Path:     "/",
-        HttpOnly: true, // Protects against XSS attacks by not allowing JS access
-        Secure:   true, // Ensures cookie is sent over HTTPS
-        MaxAge:   86400, // Expires after one day
-    })
+	// Set a cookie to indicate successful authentication
+	http.SetCookie(w, &http.Cookie{
+		Name:     "loggedIn",
+		Value:    "true",
+		Path:     "/",
+		HttpOnly: true,  // Protects against XSS attacks by not allowing JS access
+		Secure:   true,  // Ensures cookie is sent over HTTPS
+		MaxAge:   86400, // Expires after one day
+	})
 
-    // Respond with JSON on successful authentication
-    respondWithJSON(w, http.StatusOK, map[string]bool{"success": true})
+	// Respond with JSON on successful authentication
+	respondWithJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-    // Assume this is a POST request; handle method checking if necessary
-    if r.Method != "POST" {
-        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	// Assume this is a POST request; handle method checking if necessary
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    // Extract user information from form data instead of the query string
-    username := r.FormValue("user")
-    password := r.FormValue("pass")
-    email := r.FormValue("email")
+	// Extract user information from form data instead of the query string
+	username := r.FormValue("user")
+	password := r.FormValue("pass")
+	email := r.FormValue("email")
 
-    // Create user and handle the response
-    success, err := h.store.CreateUser(w, username, password, email)
-    if err != nil {
-        http.Error(w, "Error creating user: "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// Create user and handle the response
+	success, err := h.store.CreateUser(w, username, password, email)
+	if err != nil {
+		http.Error(w, "Error creating user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    if !success {
-        http.Error(w, "Failed to create user", http.StatusBadRequest)
-        return
-    }
+	if !success {
+		http.Error(w, "Failed to create user", http.StatusBadRequest)
+		return
+	}
 
-    // Respond with JSON on successful creation
-    respondWithJSON(w, http.StatusOK, map[string]bool{"success": success})
+	// Respond with JSON on successful creation
+	respondWithJSON(w, http.StatusOK, map[string]bool{"success": success})
 }
 
 func (h *Handler) IsUserInGame(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("userID")
 
-	// This Doesn't work atm, need to figure out a way to access the game sessions outside of main better
-	success := game.IsPlayerInSession(userID)
+	gameManager := game.GetGameManager()
+	success := gameManager.IsPlayerInSession(userID)
 
 	respondWithJSON(w, http.StatusOK, success)
 

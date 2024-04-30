@@ -11,12 +11,24 @@ type MatchmakingPool struct {
 	MatchCheck time.Duration
 }
 
-func NewMatchmakingPool() *MatchmakingPool {
-	mp := &MatchmakingPool{
-		MatchCheck: 1 * time.Second, // Check for matches every 5 seconds
-	}
-	go mp.periodicMatchmaking() // Start the periodic matchmaking routine
-	return mp
+var (
+	poolInstance *MatchmakingPool
+	poolOnce     sync.Once
+)
+
+func GetMatchmakingPool() *MatchmakingPool {
+	poolOnce.Do(func() {
+		poolInstance = &MatchmakingPool{
+			MatchCheck: 1 * time.Second, // Check for matches every 5 seconds
+		}
+		go poolInstance.periodicMatchmaking() // Start the periodic matchmaking routine
+	})
+	return poolInstance
+}
+
+func resetMatchmakingPool() {
+	poolInstance = nil
+	poolOnce = sync.Once{}
 }
 
 func (mp *MatchmakingPool) AddPlayer(player *Player) {
