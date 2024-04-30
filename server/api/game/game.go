@@ -147,7 +147,7 @@ func (gm *GameManager) IsPlayerInSession(playerID string) bool {
 	return ok
 }
 
-func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID string, store *store.Store) error {
+func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID string) error {
 	player1, player2 := gm.Sessions[gm.Players[player1UUID]].Players[0], gm.Sessions[gm.Players[player2UUID]].Players[1]
 
 	kFactor := 32
@@ -176,11 +176,11 @@ func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID stri
 	newRating2 := int(rating2 + float64(kFactor)*(actualScore2-expScore2))
 
 	// Update the ratings in your database/store
-	err := store.UpdateUserRating(player1.UUID, newRating1)
+	err := store.DataStore.UpdateUserRating(player1.UUID, newRating1)
 	if err != nil {
 		return err
 	}
-	err = store.UpdateUserRating(player2.UUID, newRating2)
+	err = store.DataStore.UpdateUserRating(player2.UUID, newRating2)
 	if err != nil {
 		return err
 	}

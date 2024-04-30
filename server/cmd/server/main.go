@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"leetcodeduels/pkg/https"
-	"leetcodeduels/pkg/store/db"
 	"log"
 	"net/http"
 	"os"
@@ -19,12 +18,7 @@ func main() {
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
 
-	store, err := db.NewStore()
-	if err != nil {
-		log.Fatalf("Failed to initialize the database: %v", err)
-	}
-
-	router := https.NewRouter(store)
+	router := https.NewRouter()
 
 	srv := &http.Server{
 		Addr:    ":" + port,
