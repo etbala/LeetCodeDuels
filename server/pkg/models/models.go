@@ -6,7 +6,6 @@ package models
 
 type Problem struct {
 	ID         int    `json:"id"`
-	FrontendID int    `json:"frontend_id"`
 	Name       string `json:"name"`
 	Slug       string `json:"slug"`
 	Difficulty string `json:"difficulty"`
@@ -26,10 +25,9 @@ type User struct {
 	Friends      []string
 }
 
-func NewProblem(ID int, frontendID int, name string, slug string, difficulty string) *Problem {
+func NewProblem(ID int, name string, slug string, difficulty string) *Problem {
 	return &Problem{
 		ID:         ID,
-		FrontendID: frontendID,
 		Name:       name,
 		Slug:       slug,
 		Difficulty: difficulty,

@@ -35,7 +35,7 @@ func init() {
 
 // GetAllProblems retrieves all problems from the database.
 func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
-	rows, err := ds.db.Query(`SELECT id, frontend_id, name, slug, difficulty 
+	rows, err := ds.db.Query(`SELECT frontend_id, name, slug, difficulty 
 							  FROM problems`)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
-		if err := rows.Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
 		problems = append(problems, p)
@@ -56,10 +56,10 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 // Retrieve Random Problem from DB
 func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 	var p models.Problem
-	err := ds.db.QueryRow(`SELECT id, frontend_id, name, slug, difficulty
+	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
 						FROM problems
 						ORDER BY RANDOM()
-						LIMIT 1`).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+						LIMIT 1`).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 
 // Retrieve All Problems with specific tag from DB
 func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
-	rows, err := ds.db.Query(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+	rows, err := ds.db.Query(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 							FROM problems p
 							INNER JOIN problem_tags pt
 							ON p.frontend_id = pt.problem_num
@@ -82,7 +82,7 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
-		if err := rows.Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
 		problems = append(problems, p)
@@ -93,13 +93,13 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 // Retrieve Random Problem with specific tag from DB
 func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	var p models.Problem
-	err := ds.db.QueryRow(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
 						INNER JOIN problem_tags pt 
 						ON p.frontend_id = pt.problem_id 
 						WHERE pt.tag_id = $1 
 						ORDER BY RANDOM() 
-						LIMIT 1`, tagID).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+						LIMIT 1`, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -155,11 +155,11 @@ func (ds *dataStore) GetRandomProblemByDifficulty(difficulty string) (*models.Pr
 	}
 
 	var p models.Problem
-	err := ds.db.QueryRow(`SELECT id, frontend_id, name, slug, difficulty
+	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
 						FROM problems 
 						WHERE difficulty = $1
 						ORDER BY RANDOM() 
-						LIMIT 1`, difficulty).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+						LIMIT 1`, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 
 	if err != nil {
 		return nil, err
@@ -174,14 +174,14 @@ func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty st
 	}
 
 	var p models.Problem
-	err := ds.db.QueryRow(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
 						WHERE difficulty = $1
 						INNER JOIN problem_tags pt 
 						ON p.frontend_id = pt.problem_id 
 						WHERE pt.tag_id = $2
 						ORDER BY RANDOM() 
-						LIMIT 1`, difficulty, tagID).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+						LIMIT 1`, difficulty, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}

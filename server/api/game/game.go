@@ -1,6 +1,7 @@
 package game
 
 import (
+	"leetcodeduels/pkg/models"
 	"leetcodeduels/pkg/store"
 	"math"
 	"sync"
@@ -38,7 +39,7 @@ func resetGameManager() {
 	once = sync.Once{}
 }
 
-func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, question *Question) *Session {
+func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, problem *models.Problem) *Session {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -46,7 +47,7 @@ func (gm *GameManager) CreateSession(player1, player2 PlayerInfo, question *Ques
 	session := &Session{
 		ID:         sessionID,
 		InProgress: true,
-		Question:   *question,
+		Problem:    *problem,
 		Players: []Player{
 			{UUID: player1.GetID(), Username: player1.GetUsername(), RoomID: sessionID},
 			{UUID: player2.GetID(), Username: player2.GetUsername(), RoomID: sessionID},

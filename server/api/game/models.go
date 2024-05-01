@@ -1,6 +1,9 @@
 package game
 
-import "time"
+import (
+	"leetcodeduels/pkg/models"
+	"time"
+)
 
 const BASE_PROBLEM_URL string = "https://leetcode.com/problemset/"
 
@@ -17,16 +20,8 @@ type Player struct {
 	RoomID   int
 }
 
-type Question struct {
-	ID         int
-	Title      string
-	TitleSlug  string
-	Difficulty string
-	Tags       []string
-}
-
 type PlayerSubmission struct {
-	Question          Question
+	Problem           models.Problem
 	PassedTestCases   int
 	TotalTestCases    int
 	TimeLimitExceeded bool
@@ -41,7 +36,7 @@ type PlayerSubmission struct {
 type Session struct {
 	ID          int
 	InProgress  bool
-	Question    Question
+	Problem     models.Problem
 	Players     []Player
 	Submissions [][]PlayerSubmission
 	Winner      Player

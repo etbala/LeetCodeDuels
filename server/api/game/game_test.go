@@ -1,6 +1,7 @@
 package game
 
 import (
+	"leetcodeduels/pkg/models"
 	"testing"
 	"time"
 )
@@ -29,14 +30,14 @@ func TestCreateSession(t *testing.T) {
 	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
-	question := &Question{
+	problem := &models.Problem{
 		ID:         101,
-		Title:      "Example Problem",
-		TitleSlug:  "example-problem",
+		Name:       "Example Problem",
+		Slug:       "example-problem",
 		Difficulty: "Easy",
 	}
 
-	session := gm.CreateSession(player1, player2, question)
+	session := gm.CreateSession(player1, player2, problem)
 
 	if session == nil {
 		t.Fatal("CreateSession() failed, got nil")
@@ -64,16 +65,16 @@ func TestUpdateSessionForPlayer(t *testing.T) {
 	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
-	question := &Question{
+	problem := &models.Problem{
 		ID:         101,
-		Title:      "Example Problem",
-		TitleSlug:  "example-problem",
+		Name:       "Example Problem",
+		Slug:       "example-problem",
 		Difficulty: "Easy",
 	}
-	session := gm.CreateSession(player1, player2, question)
+	session := gm.CreateSession(player1, player2, problem)
 
 	submission := PlayerSubmission{
-		Question: *question,
+		Problem:  *problem,
 		Accepted: true,
 		Time:     time.Now(),
 	}
@@ -90,13 +91,13 @@ func TestIsPlayerInSession(t *testing.T) {
 	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
 	player2 := MockPlayerInfo{"2", "Bob"}
-	question := &Question{
+	problem := &models.Problem{
 		ID:         101,
-		Title:      "Example Problem",
-		TitleSlug:  "example-problem",
+		Name:       "Example Problem",
+		Slug:       "example-problem",
 		Difficulty: "Easy",
 	}
-	gm.CreateSession(player1, player2, question)
+	gm.CreateSession(player1, player2, problem)
 
 	if !gm.IsPlayerInSession("1") {
 		t.Error("Player1 should be in a session")
