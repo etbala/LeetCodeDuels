@@ -49,6 +49,7 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 				player2 := mp.Players[j]
 				if mp.shouldMatch(player1, player2) {
 					mp.notifyMatch(player1, player2)
+					mp.createMatch(player1, player2)
 					mp.removePlayers(player1.ID, player2.ID)
 					matchFound = true
 					break // Exit the inner loop as we've found a match
@@ -84,6 +85,11 @@ func (mp *MatchmakingPool) notifyMatch(player1, player2 *Player) {
 	lobby := &Lobby{Player1: player1, Player2: player2}
 	player1.Matched <- lobby
 	player2.Matched <- lobby
+}
+
+func (mp *MatchmakingPool) createMatch(player1, player2 *Player) {
+	// Assign Problem Based on common tags (via store)
+	// Send to Game Manager to create Game Session with player1 and player2
 }
 
 func (mp *MatchmakingPool) removePlayers(ids ...string) {

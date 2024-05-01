@@ -21,16 +21,13 @@ type Player struct {
 }
 
 type PlayerSubmission struct {
-	Problem           models.Problem
-	PassedTestCases   int
-	TotalTestCases    int
-	TimeLimitExceeded bool
-	RuntimeError      bool
-	WrongAnswer       bool
-	CompileError      bool
-	Accepted          bool
-	Runtime           int
-	Time              time.Time
+	Problem         models.Problem
+	PassedTestCases int
+	TotalTestCases  int
+	ErrorType       string
+	Accepted        bool
+	Runtime         int
+	Time            time.Time
 }
 
 type Session struct {

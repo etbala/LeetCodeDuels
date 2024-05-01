@@ -33,7 +33,6 @@ func init() {
 	DataStore = &dataStore{db: db}
 }
 
-// GetAllProblems retrieves all problems from the database.
 func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	rows, err := ds.db.Query(`SELECT frontend_id, name, slug, difficulty 
 							  FROM problems`)
@@ -53,7 +52,6 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	return problems, nil
 }
 
-// Retrieve Random Problem from DB
 func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 	var p models.Problem
 	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
@@ -66,7 +64,6 @@ func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 	return &p, nil
 }
 
-// Retrieve All Problems with specific tag from DB
 func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	rows, err := ds.db.Query(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 							FROM problems p
@@ -90,7 +87,6 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	return problems, nil
 }
 
-// Retrieve Random Problem with specific tag from DB
 func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	var p models.Problem
 	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
@@ -106,7 +102,6 @@ func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	return &p, nil
 }
 
-// GetAllTags retrieves all unique tags from the database.
 func (ds *dataStore) GetAllTags() ([]string, error) {
 	rows, err := ds.db.Query(`SELECT DISTINCT name 
 							 FROM tags`)
@@ -126,7 +121,6 @@ func (ds *dataStore) GetAllTags() ([]string, error) {
 	return tags, nil
 }
 
-// GetTagsByProblem retrieves all tags associated with a specific problem.
 func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	rows, err := ds.db.Query(`SELECT t.name
 							FROM tags t
