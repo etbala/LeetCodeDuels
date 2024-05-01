@@ -12,6 +12,7 @@ type Player struct {
 	Username   string
 	Rating     int
 	Matched    chan *Lobby
+	Difficulty string
 	Tags       []string  // A slice of tags/flags for matchmaking
 	JoinedAt   time.Time // The time when the player joined the matchmaking pool
 	ForceMatch bool      // Whether the player has opted for forced matching after a timeout

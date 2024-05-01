@@ -149,6 +149,45 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
+func (ds *dataStore) GetRandomProblemByDifficulty(difficulty string) (*models.Problem, error) {
+	if difficulty != "Easy" && difficulty != "Medium" && difficulty != "Hard" {
+		return nil, fmt.Errorf("invalid difficulty")
+	}
+
+	var p models.Problem
+	err := ds.db.QueryRow(`SELECT id, frontend_id, name, slug, difficulty
+						FROM problems 
+						WHERE difficulty = $1
+						ORDER BY RANDOM() 
+						LIMIT 1`, difficulty).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &p, nil
+}
+
+func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty string) (*models.Problem, error) {
+	if difficulty != "Easy" && difficulty != "Medium" && difficulty != "Hard" {
+		return nil, fmt.Errorf("invalid difficulty")
+	}
+
+	var p models.Problem
+	err := ds.db.QueryRow(`SELECT p.id, p.frontend_id, p.name, p.slug, p.difficulty
+						FROM problems p 
+						WHERE difficulty = $1
+						INNER JOIN problem_tags pt 
+						ON p.frontend_id = pt.problem_id 
+						WHERE pt.tag_id = $2
+						ORDER BY RANDOM() 
+						LIMIT 1`, difficulty, tagID).Scan(&p.ID, &p.FrontendID, &p.Name, &p.Slug, &p.Difficulty)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (ds *dataStore) CreateUser(w http.ResponseWriter, username, password, email string) (bool, error) {
 	defaultRating := 1000
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
