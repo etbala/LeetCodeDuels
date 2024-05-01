@@ -7,11 +7,13 @@ const BASE_PROBLEM_URL string = "https://leetcode.com/problemset/"
 type PlayerInfo interface {
 	GetID() string
 	GetUsername() string
+	GetRating() int
 }
 
 type Player struct {
 	UUID     string
 	Username string
+	Rating   int
 	RoomID   int
 }
 

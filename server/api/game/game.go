@@ -74,7 +74,7 @@ func (gm *GameManager) EndSession(sessionID int) {
 	// Determine winner and update session state
 	session.InProgress = false
 	session.EndTime = time.Now()
-	// Logic to determine winner could be here
+	// Logic to determine winner here
 
 	// Remove session from active sessions and clear player mappings
 	delete(gm.Sessions, sessionID)

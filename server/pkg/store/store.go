@@ -17,7 +17,7 @@ type dataStore struct {
 	db *sql.DB
 }
 
-func InitDB() {
+func init() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
@@ -200,6 +200,14 @@ func (ds *dataStore) AuthenticateUser(username, password string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (ds *dataStore) GetUserRating(UUID string, newRating int) error {
+	_, err := ds.db.Exec(`SELECT rating FROM users WHERE uuid = $1`, newRating, UUID)
+	if err != nil {
+		return fmt.Errorf("error getting user rating: %w", err)
+	}
+	return nil
 }
 
 func (ds *dataStore) UpdateUserRating(UUID string, newRating int) error {

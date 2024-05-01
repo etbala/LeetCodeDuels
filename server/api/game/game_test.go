@@ -19,6 +19,10 @@ func (mpi MockPlayerInfo) GetUsername() string {
 	return mpi.username
 }
 
+func (mpi MockPlayerInfo) GetRating() int {
+	return 1200
+}
+
 // TestCreateSession tests creating a new session correctly adds sessions and updates player mapping
 func TestCreateSession(t *testing.T) {
 	resetGameManager()

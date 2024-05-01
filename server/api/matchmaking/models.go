@@ -10,13 +10,14 @@ type Lobby struct {
 type Player struct {
 	ID         string
 	Username   string
+	Rating     int
 	Matched    chan *Lobby
 	Tags       []string  // A slice of tags/flags for matchmaking
 	JoinedAt   time.Time // The time when the player joined the matchmaking pool
 	ForceMatch bool      // Whether the player has opted for forced matching after a timeout
 }
 
-func NewPlayer(id string, username string, tags []string) *Player {
+func NewPlayer(id string, username string, tags []string, rating int) *Player {
 	return &Player{
 		ID:       id,
 		Username: username,
@@ -31,4 +32,8 @@ func (p *Player) GetID() string {
 
 func (p *Player) GetUsername() string {
 	return p.Username
+}
+
+func (p *Player) GetRating() int {
+	return p.Rating
 }
