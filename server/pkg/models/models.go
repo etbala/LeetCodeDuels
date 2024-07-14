@@ -1,14 +1,16 @@
 package models
 
+import "leetcodeduels/internal/enums"
+
 /*
 	Database & HTTPS Models
 */
 
 type Problem struct {
-	ID         int    `json:"id"`
-	Name       string `json:"name"`
-	Slug       string `json:"slug"`
-	Difficulty string `json:"difficulty"`
+	ID         int              `json:"id"`
+	Name       string           `json:"name"`
+	Slug       string           `json:"slug"`
+	Difficulty enums.Difficulty `json:"difficulty"`
 }
 
 type Tag struct {
@@ -25,7 +27,7 @@ type User struct {
 	Friends      []string
 }
 
-func NewProblem(ID int, name string, slug string, difficulty string) *Problem {
+func NewProblem(ID int, name string, slug string, difficulty enums.Difficulty) *Problem {
 	return &Problem{
 		ID:         ID,
 		Name:       name,

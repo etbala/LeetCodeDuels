@@ -74,9 +74,12 @@ func TestUpdateSessionForPlayer(t *testing.T) {
 	session := gm.CreateSession(player1, player2, problem)
 
 	submission := PlayerSubmission{
-		Problem:  *problem,
-		Accepted: true,
-		Time:     time.Now(),
+		PlayerUUID:      player1.GetID(),
+		PassedTestCases: 10,
+		TotalTestCases:  10,
+		Status:          Accepted,
+		Runtime:         150,
+		Time:            time.Now(),
 	}
 
 	gm.UpdateSessionForPlayer("1", submission)

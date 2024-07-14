@@ -1,6 +1,9 @@
 package matchmaking
 
 import (
+	"leetcodeduels/api/game"
+	"leetcodeduels/internal/enums"
+	"leetcodeduels/pkg/store"
 	"sync"
 	"time"
 )
@@ -19,7 +22,7 @@ var (
 func GetMatchmakingPool() *MatchmakingPool {
 	poolOnce.Do(func() {
 		poolInstance = &MatchmakingPool{
-			MatchCheck: 1 * time.Second, // Check for matches every 5 seconds
+			MatchCheck: 2 * time.Second, // Check for matches every 2 seconds
 		}
 		go poolInstance.periodicMatchmaking() // Start the periodic matchmaking routine
 	})
@@ -48,8 +51,8 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 			for j := i + 1; j < len(mp.Players); j++ {
 				player2 := mp.Players[j]
 				if mp.shouldMatch(player1, player2) {
+					//mp.createMatch(player1, player2)
 					mp.notifyMatch(player1, player2)
-					mp.createMatch(player1, player2)
 					mp.removePlayers(player1.ID, player2.ID)
 					matchFound = true
 					break // Exit the inner loop as we've found a match
@@ -65,14 +68,16 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 }
 
 func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
-	// Check for overlapping flags or if force match is enabled after a timeout
-	for _, tag1 := range player1.Tags {
-		for _, tag2 := range player2.Tags {
-			if tag1 == tag2 {
+	// Check for overlapping Difficulties (Difficulties do not overlap)
+	// Seems inefficient, but max 3 difficulties each
+	for _, dif1 := range player1.Difficulties {
+		for _, dif2 := range player2.Difficulties {
+			if dif1 == dif2 {
 				return true
 			}
 		}
 	}
+
 	// Check if force matching is triggered (assuming a 'ForceMatch' field in Player model)
 	if time.Since(player1.JoinedAt) >= mp.MatchCheck && player1.ForceMatch ||
 		time.Since(player2.JoinedAt) >= mp.MatchCheck && player2.ForceMatch {
@@ -87,7 +92,25 @@ func (mp *MatchmakingPool) notifyMatch(player1, player2 *Player) {
 	player2.Matched <- lobby
 }
 
-func (mp *MatchmakingPool) createMatch(player1, player2 *Player) {
+func (mp *MatchmakingPool) createMatch(player1, player2 *Player) bool {
+	var difficulties []enums.Difficulty
+	for _, dif1 := range player1.Difficulties {
+		for _, dif2 := range player2.Difficulties {
+			if dif1 == dif2 {
+				difficulties = append(difficulties, dif1)
+			}
+		}
+	}
+
+	prob, err := store.DataStore.GetRandomProblemForDuel(player1.Tags, player2.Tags, difficulties)
+	if prob == nil || err != nil {
+		return false
+	}
+
+	gameManager := game.GetGameManager()
+	gameManager.CreateSession(player1, player2, prob)
+	return true
+
 	// Assign Problem Based on common tags (via store)
 	// Send to Game Manager to create Game Session with player1 and player2
 }

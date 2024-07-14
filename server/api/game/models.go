@@ -5,13 +5,16 @@ import (
 	"time"
 )
 
-const BASE_PROBLEM_URL string = "https://leetcode.com/problemset/"
+type SubmissionStatus string
 
-type PlayerInfo interface {
-	GetID() string
-	GetUsername() string
-	GetRating() int
-}
+const (
+	Accepted            SubmissionStatus = "Accepted"
+	CompileError        SubmissionStatus = "Compile Error"
+	MemoryLimitExceeded SubmissionStatus = "Memory Limit Exceeded"
+	RuntimeError        SubmissionStatus = "Runtime Error"
+	TimeLimitExceeded   SubmissionStatus = "Time Limit Exceeded"
+	WrongAnswer         SubmissionStatus = "Wrong Answer"
+)
 
 type Player struct {
 	UUID     string
@@ -21,12 +24,11 @@ type Player struct {
 }
 
 type PlayerSubmission struct {
-	Problem         models.Problem
+	PlayerUUID      string
 	PassedTestCases int
 	TotalTestCases  int
-	ErrorType       string
-	Accepted        bool
-	Runtime         int
+	Status          SubmissionStatus
+	Runtime         int // ms
 	Time            time.Time
 }
 
@@ -34,8 +36,8 @@ type Session struct {
 	ID          int
 	InProgress  bool
 	Problem     models.Problem
-	Players     []Player
-	Submissions [][]PlayerSubmission
+	Players     []Player             // Should be set
+	Submissions [][]PlayerSubmission // Should be Map of player to that players submissions
 	Winner      Player
 	StartTime   time.Time
 	EndTime     time.Time

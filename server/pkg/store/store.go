@@ -3,9 +3,11 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"leetcodeduels/internal/enums"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
 	"net/http"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -143,11 +145,7 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
-func (ds *dataStore) GetRandomProblemByDifficulty(difficulty string) (*models.Problem, error) {
-	if difficulty != "Easy" && difficulty != "Medium" && difficulty != "Hard" {
-		return nil, fmt.Errorf("invalid difficulty")
-	}
-
+func (ds *dataStore) GetRandomProblemByDifficulty(difficulty enums.Difficulty) (*models.Problem, error) {
 	var p models.Problem
 	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
 						FROM problems 
@@ -162,11 +160,7 @@ func (ds *dataStore) GetRandomProblemByDifficulty(difficulty string) (*models.Pr
 	return &p, nil
 }
 
-func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty string) (*models.Problem, error) {
-	if difficulty != "Easy" && difficulty != "Medium" && difficulty != "Hard" {
-		return nil, fmt.Errorf("invalid difficulty")
-	}
-
+func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty enums.Difficulty) (*models.Problem, error) {
 	var p models.Problem
 	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
@@ -176,6 +170,69 @@ func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty st
 						WHERE pt.tag_id = $2
 						ORDER BY RANDOM() 
 						LIMIT 1`, difficulty, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// Gets a random problem that matches a tag preference from both Player 1 and Player 2, and has one of the provided difficulties
+func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []string, difficulties []enums.Difficulty) (*models.Problem, error) {
+	if len(difficulties) > 3 {
+		return nil, fmt.Errorf("error: invalid number of difficulties provided")
+	}
+
+	// TODO / FIX: Currently uses ID of tags instead of String, WILL CURRENTLY BREAK OR NOT WORK
+
+	// Generate placeholders for SQL IN clause
+	placeholders := func(length int, startIdx int) []string {
+		result := make([]string, length)
+		for i := range result {
+			result[i] = fmt.Sprintf("$%d", i+startIdx)
+		}
+		return result
+	}
+	player1TagsPlaceholders := placeholders(len(player1Tags), 1)
+	player2TagsPlaceholders := placeholders(len(player2Tags), len(player1Tags)+1)
+	difficultiesPlaceholders := placeholders(len(difficulties), len(player1Tags)+len(player2Tags)+1)
+
+	query := fmt.Sprintf(`
+        SELECT p.frontend_id, p.name, p.slug, p.difficulty
+        FROM problems p
+        WHERE p.difficulty IN (%s)
+        AND EXISTS (
+            SELECT 1
+            FROM problem_tags pt1
+            WHERE pt1.problem_id = p.frontend_id
+            AND pt1.tag_id IN (%s)
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM problem_tags pt2
+            WHERE pt2.problem_id = p.frontend_id
+            AND pt2.tag_id IN (%s)
+        )
+        ORDER BY RANDOM()
+        LIMIT 1`,
+		strings.Join(difficultiesPlaceholders, ","),
+		strings.Join(player1TagsPlaceholders, ","),
+		strings.Join(player2TagsPlaceholders, ","))
+
+	// Prepare the arguments for the query
+	args := make([]interface{}, 0, len(player1Tags)+len(player2Tags)+len(difficulties))
+	for _, tag := range player1Tags {
+		args = append(args, tag)
+	}
+	for _, tag := range player2Tags {
+		args = append(args, tag)
+	}
+	for _, difficulty := range difficulties {
+		args = append(args, difficulty)
+	}
+
+	// Execute the query
+	var p models.Problem
+	err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err
 	}
