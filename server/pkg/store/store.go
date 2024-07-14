@@ -177,8 +177,9 @@ func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty en
 }
 
 // Gets a random problem that matches a tag preference from both Player 1 and Player 2, and has one of the provided difficulties
-func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []string, difficulties []enums.Difficulty) (*models.Problem, error) {
-	if len(difficulties) > 3 {
+func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []enums.Difficulty) (*models.Problem, error) {
+	if len(difficulties) < 1 || len(difficulties) > 3 {
+		// Must provide at least one difficulty
 		return nil, fmt.Errorf("error: invalid number of difficulties provided")
 	}
 

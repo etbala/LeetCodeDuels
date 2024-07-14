@@ -1,6 +1,7 @@
 package matchmaking
 
 import (
+	"leetcodeduels/internal/enums"
 	"testing"
 	"time"
 )
@@ -9,8 +10,8 @@ func TestMatchmaking(t *testing.T) {
 	resetMatchmakingPool()
 	pool := GetMatchmakingPool()
 
-	player1 := &Player{ID: "Player1", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
-	player2 := &Player{ID: "Player2", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player1 := &Player{ID: "Player1", Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player2 := &Player{ID: "Player2", Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
 
 	pool.AddPlayer(player1)
 	pool.AddPlayer(player2)
@@ -23,8 +24,8 @@ func TestMatchmakingWithOverlappingFlags(t *testing.T) {
 	resetMatchmakingPool()
 	pool := GetMatchmakingPool()
 
-	player1 := &Player{ID: "Player1", Tags: []string{"Tag1", "Tag2"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
-	player2 := &Player{ID: "Player2", Tags: []string{"Tag2", "Tag3"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player1 := &Player{ID: "Player1", Tags: []int{1, 2}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player2 := &Player{ID: "Player2", Tags: []int{2, 3}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
 
 	pool.AddPlayer(player1)
 	pool.AddPlayer(player2)
@@ -37,8 +38,8 @@ func TestMatchmakingWithNoCommonFlagsAndTimeout(t *testing.T) {
 	resetMatchmakingPool()
 	pool := GetMatchmakingPool()
 
-	player1 := &Player{ID: "Player1", Tags: []string{"Tag4"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: true}
-	player2 := &Player{ID: "Player2", Tags: []string{"Tag5"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now().Add(1 * time.Second), ForceMatch: true}
+	player1 := &Player{ID: "Player1", Tags: []int{4}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: true}
+	player2 := &Player{ID: "Player2", Tags: []int{5}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now().Add(1 * time.Second), ForceMatch: true}
 
 	pool.AddPlayer(player1)
 	time.Sleep(1 * time.Second) // Simulate delay between player joins
@@ -55,10 +56,10 @@ func TestMatchmakingPrioritizesOldestPlayer(t *testing.T) {
 	resetMatchmakingPool()
 	pool := GetMatchmakingPool()
 
-	oldestPlayer := &Player{ID: "OldestPlayer", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now()}
+	oldestPlayer := &Player{ID: "OldestPlayer", Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now()}
 	time.Sleep(1 * time.Second) // Ensure there's a noticeable difference in JoinedAt times
 
-	newerPlayer := &Player{ID: "NewerPlayer", Tags: []string{"Tag1"}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now()}
+	newerPlayer := &Player{ID: "NewerPlayer", Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now()}
 	pool.AddPlayer(oldestPlayer)
 	pool.AddPlayer(newerPlayer)
 

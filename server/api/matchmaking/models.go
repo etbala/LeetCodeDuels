@@ -16,12 +16,12 @@ type Player struct {
 	Rating       int
 	Matched      chan *Lobby
 	Difficulties []enums.Difficulty
-	Tags         []string  // A slice of tags/flags for matchmaking
+	Tags         []int     // A slice of tags/flags for matchmaking
 	JoinedAt     time.Time // The time when the player joined the matchmaking pool
 	ForceMatch   bool      // Whether the player has opted for forced matching after a timeout
 }
 
-func NewPlayer(id string, username string, tags []string, difficulties []enums.Difficulty, rating int) *Player {
+func NewPlayer(id string, username string, tags []int, difficulties []enums.Difficulty, rating int) *Player {
 	return &Player{
 		ID:           id,
 		Username:     username,
