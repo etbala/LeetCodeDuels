@@ -70,38 +70,26 @@ func (gm *GameManager) EndSession(sessionID int) {
 
 	session, exists := gm.Sessions[sessionID]
 	if !exists {
-		return // Handle error: session not found
+		// Handle error: session not found
+		return
 	}
 
 	// Determine winner and update session state
 	session.InProgress = false
 	session.EndTime = time.Now()
-	// Logic to determine winner here
 
-	// Remove session from active sessions and clear player mappings
-	delete(gm.Sessions, sessionID)
-	for _, player := range session.Players {
-		delete(gm.Players, player.UUID)
-	}
-}
+	// TODO: Store session in history somewhere (probably in db)
 
-func (gm *GameManager) ForceEndSession(sessionID int) {
-	gm.Lock()
-	defer gm.Unlock()
+	player1 := session.Players[0]
+	player2 := session.Players[1]
 
-	session, exists := gm.Sessions[sessionID]
-	if !exists {
-		return // Handle error: session not found
-	}
-
-	session.InProgress = false
-	session.EndTime = time.Now()
-	// Possible additional clean-up logic
+	delete(gm.Players, player1.UUID)
+	delete(gm.Players, player2.UUID)
 
 	delete(gm.Sessions, sessionID)
-	for _, player := range session.Players {
-		delete(gm.Players, player.UUID)
-	}
+
+	// TODO: Notify users that their session is complete
+
 }
 
 func (gm *GameManager) ListSessions() []*Session {
@@ -115,7 +103,7 @@ func (gm *GameManager) ListSessions() []*Session {
 	return sessions
 }
 
-func (gm *GameManager) UpdateSessionForPlayer(playerID string, submission PlayerSubmission) {
+func (gm *GameManager) AddSubmission(playerID string, submission PlayerSubmission) {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -138,7 +126,16 @@ func (gm *GameManager) UpdateSessionForPlayer(playerID string, submission Player
 	}
 
 	session.Submissions[playerIndex] = append(session.Submissions[playerIndex], submission)
-	// Additional logic to check if the session ends, determine winner, etc., could be here
+
+	if submission.Status != Accepted {
+		// TODO: Notify other player of submission
+
+		return
+	}
+
+	// If the submission is successful, handle winner and close session
+	session.Winner = session.Players[playerIndex]
+	gm.EndSession(sessionID)
 }
 
 func (gm *GameManager) IsPlayerInSession(playerID string) bool {

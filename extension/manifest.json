@@ -1,6 +1,6 @@
   {
     "manifest_version": 3,
-    "name": "Hello Injector",
+    "name": "LeetCode Duels",
     "version": "1.0",
     "description": "Injects a div into the page.",
     "permissions": ["activeTab"],

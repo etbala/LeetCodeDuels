@@ -59,8 +59,8 @@ func TestCreateSession(t *testing.T) {
 	}
 }
 
-// TestUpdateSessionForPlayer tests updating session submissions for a player
-func TestUpdateSessionForPlayer(t *testing.T) {
+// TestAddSubmission tests updating session submissions for a player
+func TestAddSubmission(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
 	player1 := MockPlayerInfo{"1", "Alice"}
@@ -82,7 +82,7 @@ func TestUpdateSessionForPlayer(t *testing.T) {
 		Time:            time.Now(),
 	}
 
-	gm.UpdateSessionForPlayer("1", submission)
+	gm.AddSubmission("1", submission)
 	if len(session.Submissions[0]) != 1 {
 		t.Errorf("Expected 1 submission for player 1, got %d", len(session.Submissions[0]))
 	}

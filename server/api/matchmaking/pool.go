@@ -51,15 +51,15 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 			for j := i + 1; j < len(mp.Players); j++ {
 				player2 := mp.Players[j]
 				if mp.shouldMatch(player1, player2) {
-					//mp.createMatch(player1, player2)
+					mp.createMatch(player1, player2)
 					mp.notifyMatch(player1, player2)
 					mp.removePlayers(player1.ID, player2.ID)
 					matchFound = true
-					break // Exit the inner loop as we've found a match
+					break
 				}
 			}
 			if !matchFound {
-				i++ // Only increment if no match was found to avoid skipping players
+				i++
 			}
 			// If a match was found, don't increment i as the next player will have shifted to the current index
 		}
@@ -87,6 +87,8 @@ func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
 }
 
 func (mp *MatchmakingPool) notifyMatch(player1, player2 *Player) {
+	// TODO: Send session information in this function as well as making matched true
+
 	lobby := &Lobby{Player1: player1, Player2: player2}
 	player1.Matched <- lobby
 	player2.Matched <- lobby
