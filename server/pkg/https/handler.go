@@ -11,6 +11,7 @@ import (
 	"leetcodeduels/pkg/store"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // GetAllProblems handles the request to get all problems.
@@ -173,6 +174,77 @@ func IsUserInGame(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusOK, success)
 
+}
+
+func AddSubmission(w http.ResponseWriter, r *http.Request) {
+
+	// TODO: Verify api sender is authorized to submit for sent UUID
+
+	statusStr := r.URL.Query().Get("Status")
+	submissionIDStr := r.URL.Query().Get("SubmissionID")
+	playerUUID := r.URL.Query().Get("PlayerUUID")
+	runtimeStr := r.URL.Query().Get("Runtime")
+	memoryStr := r.URL.Query().Get("Memory")
+	langStr := r.URL.Query().Get("Lang")
+	passedTestCasesStr := r.URL.Query().Get("PassedTestCases")
+	totalTestCasesStr := r.URL.Query().Get("TotalTestCases")
+
+	status, err := game.ParseSubmissionStatus(statusStr)
+	if err != nil {
+		http.Error(w, "Invalid submission status", http.StatusBadRequest)
+		return
+	}
+
+	lang, err := game.ParseLang(langStr)
+	if err != nil {
+		http.Error(w, "Invalid language", http.StatusBadRequest)
+		return
+	}
+
+	submissionID, err := strconv.Atoi(submissionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid submission ID", http.StatusBadRequest)
+		return
+	}
+
+	runtime, err := strconv.Atoi(runtimeStr)
+	if err != nil {
+		http.Error(w, "Invalid runtime value", http.StatusBadRequest)
+		return
+	}
+
+	memory, err := strconv.Atoi(memoryStr)
+	if err != nil {
+		http.Error(w, "Invalid memory value", http.StatusBadRequest)
+		return
+	}
+
+	passedTestCases, err := strconv.Atoi(passedTestCasesStr)
+	if err != nil {
+		http.Error(w, "Invalid passed test cases", http.StatusBadRequest)
+		return
+	}
+
+	totalTestCases, err := strconv.Atoi(totalTestCasesStr)
+	if err != nil {
+		http.Error(w, "Invalid total test cases", http.StatusBadRequest)
+		return
+	}
+
+	submission := game.PlayerSubmission{
+		ID:              submissionID,
+		PlayerUUID:      playerUUID,
+		PassedTestCases: passedTestCases,
+		TotalTestCases:  totalTestCases,
+		Status:          status,
+		Runtime:         runtime,
+		Memory:          memory,
+		Time:            time.Now(),
+		Lang:            lang,
+	}
+
+	gm := game.GetGameManager()
+	gm.AddSubmission(playerUUID, submission)
 }
 
 // Helper function to respond with JSON.
