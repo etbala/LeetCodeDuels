@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -20,9 +22,18 @@ func main() {
 
 	router := https.NewRouter()
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"https://leetcode.com"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(router)
+
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: router,
+		Handler: handler,
 	}
 
 	// Start server in a goroutine

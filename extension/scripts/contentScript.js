@@ -1,63 +1,63 @@
 
-// Inject a script that will override the fetch method / XMLHttpRequest
-// Note: This is done to intercept the response data from the request 
-//       for submission status made by LeetCode's frontend.
-if (!document.getElementById('networkMonitor')) {
-    const networkMonitor = document.createElement('script');
-    networkMonitor.id = 'networkMonitor';
-    networkMonitor.src = chrome.runtime.getURL('scripts/networkMonitor.js');
-    (document.head || document.documentElement).appendChild(networkMonitor);
-}
+if (!window.__leetcode_duel_extension_injected__) {
+    window.__leetcode_duel_extension_injected__ = true;
 
-// Listen for data from network monitor
-window.addEventListener('message', function(event) {
-    if (event.source !== window || !event.data || event.data.source !== 'leetcode-duel-network-monitor') {
-        return;
+    // Inject a script that will override the fetch method / XMLHttpRequest
+    // Note: This is done to intercept the response data from the request 
+    //       for submission status made by LeetCode's frontend.
+    if (!document.getElementById('networkMonitor')) {
+        const networkMonitor = document.createElement('script');
+        networkMonitor.id = 'networkMonitor';
+        networkMonitor.src = chrome.runtime.getURL('scripts/networkMonitor.js');
+        (document.head || document.documentElement).appendChild(networkMonitor);
     }
 
-    if (event.data.type === 'submissionResult') {
-        const submissionData = event.data.data;
+    // Listen for data from network monitor
+    window.addEventListener('message', function(event) {
+        if (event.source !== window || !event.data || event.data.source !== 'leetcode-duel-network-monitor') {
+            return;
+        }
 
-        submissionData.PlayerUUID = getPlayerUUID();
-        sendSubmissionToBackend(submissionData);
-    }
-});
+        if (event.data.type === 'submissionResult') {
+            const submissionData = event.data.data;
 
-function getServerUrl() {
-    return new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: 'getServerUrl' }, response => {
-            if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-            } else {
-                resolve(response.serverUrl);
-            }
+            submissionData.PlayerUUID = getPlayerUUID();
+            sendSubmissionInfo(submissionData);
+        }
+    });
+
+    function getServerUrl() {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ type: 'getServerUrl' }, response => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve(response.serverUrl);
+                }
+            });
         });
-    });
-}
+    }
 
-function getPlayerUUID() {
-    return 0;
-}
+    function getPlayerUUID() {
+        return "01";
+    }
 
-// Function to send submission data to the backend
-function sendSubmissionInfo(submissionData) {
-    getServerUrl().then(serverUrl => {
-      fetch(`${serverUrl}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(submissionData),
-        credentials: 'include'
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Submission data sent to backend:', data);
-      })
-      .catch(error => {
-        console.error('Error sending submission data to backend:', error);
-      });
-    });
+    // Function to send submission data to the backend
+    function sendSubmissionInfo(submissionData) {
+        getServerUrl().then(serverUrl => {
+        fetch(`${serverUrl}/game-submission`, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(submissionData),
+            credentials: 'include'
+        })
+        .catch(error => {
+            console.error('Error sending submission data to backend:', error);
+        });
+        });
+    }
 }
 
 // // Content script to inject a div

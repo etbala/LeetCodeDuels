@@ -56,7 +56,7 @@
                         Runtime: parseInt(data.status_runtime.replace(' ms', '')) || null,
                         Memory: data.memory || null,
                         Lang: data.lang,
-                        SubmissionID: data.submission_id
+                        SubmissionID: parseInt(data.submission_id) || null
                     };
 
                     // Send data to content script

@@ -13,7 +13,7 @@ func NewRouter() *mux.Router {
 	r.HandleFunc("/sign-up", CreateUser).Methods("POST")
 	r.HandleFunc("/check-user-ingame", IsUserInGame).Methods("GET", "POST")
 
-	r.HandleFunc("/game-submission", AddSubmission).Methods("POST")
+	r.HandleFunc("/game-submission", AddSubmission).Methods("GET", "POST")
 
 	/* Routes to be added
 	// Game Session Handling

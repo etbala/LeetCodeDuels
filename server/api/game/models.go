@@ -1,7 +1,9 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"leetcodeduels/pkg/models"
 	"time"
 )
@@ -36,31 +38,47 @@ func ParseSubmissionStatus(status string) (SubmissionStatus, error) {
 	}
 }
 
-type Lang string // LeetCode supported languages (possible submission languages)
+func (s *SubmissionStatus) UnmarshalJSON(data []byte) error {
+	// Trim quotes from JSON string
+	var statusStr string
+	if err := json.Unmarshal(data, &statusStr); err != nil {
+		return err
+	}
+
+	switch statusStr {
+	case "Accepted", "Compile Error", "Memory Limit Exceeded", "Runtime Error", "Time Limit Exceeded", "Wrong Answer":
+		*s = SubmissionStatus(statusStr)
+		return nil
+	default:
+		return fmt.Errorf("invalid submission status: %s", statusStr)
+	}
+}
+
+type LanguageType string // LeetCode supported languages (possible submission languages)
 
 const (
-	c          Lang = "c"
-	cpp        Lang = "cpp"
-	csharp     Lang = "csharp"
-	java       Lang = "java"
-	python     Lang = "python"
-	python3    Lang = "python3"
-	javascript Lang = "javascript"
-	typescript Lang = "typescript"
-	php        Lang = "php"
-	swift      Lang = "swift"
-	kotlin     Lang = "kotlin"
-	dart       Lang = "dart"
-	golang     Lang = "go"
-	ruby       Lang = "ruby"
-	scala      Lang = "scala"
-	rust       Lang = "rust"
-	racket     Lang = "racket"
-	erlang     Lang = "erlang"
-	elixir     Lang = "elixir"
+	c          LanguageType = "c"
+	cpp        LanguageType = "cpp"
+	csharp     LanguageType = "csharp"
+	java       LanguageType = "java"
+	python     LanguageType = "python"
+	python3    LanguageType = "python3"
+	javascript LanguageType = "javascript"
+	typescript LanguageType = "typescript"
+	php        LanguageType = "php"
+	swift      LanguageType = "swift"
+	kotlin     LanguageType = "kotlin"
+	dart       LanguageType = "dart"
+	golang     LanguageType = "go"
+	ruby       LanguageType = "ruby"
+	scala      LanguageType = "scala"
+	rust       LanguageType = "rust"
+	racket     LanguageType = "racket"
+	erlang     LanguageType = "erlang"
+	elixir     LanguageType = "elixir"
 )
 
-func ParseLang(lang string) (Lang, error) {
+func ParseLang(lang string) (LanguageType, error) {
 	switch lang {
 	case "c":
 		return c, nil
@@ -101,7 +119,22 @@ func ParseLang(lang string) (Lang, error) {
 	case "elixir":
 		return elixir, nil
 	default:
-		return "", errors.New("invalid Lang value")
+		return "", errors.New("invalid LanguageType value")
+	}
+}
+
+func (l *LanguageType) UnmarshalJSON(data []byte) error {
+	var langStr string
+	if err := json.Unmarshal(data, &langStr); err != nil {
+		return err
+	}
+
+	switch langStr {
+	case "Go", "cpp": // Add other supported languages
+		*l = LanguageType(langStr)
+		return nil
+	default:
+		return fmt.Errorf("invalid language: %s", langStr)
 	}
 }
 
@@ -113,15 +146,15 @@ type Player struct {
 }
 
 type PlayerSubmission struct {
-	ID              int
-	PlayerUUID      string
-	PassedTestCases int
-	TotalTestCases  int
-	Status          SubmissionStatus
-	Runtime         int // ms
-	Memory          int // Bytes (Convert to MB sometime later)
-	Time            time.Time
-	Lang            Lang
+	ID              int              `json:"SubmissionID"`
+	PlayerUUID      string           `json:"PlayerUUID"`
+	PassedTestCases int              `json:"PassedTestCases"`
+	TotalTestCases  int              `json:"TotalTestCases"`
+	Status          SubmissionStatus `json:"Status"`
+	Runtime         int              `json:"Runtime"`
+	Memory          int              `json:"Memory"`
+	Lang            LanguageType     `json:"Lang"`
+	Time            time.Time        `json:"Time"`
 }
 
 type Session struct {

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/store"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -179,72 +180,32 @@ func IsUserInGame(w http.ResponseWriter, r *http.Request) {
 func AddSubmission(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Verify api sender is authorized to submit for sent UUID
+	// TODO: Sanitize params
 
-	statusStr := r.URL.Query().Get("Status")
-	submissionIDStr := r.URL.Query().Get("SubmissionID")
-	playerUUID := r.URL.Query().Get("PlayerUUID")
-	runtimeStr := r.URL.Query().Get("Runtime")
-	memoryStr := r.URL.Query().Get("Memory")
-	langStr := r.URL.Query().Get("Lang")
-	passedTestCasesStr := r.URL.Query().Get("PassedTestCases")
-	totalTestCasesStr := r.URL.Query().Get("TotalTestCases")
-
-	status, err := game.ParseSubmissionStatus(statusStr)
-	if err != nil {
-		http.Error(w, "Invalid submission status", http.StatusBadRequest)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	lang, err := game.ParseLang(langStr)
-	if err != nil {
-		http.Error(w, "Invalid language", http.StatusBadRequest)
+	var submissionData game.PlayerSubmission
+
+	// Validate Status
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&submissionData); err != nil {
+		log.Printf("Error: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	submissionID, err := strconv.Atoi(submissionIDStr)
-	if err != nil {
-		http.Error(w, "Invalid submission ID", http.StatusBadRequest)
-		return
-	}
+	log.Printf("Received Submission Data: %+v", submissionData)
 
-	runtime, err := strconv.Atoi(runtimeStr)
-	if err != nil {
-		http.Error(w, "Invalid runtime value", http.StatusBadRequest)
-		return
-	}
-
-	memory, err := strconv.Atoi(memoryStr)
-	if err != nil {
-		http.Error(w, "Invalid memory value", http.StatusBadRequest)
-		return
-	}
-
-	passedTestCases, err := strconv.Atoi(passedTestCasesStr)
-	if err != nil {
-		http.Error(w, "Invalid passed test cases", http.StatusBadRequest)
-		return
-	}
-
-	totalTestCases, err := strconv.Atoi(totalTestCasesStr)
-	if err != nil {
-		http.Error(w, "Invalid total test cases", http.StatusBadRequest)
-		return
-	}
-
-	submission := game.PlayerSubmission{
-		ID:              submissionID,
-		PlayerUUID:      playerUUID,
-		PassedTestCases: passedTestCases,
-		TotalTestCases:  totalTestCases,
-		Status:          status,
-		Runtime:         runtime,
-		Memory:          memory,
-		Time:            time.Now(),
-		Lang:            lang,
-	}
+	submissionData.Time = time.Now()
 
 	gm := game.GetGameManager()
-	gm.AddSubmission(playerUUID, submission)
+	gm.AddSubmission(submissionData.PlayerUUID, submissionData)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // Helper function to respond with JSON.
