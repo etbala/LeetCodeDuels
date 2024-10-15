@@ -35,6 +35,40 @@ func init() {
 	DataStore = &dataStore{db: db}
 }
 
+func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken string) error {
+	_, err := ds.db.Exec(`INSERT INTO github_oauth_users (github_id, username, access_token, created_at, updated_at)
+						  VALUES ($1, $2, $3, NOW(), NOW())
+						  ON CONFLICT (github_id) 
+						  DO UPDATE SET access_token = $3, updated_at = NOW();
+						  `, githubID, username, accessToken)
+	if err != nil {
+		return fmt.Errorf("failed to save OAuth user: %v", err)
+	}
+	return nil
+}
+
+func (ds *dataStore) GetOAuthUserByGithubID(githubID int64) (*models.OAuthUser, error) {
+	row := ds.db.QueryRow(`SELECT id, github_id, username, access_token, created_at, updated_at 
+			  			   FROM github_oauth_users WHERE github_id = $1`, githubID)
+	var user models.OAuthUser
+	err := row.Scan(&user.ID, &user.GithubID, &user.Username, &user.AccessToken, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get OAuth user: %v", err)
+	}
+	return &user, nil
+}
+
+func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) error {
+	_, err := ds.db.Exec(`UPDATE github_oauth_users SET access_token = $1, updated_at = NOW() WHERE github_id = $2`, newToken, githubID)
+	if err != nil {
+		return fmt.Errorf("failed to update GitHub access token: %v", err)
+	}
+	return nil
+}
+
 func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	rows, err := ds.db.Query(`SELECT frontend_id, name, slug, difficulty 
 							  FROM problems`)

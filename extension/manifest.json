@@ -5,7 +5,8 @@
     "description": "Allows players to compete to complete leetcode problems first.",
     "permissions": [
       "scripting",
-      "tabs"
+      "tabs",
+      "storage"
     ],
     "host_permissions": [
       "https://leetcode.com/*",

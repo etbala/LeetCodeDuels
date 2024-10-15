@@ -8,12 +8,16 @@ import (
 func NewRouter() *mux.Router {
 	r := mux.NewRouter()
 
+	// OAuth Login
+	r.HandleFunc("/oauth/authorize", OAuthAuthorize).Methods("GET", "POST")
+	r.HandleFunc("/oauth/callback", OAuthCallback).Methods("GET", "POST")
+
 	r.HandleFunc("/tags", GetAllTags).Methods("GET")
-	r.HandleFunc("/login", AuthenticateUser).Methods("GET", "POST")
-	r.HandleFunc("/sign-up", CreateUser).Methods("POST")
+	// r.HandleFunc("/login", AuthenticateUser).Methods("GET", "POST")
+	// r.HandleFunc("/sign-up", CreateUser).Methods("POST")
 	r.HandleFunc("/check-user-ingame", IsUserInGame).Methods("GET", "POST")
 
-	r.HandleFunc("/game-submission", AddSubmission).Methods("GET", "POST")
+	r.HandleFunc("/game/submission", AddSubmission).Methods("GET", "POST")
 
 	/* Routes to be added
 	// Game Session Handling

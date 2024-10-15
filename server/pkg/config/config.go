@@ -1,14 +1,20 @@
 package config
 
+import "os"
+
 type Config struct {
-	DB_URL string
+	GITHUB_CLIENT_ID     string
+	GITHUB_CLIENT_SECRET string
+	GITHUB_REDIRECT_URI  string
+	DB_URL               string
 }
 
 // LoadConfig reads configuration from environment variables or configuration files.
 func LoadConfig() (*Config, error) {
 	return &Config{
-		//DB_URL: os.Getenv("DATABASE_URL"),
-		DB_URL: "postgresql://lcduels_owner:4G1VQtyAHCcT@ep-patient-sun-a57j3woq.us-east-2.aws.neon.tech/lcduels?sslmode=require",
-		//pooled -> "postgresql://lcduels_owner:************@ep-patient-sun-a57j3woq-pooler.us-east-2.aws.neon.tech/lcduels?sslmode=require"
+		GITHUB_CLIENT_ID:     os.Getenv("GITHUB_CLIENT_ID"),
+		GITHUB_CLIENT_SECRET: os.Getenv("GITHUB_CLIENT_SECRET"),
+		GITHUB_REDIRECT_URI:  os.Getenv("GITHUB_REDIRECT_URI"),
+		DB_URL:               os.Getenv("DB_URL"),
 	}, nil
 }

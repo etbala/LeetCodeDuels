@@ -45,7 +45,7 @@ if (!window.__leetcode_duel_extension_injected__) {
     // Function to send submission data to the backend
     function sendSubmissionInfo(submissionData) {
         getServerUrl().then(serverUrl => {
-        fetch(`${serverUrl}/game-submission`, {
+        fetch(`${serverUrl}/game/submission`, {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json'

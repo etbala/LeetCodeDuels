@@ -7,13 +7,151 @@ database and return the data to the client.
 
 import (
 	"encoding/json"
+	"fmt"
 	"leetcodeduels/api/game"
+	"leetcodeduels/pkg/config"
+	"leetcodeduels/pkg/models"
 	"leetcodeduels/pkg/store"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
+
+func generateRandomState() (string, error) {
+	return "", nil
+}
+
+func validateState() (bool, error) {
+	return true, nil
+}
+
+func OAuthAuthorize(w http.ResponseWriter, r *http.Request) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	clientID := cfg.GITHUB_CLIENT_ID
+	redirectURI := cfg.GITHUB_REDIRECT_URI
+	state := generateRandomState() // Generates a random string to prevent CSRF
+
+	authURL := fmt.Sprintf(
+		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&state=%s&scope=user",
+		clientID, redirectURI, state,
+	)
+
+	// Store state in session or secure cookie for CSRF prevention
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
+	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch user: status %d", resp.StatusCode)
+	}
+
+	var user struct {
+		ID       int64  `json:"id"`
+		Username string `json:"login"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, err
+	}
+
+	return &models.OAuthUser{
+		GithubID: user.ID,
+		Username: user.Username,
+	}, nil
+}
+
+func OAuthCallback(w http.ResponseWriter, r *http.Request) {
+	// Verify state for CSRF protection
+	state := r.URL.Query().Get("state")
+	if !validateState(state) { // Implement `validateState` to match `state` to stored value
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	// Get the authorization code from the query parameters
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Authorization code not found", http.StatusBadRequest)
+		return
+	}
+
+	// Exchange code for an access token
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+	clientID := cfg.GITHUB_CLIENT_ID
+	clientSecret := cfg.GITHUB_CLIENT_SECRET
+	tokenURL := "https://github.com/login/oauth/access_token"
+
+	formData := url.Values{
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"code":          {code},
+	}
+
+	req, err := http.NewRequest("POST", tokenURL, strings.NewReader(formData.Encode()))
+	if err != nil {
+		http.Error(w, "Failed to create token request", http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Decode the response
+	var tokenResponse struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		Scope       string `json:"scope"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
+		http.Error(w, "Failed to parse access token response", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch user details from GitHub
+	user, err := fetchGitHubUser(tokenResponse.AccessToken)
+	if err != nil {
+		http.Error(w, "Failed to fetch GitHub user", http.StatusInternalServerError)
+		return
+	}
+
+	// Save or update the user in the database
+	if err := store.DataStore.SaveOAuthUser(user.GithubID, user.Username, tokenResponse.AccessToken); err != nil {
+		http.Error(w, "Failed to save OAuth user", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with success (or redirect to a frontend)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Login successful")
+}
 
 // GetAllProblems handles the request to get all problems.
 func GetAllProblems(w http.ResponseWriter, r *http.Request) {

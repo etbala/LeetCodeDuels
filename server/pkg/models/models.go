@@ -1,6 +1,9 @@
 package models
 
-import "leetcodeduels/internal/enums"
+import (
+	"leetcodeduels/internal/enums"
+	"time"
+)
 
 /*
 	Database & HTTPS Models
@@ -16,6 +19,15 @@ type Problem struct {
 type Tag struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
+}
+
+type OAuthUser struct {
+	ID          int64
+	GithubID    int64
+	Username    string
+	AccessToken string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type User struct {
