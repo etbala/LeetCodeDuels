@@ -8,6 +8,7 @@ database and return the data to the client.
 import (
 	"encoding/json"
 	"fmt"
+	"leetcodeduels/api/auth"
 	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
@@ -20,14 +21,6 @@ import (
 	"time"
 )
 
-func generateRandomState() (string, error) {
-	return "", nil
-}
-
-func validateState() (bool, error) {
-	return true, nil
-}
-
 func OAuthAuthorize(w http.ResponseWriter, r *http.Request) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -36,14 +29,19 @@ func OAuthAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	clientID := cfg.GITHUB_CLIENT_ID
 	redirectURI := cfg.GITHUB_REDIRECT_URI
-	state := generateRandomState() // Generates a random string to prevent CSRF
+
+	// Generate a random string to prevent CSRF
+	stateStore := auth.GetStateStore()
+	state, err := stateStore.GenerateRandomState()
+	if err != nil {
+		return
+	}
 
 	authURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&state=%s&scope=user",
 		clientID, redirectURI, state,
 	)
 
-	// Store state in session or secure cookie for CSRF prevention
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
@@ -80,9 +78,12 @@ func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
 }
 
 func OAuthCallback(w http.ResponseWriter, r *http.Request) {
+	stateStore := auth.GetStateStore()
+
 	// Verify state for CSRF protection
 	state := r.URL.Query().Get("state")
-	if !validateState(state) { // Implement `validateState` to match `state` to stored value
+	err := stateStore.ValidateState(state)
+	if err != nil {
 		http.Error(w, "Invalid state", http.StatusBadRequest)
 		return
 	}
@@ -135,20 +136,18 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch user details from GitHub
 	user, err := fetchGitHubUser(tokenResponse.AccessToken)
 	if err != nil {
 		http.Error(w, "Failed to fetch GitHub user", http.StatusInternalServerError)
 		return
 	}
 
-	// Save or update the user in the database
-	if err := store.DataStore.SaveOAuthUser(user.GithubID, user.Username, tokenResponse.AccessToken); err != nil {
+	err = store.DataStore.SaveOAuthUser(user.GithubID, user.Username, tokenResponse.AccessToken)
+	if err != nil {
 		http.Error(w, "Failed to save OAuth user", http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with success (or redirect to a frontend)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Login successful")
 }

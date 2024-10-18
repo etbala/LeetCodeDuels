@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/internal/enums"
-	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
 	"net/http"
 	"strings"
@@ -19,12 +18,7 @@ type dataStore struct {
 	db *sql.DB
 }
 
-func init() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-	connStr := cfg.DB_URL
+func InitDataStore(connStr string) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		panic(err)

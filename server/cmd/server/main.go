@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"leetcodeduels/api/auth"
+	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/https"
+	"leetcodeduels/pkg/store"
 	"log"
 	"net/http"
 	"os"
@@ -17,17 +20,25 @@ import (
 
 func main() {
 
-	err := godotenv.Load()
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
 
-	var port string
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
 
+	store.InitDataStore(cfg.DB_URL)
+
+	// Auth Inits
+	stateStore := auth.GetStateStore()
+	stateStore.StartCleanupRoutine()
+
+	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
-
-	router := https.NewRouter()
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"https://leetcode.com"},
@@ -36,6 +47,8 @@ func main() {
 		AllowCredentials: true,
 	})
 
+	// Init Endpoints
+	router := https.NewRouter()
 	handler := c.Handler(router)
 
 	srv := &http.Server{
