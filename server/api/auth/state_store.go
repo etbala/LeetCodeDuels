@@ -1,10 +1,8 @@
 package auth
 
 /*
-Struct to store randomly generated states when logging in
-via OAuth, along with their associated expiration times.
-
-Note: Singleton
+Singleton that store randomly generated states when logging
+in via OAuth, along with their associated expiration times.
 */
 
 import (

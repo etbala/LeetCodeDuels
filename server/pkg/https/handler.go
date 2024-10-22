@@ -88,7 +88,7 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the authorization code from the query parameters
+	// Get the authorization code
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Error(w, "Authorization code not found", http.StatusBadRequest)
@@ -149,7 +149,7 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Login successful")
+	fmt.Fprintln(w, tokenResponse.AccessToken)
 }
 
 // GetAllProblems handles the request to get all problems.

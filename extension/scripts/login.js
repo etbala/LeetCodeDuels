@@ -34,5 +34,7 @@
 // });
 
 document.getElementById('loginButton').addEventListener('click', function () {
-    window.open('localhost:8080/github/callback', 'GitHub Login', 'width=600,height=600');
+    chrome.tabs.create({
+        url: 'http://localhost:8080/oauth/authorize'
+    });
 });

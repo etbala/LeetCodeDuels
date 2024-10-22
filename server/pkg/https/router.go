@@ -13,9 +13,8 @@ func NewRouter() *mux.Router {
 	r.HandleFunc("/oauth/callback", OAuthCallback).Methods("GET", "POST")
 
 	r.HandleFunc("/tags", GetAllTags).Methods("GET")
-	// r.HandleFunc("/login", AuthenticateUser).Methods("GET", "POST")
-	// r.HandleFunc("/sign-up", CreateUser).Methods("POST")
-	r.HandleFunc("/check-user-ingame", IsUserInGame).Methods("GET", "POST")
+
+	r.HandleFunc("/user/check-ingame", IsUserInGame).Methods("GET", "POST")
 
 	r.HandleFunc("/game/submission", AddSubmission).Methods("GET", "POST")
 

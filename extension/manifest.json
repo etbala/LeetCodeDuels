@@ -6,10 +6,12 @@
     "permissions": [
       "scripting",
       "tabs",
-      "storage"
+      "storage",
+      "webNavigation"
     ],
     "host_permissions": [
       "https://leetcode.com/*",
+      "https://github.com/*",
       "http://localhost:8080/*"
     ],
     "background": {
