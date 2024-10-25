@@ -1,26 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Extension</title>
+    <title>LeetCode Duels</title>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">
     <link rel="stylesheet" type="text/css" href="hello.css">
 </head>
 <body>
     <header>
-        <a href="login.html"><button id="loginButton">Log In</button></a>
-        <div>
-            <button id="helpButton">Friends</button>
-            <button id="helpButton">Help</button>
+        <button id="login-btn">Log In</button>
+        <div id="user-info" style="display: none;">
+            <h2>Welcome, <span id="username"></span>!</h2>
         </div>
     </header>
     <main>
         <button id="matchmakeButton" onclick="handleClick()">Matchmake</button>
-        <br>
         <a href="questions.html" ><button id="questionsButton">Questions</button></a>
     </main>
     <footer>
-        <p>&copy; Leetcode Duels</p>
+        <p>&copy; LeetCode Duels</p>
     </footer>
+    <script src="scripts/matchmake.js"></script>
 </body>
-<script src="matchmake.js"></script>
 </html>

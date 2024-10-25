@@ -9,8 +9,7 @@ func NewRouter() *mux.Router {
 	r := mux.NewRouter()
 
 	// OAuth Login
-	r.HandleFunc("/oauth/authorize", OAuthAuthorize).Methods("GET", "POST")
-	r.HandleFunc("/oauth/callback", OAuthCallback).Methods("GET", "POST")
+	r.HandleFunc("/oauth/exchange-token", OAuthExchangeToken).Methods("POST")
 
 	r.HandleFunc("/tags", GetAllTags).Methods("GET")
 

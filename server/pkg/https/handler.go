@@ -8,7 +8,7 @@ database and return the data to the client.
 import (
 	"encoding/json"
 	"fmt"
-	"leetcodeduels/api/auth"
+	"io"
 	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
@@ -20,30 +20,6 @@ import (
 	"strings"
 	"time"
 )
-
-func OAuthAuthorize(w http.ResponseWriter, r *http.Request) {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	clientID := cfg.GITHUB_CLIENT_ID
-	redirectURI := cfg.GITHUB_REDIRECT_URI
-
-	// Generate a random string to prevent CSRF
-	stateStore := auth.GetStateStore()
-	state, err := stateStore.GenerateRandomState()
-	if err != nil {
-		return
-	}
-
-	authURL := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&state=%s&scope=user",
-		clientID, redirectURI, state,
-	)
-
-	http.Redirect(w, r, authURL, http.StatusFound)
-}
 
 func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
 	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
@@ -77,25 +53,19 @@ func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
 	}, nil
 }
 
-func OAuthCallback(w http.ResponseWriter, r *http.Request) {
-	stateStore := auth.GetStateStore()
-
-	// Verify state for CSRF protection
-	state := r.URL.Query().Get("state")
-	err := stateStore.ValidateState(state)
-	if err != nil {
-		http.Error(w, "Invalid state", http.StatusBadRequest)
+func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
+	// Parse the JSON body
+	var reqBody struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Get the authorization code
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		http.Error(w, "Authorization code not found", http.StatusBadRequest)
-		return
-	}
+	code := reqBody.Code
 
-	// Exchange code for an access token
+	// Proceed to exchange the code for an access token
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
@@ -116,6 +86,7 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -125,20 +96,35 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Decode the response
+	// Decode the response and handle errors
 	var tokenResponse struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-		Scope       string `json:"scope"`
+		AccessToken      string `json:"access_token"`
+		TokenType        string `json:"token_type"`
+		Scope            string `json:"scope"`
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
+		ErrorURI         string `json:"error_uri"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(bodyBytes, &tokenResponse); err != nil {
 		http.Error(w, "Failed to parse access token response", http.StatusInternalServerError)
 		return
 	}
 
+	if tokenResponse.Error != "" {
+		http.Error(w, fmt.Sprintf("Error exchanging code: %s - %s", tokenResponse.Error, tokenResponse.ErrorDescription), http.StatusBadRequest)
+		return
+	}
+
+	if tokenResponse.AccessToken == "" {
+		http.Error(w, "Access token not found in response", http.StatusInternalServerError)
+		return
+	}
+
+	// (Optional) Fetch GitHub user and save to datastore
 	user, err := fetchGitHubUser(tokenResponse.AccessToken)
 	if err != nil {
-		http.Error(w, "Failed to fetch GitHub user", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch GitHub user: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -148,8 +134,11 @@ func OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, tokenResponse.AccessToken)
+	// Return the access token as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"access_token": tokenResponse.AccessToken,
+	})
 }
 
 // GetAllProblems handles the request to get all problems.

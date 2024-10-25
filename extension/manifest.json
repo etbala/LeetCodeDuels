@@ -7,6 +7,7 @@
       "scripting",
       "tabs",
       "storage",
+      "identity",
       "webNavigation"
     ],
     "host_permissions": [
@@ -31,7 +32,11 @@
     "web_accessible_resources": [
       {
         "resources": ["scripts/networkMonitor.js"],
-        "matches": ["<all_urls>"]
+        "matches": ["https://leetcode.com/*"]
       }
-    ]
+    ],
+    "oauth2": {
+    "client_id": "YOUR_GITHUB_CLIENT_ID",
+    "scopes": ["user"]
+  }
   }

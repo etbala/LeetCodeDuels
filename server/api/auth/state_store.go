@@ -77,7 +77,7 @@ func (s *StateStore) ValidateState(state string) error {
 		return errors.New("state expired")
 	}
 
-	delete(s.states, state)
+	// delete(s.states, state)
 	return nil
 }
 
