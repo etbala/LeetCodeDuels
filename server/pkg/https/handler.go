@@ -121,7 +121,6 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// (Optional) Fetch GitHub user and save to datastore
 	user, err := fetchGitHubUser(tokenResponse.AccessToken)
 	if err != nil {
 		http.Error(w, "Failed to fetch GitHub user: "+err.Error(), http.StatusInternalServerError)

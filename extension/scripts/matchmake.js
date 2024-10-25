@@ -15,16 +15,10 @@ window.onload = function() {
   });
 }
 
-// document.getElementById('login-btn').addEventListener('click', function () {
-//   chrome.tabs.create({
-//       url: 'http://localhost:8080/oauth/authorize'
-//   });
-// });
-
 document.getElementById('login-btn').addEventListener('click', function () {
   const redirectUri = chrome.identity.getRedirectURL();
   const authURL = 'https://github.com/login/oauth/authorize' +
-    '?client_id=YOUR_GITHUB_CLIENT_ID' +
+    '?client_id=Ov23liQ4ERGhUYdeT8yb' +
     '&redirect_uri=' + encodeURIComponent(redirectUri) +
     '&scope=user';
 
@@ -43,7 +37,7 @@ document.getElementById('login-btn').addEventListener('click', function () {
 
     if (code) {
       // Send the code to your backend for exchange
-      fetch('http://localhost:8080/exchange_token', {
+      fetch('http://localhost:8080/oauth/exchange-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })

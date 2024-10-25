@@ -25,9 +25,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.webNavigation.onCompleted.addListener(function(details) {
     const url = details.url;
 
-    // Check if this is your OAuth callback URL
     if (url.startsWith(`${SERVER_URL}/oauth/exchange-token`)) {
-        // Extract the authorization code from the URL
         const params = new URLSearchParams(new URL(url).search);
         const code = params.get('code');
         const state = params.get('state');

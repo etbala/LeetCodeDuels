@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"leetcodeduels/api/auth"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/https"
 	"leetcodeduels/pkg/store"
@@ -31,10 +30,6 @@ func main() {
 	}
 
 	store.InitDataStore(cfg.DB_URL)
-
-	// Auth Inits
-	stateStore := auth.GetStateStore()
-	stateStore.StartCleanupRoutine()
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
