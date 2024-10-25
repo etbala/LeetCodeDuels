@@ -1,35 +1,35 @@
 package https
 
 import (
+	"leetcodeduels/api/auth"
+
 	"github.com/gorilla/mux"
 )
 
 // NewRouter initializes and returns a new router with configured routes.
 func NewRouter() *mux.Router {
-	r := mux.NewRouter()
+	publicRouter := mux.NewRouter()
+	protectedRouter := publicRouter.PathPrefix("/").Subrouter()
+	protectedRouter.Use(auth.JWTMiddleware)
 
-	// OAuth Login
-	r.HandleFunc("/oauth/exchange-token", OAuthExchangeToken).Methods("POST")
+	// Public Routes
+	publicRouter.HandleFunc("/tags", GetAllTags).Methods("GET")
+	publicRouter.HandleFunc("/oauth/exchange-token", OAuthExchangeToken).Methods("POST")
+	publicRouter.HandleFunc("/user/check-ingame", IsUserInGame).Methods("GET")
+	// publicRouter.HandleFunc("/user/friends", GetUserFriends).Methods("GET")
+	// publicRouter.HandleFunc("/user/match-history", GetUserMatchHistory).Methods("GET")
 
-	r.HandleFunc("/tags", GetAllTags).Methods("GET")
-
-	r.HandleFunc("/user/check-ingame", IsUserInGame).Methods("GET", "POST")
-
-	r.HandleFunc("/game/submission", AddSubmission).Methods("GET", "POST")
-
-	/* Routes to be added
-	// Game Session Handling
-	r.HandleFunc("/matchmake", AddPlayerToPool).Methods("PUT")
-	r.HandleFunc("/cancel-matchmake", RemovePlayerFromPool).Methods("PUT")
-	r.HandleFunc("/user-profile", GetUserInfo).Methods("GET", "POST)")
-	*/
+	// Protected Routes
+	protectedRouter.HandleFunc("/game/submission", AddSubmission).Methods("POST")
+	// protectedRouter.HandleFunc("/matchmaking/enter", AddPlayerToPool).Methods("POST")
+	// protectedRouter.HandleFunc("/matchmaking/leave", RemovePlayerFromPool).Methods("POST")
 
 	// Testing Funcs
-	r.HandleFunc("/random-problem", GetRandomProblem).Methods("GET")
-	r.HandleFunc("/random-problem-by-tag", GetRandomProblemByTag).Methods("GET", "POST")
-	r.HandleFunc("/problems", GetAllProblems).Methods("GET")
-	r.HandleFunc("/problems-by-tag", GetProblemsByTag).Methods("GET", "POST")
-	r.HandleFunc("/tags-of-problem", GetTagsByProblem).Methods("GET", "POST")
+	// r.HandleFunc("/random-problem", GetRandomProblem).Methods("GET")
+	// r.HandleFunc("/random-problem-by-tag", GetRandomProblemByTag).Methods("GET", "POST")
+	// r.HandleFunc("/problems", GetAllProblems).Methods("GET")
+	// r.HandleFunc("/problems-by-tag", GetProblemsByTag).Methods("GET", "POST")
+	// r.HandleFunc("/tags-of-problem", GetTagsByProblem).Methods("GET", "POST")
 
-	return r
+	return publicRouter
 }
