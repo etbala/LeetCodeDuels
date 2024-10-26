@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"leetcodeduels/api/auth"
 	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/models"
@@ -133,10 +134,15 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the access token as JSON
+	tokenString, err := auth.GenerateJWT(user.GithubID, user.Username)
+	if err != nil {
+		http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"access_token": tokenResponse.AccessToken,
+		"token": tokenString,
 	})
 }
 

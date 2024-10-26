@@ -22,68 +22,66 @@ document.getElementById('login-btn').addEventListener('click', function () {
     '&redirect_uri=' + encodeURIComponent(redirectUri) +
     '&scope=user';
 
-  chrome.identity.launchWebAuthFlow({
-    url: authURL,
-    interactive: true
-  }, function (redirectUrl) {
-    if (chrome.runtime.lastError) {
-      console.error('Auth flow error:', chrome.runtime.lastError);
-      return;
-    }
-
-    // Extract the authorization code from the redirect URL
-    const params = new URLSearchParams(new URL(redirectUrl).search);
-    const code = params.get('code');
-
-    if (code) {
-      // Send the code to your backend for exchange
-      fetch('http://localhost:8080/oauth/exchange-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.text().then(errorMessage => {
-            throw new Error(errorMessage);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        const accessToken = data.access_token;
-        console.log("OAuth Token received:", accessToken);
-
-        // Save access token
-        chrome.storage.local.set({ "access_token": accessToken }, function() {
-          console.log("Access token saved");
-
-          // Now use the token to fetch the GitHub user info
-          fetch('https://api.github.com/user', {
-            headers: {
-              'Authorization': 'token ' + accessToken
-            }
-          })
-          .then(response => response.json())
-          .then(userData => {
-            // Save the GitHub username in chrome storage
-            chrome.storage.local.set({ "github_username": userData.login }, function() {
-              console.log("GitHub username saved:", userData.login);
+    chrome.identity.launchWebAuthFlow({
+      url: authURL,
+      interactive: true
+    }, function (redirectUrl) {
+      if (chrome.runtime.lastError) {
+        console.error('Auth flow error:', chrome.runtime.lastError);
+        return;
+      }
+  
+      // Extract the authorization code from the redirect URL
+      const params = new URLSearchParams(new URL(redirectUrl).search);
+      const code = params.get('code');
+  
+      if (code) {
+        // Send the code to your backend for exchange
+        fetch('http://localhost:8080/oauth/exchange-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.text().then(errorMessage => {
+              throw new Error(errorMessage);
             });
-          })
-          .catch(error => {
-            console.error('Error fetching GitHub user data:', error);
+          }
+          return response.json();
+        })
+        .then(data => {
+          const token = data.token; // The JWT received from the backend
+          console.log("JWT received:", token);
+  
+          // Save the JWT
+          chrome.storage.local.set({ "token": token }, function() {
+            console.log("JWT saved");
+  
+            // Decode the JWT to get the user info (optional)
+            const payloadBase64 = token.split('.')[1];
+            const decodedPayload = JSON.parse(atob(payloadBase64));
+            const githubUsername = decodedPayload.username;
+  
+            // Save the GitHub username in chrome storage
+            chrome.storage.local.set({ "github_username": githubUsername }, function() {
+              console.log("GitHub username saved:", githubUsername);
+  
+              // Update the UI
+              document.getElementById('login-btn').style.display = 'none';
+              document.getElementById('user-info').style.display = 'block';
+              document.getElementById('username').textContent = githubUsername;
+            });
           });
+        })
+        .catch(error => {
+          console.error('Error exchanging code:', error);
         });
-      })
-      .catch(error => {
-        console.error('Error exchanging code:', error);
-      });
-    } else {
-      console.error('Authorization code not found in redirect URL');
-    }
+      } else {
+        console.error('Authorization code not found in redirect URL');
+      }
+    });
   });
-});
 
 function handleClick() {
   // Send matchmaking request to backend

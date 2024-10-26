@@ -44,18 +44,25 @@ if (!window.__leetcode_duel_extension_injected__) {
 
     // Function to send submission data to the backend
     function sendSubmissionInfo(submissionData) {
-        getServerUrl().then(serverUrl => {
-        fetch(`${serverUrl}/game/submission`, {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(submissionData),
-            credentials: 'include'
-        })
-        .catch(error => {
-            console.error('Error sending submission data to backend:', error);
-        });
+        // Retrieve the JWT from storage and attach to header
+        chrome.storage.local.get(['token'], function(data) {
+            if (data.token) {
+                getServerUrl().then(serverUrl => {
+                    fetch(`${serverUrl}/game/submission`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + data.token
+                        },
+                        body: JSON.stringify(submissionData),
+                    })
+                    .catch(error => {
+                        console.error('Error sending submission data to backend:', error);
+                    });
+                });
+            } else {
+                console.error('User is not authenticated. Cannot send submission data.');
+            }
         });
     }
 }
