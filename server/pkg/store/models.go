@@ -1,4 +1,4 @@
-package models
+package store
 
 import (
 	"leetcodeduels/internal/enums"
@@ -21,22 +21,13 @@ type Tag struct {
 	Name string `json:"name"`
 }
 
-type OAuthUser struct {
-	ID          int64
+type User struct {
 	GithubID    int64
 	Username    string
 	AccessToken string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-}
-
-type User struct {
-	UUID         string
-	Username     string
-	PasswordHash string
-	Email        string
-	Rating       int
-	Friends      []string
+	Rating      int32
 }
 
 func NewProblem(ID int, name string, slug string, difficulty enums.Difficulty) *Problem {

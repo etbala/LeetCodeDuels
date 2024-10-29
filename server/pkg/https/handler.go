@@ -146,6 +146,34 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func GetUserProfile(w http.ResponseWriter, r *http.Request) {
+	user, err := store.DataStore.GetUserProfile()
+	if err != nil {
+		http.Error(w, "Failed to fetch user profile: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil || user.GithubID == nil {
+		http.Error(w, "Specified User Does Not Exist", http.NotFound)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, user)
+}
+
+func AddPlayerToPool(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("userID")
+
+	gameManager := game.GetGameManager()
+	success := gameManager.IsPlayerInSession(userID)
+
+	respondWithJSON(w, http.StatusOK, success)
+}
+
+func RemovePlayerFromPool(w http.ResponseWriter, r *http.Request) {
+
+}
+
 // GetAllProblems handles the request to get all problems.
 func GetAllProblems(w http.ResponseWriter, r *http.Request) {
 	problems, err := store.DataStore.GetAllProblems()
@@ -233,71 +261,6 @@ func GetTagsByProblem(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, tags)
 }
 
-// Handles Login Attempts
-func AuthenticateUser(w http.ResponseWriter, r *http.Request) {
-	// Assuming this should only be called with POST for security reasons
-	if r.Method != "POST" {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	username := r.FormValue("user")
-	password := r.FormValue("pass")
-
-	success, err := store.DataStore.AuthenticateUser(username, password)
-	if err != nil {
-		// More specific error handling can be added here based on error type
-		http.Error(w, "Error logging in: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if !success {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-		return
-	}
-
-	// Set a cookie to indicate successful authentication
-	http.SetCookie(w, &http.Cookie{
-		Name:     "loggedIn",
-		Value:    "true",
-		Path:     "/",
-		HttpOnly: true,  // Protects against XSS attacks by not allowing JS access
-		Secure:   true,  // Ensures cookie is sent over HTTPS
-		MaxAge:   86400, // Expires after one day
-	})
-
-	// Respond with JSON on successful authentication
-	respondWithJSON(w, http.StatusOK, map[string]bool{"success": true})
-}
-
-func CreateUser(w http.ResponseWriter, r *http.Request) {
-	// Assume this is a POST request; handle method checking if necessary
-	if r.Method != "POST" {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Extract user information from form data instead of the query string
-	username := r.FormValue("user")
-	password := r.FormValue("pass")
-	email := r.FormValue("email")
-
-	// Create user and handle the response
-	success, err := store.DataStore.CreateUser(w, username, password, email)
-	if err != nil {
-		http.Error(w, "Error creating user: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if !success {
-		http.Error(w, "Failed to create user", http.StatusBadRequest)
-		return
-	}
-
-	// Respond with JSON on successful creation
-	respondWithJSON(w, http.StatusOK, map[string]bool{"success": success})
-}
-
 func IsUserInGame(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("userID")
 
@@ -305,12 +268,10 @@ func IsUserInGame(w http.ResponseWriter, r *http.Request) {
 	success := gameManager.IsPlayerInSession(userID)
 
 	respondWithJSON(w, http.StatusOK, success)
-
 }
 
 func AddSubmission(w http.ResponseWriter, r *http.Request) {
 
-	// TODO: Verify api sender is authorized to submit for sent UUID
 	// TODO: Sanitize params
 
 	if r.Method == "OPTIONS" {

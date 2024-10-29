@@ -116,31 +116,3 @@ if (!window.__leetcode_duel_extension_injected__) {
 //         });
 //     }, 5000);
 // });
-
-// function sendMatchmakingInfo(runtime, memory, percentValue1, percentValue2) {
-//   // Send the runtime, memory, and percentage values to the backend
-//     console.log("Sending stats to backend...");
-//     fetch('https://localhost:8080/matchmakeinfo', { // Endpoint not yet available
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify({
-//             runtime: runtime,
-//             memory: memory,
-//             percentValue1: percentValue1,
-//             percentValue2: percentValue2
-//         })
-//     })
-//     .then(response => response.json())
-//     .then(data => {
-//         if (data.success) {
-//             console.log("Stats sent successfully");
-//         } else {
-//             console.log("Failed to send stats:", data.error);
-//         }
-//     })
-//     .catch(error => {
-//         console.error("Stats send error:", error);
-//     });
-// }

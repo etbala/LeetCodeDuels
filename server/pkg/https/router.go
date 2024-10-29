@@ -16,13 +16,13 @@ func NewRouter() *mux.Router {
 	publicRouter.HandleFunc("/tags", GetAllTags).Methods("GET")
 	publicRouter.HandleFunc("/oauth/exchange-token", OAuthExchangeToken).Methods("POST")
 	publicRouter.HandleFunc("/user/check-ingame", IsUserInGame).Methods("GET")
-	// publicRouter.HandleFunc("/user/friends", GetUserFriends).Methods("GET")
+	publicRouter.HandleFunc("/user/profile", GetUserProfile).Methods("GET")
 	// publicRouter.HandleFunc("/user/match-history", GetUserMatchHistory).Methods("GET")
 
 	// Protected Routes
 	protectedRouter.HandleFunc("/game/submission", AddSubmission).Methods("POST")
-	// protectedRouter.HandleFunc("/matchmaking/enter", AddPlayerToPool).Methods("POST")
-	// protectedRouter.HandleFunc("/matchmaking/leave", RemovePlayerFromPool).Methods("POST")
+	protectedRouter.HandleFunc("/matchmaking/enter", AddPlayerToPool).Methods("POST")
+	protectedRouter.HandleFunc("/matchmaking/leave", RemovePlayerFromPool).Methods("POST")
 
 	// Testing Funcs
 	// r.HandleFunc("/random-problem", GetRandomProblem).Methods("GET")

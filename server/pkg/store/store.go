@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/internal/enums"
-	"leetcodeduels/pkg/models"
 	"net/http"
 	"strings"
 
@@ -41,11 +40,11 @@ func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken 
 	return nil
 }
 
-func (ds *dataStore) GetOAuthUserByGithubID(githubID int64) (*models.OAuthUser, error) {
-	row := ds.db.QueryRow(`SELECT id, github_id, username, access_token, created_at, updated_at 
+func (ds *dataStore) GetUserProfile(githubID int64) (*User, error) {
+	row := ds.db.QueryRow(`SELECT github_id, username, access_token, created_at, updated_at, rating 
 			  			   FROM github_oauth_users WHERE github_id = $1`, githubID)
-	var user models.OAuthUser
-	err := row.Scan(&user.ID, &user.GithubID, &user.Username, &user.AccessToken, &user.CreatedAt, &user.UpdatedAt)
+	var user User
+	err := row.Scan(&user.GithubID, &user.Username, &user.AccessToken, &user.CreatedAt, &user.UpdatedAt, &user.Rating)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -63,7 +62,7 @@ func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) er
 	return nil
 }
 
-func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
+func (ds *dataStore) GetAllProblems() ([]Problem, error) {
 	rows, err := ds.db.Query(`SELECT frontend_id, name, slug, difficulty 
 							  FROM problems`)
 	if err != nil {
@@ -71,9 +70,9 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	}
 	defer rows.Close()
 
-	var problems []models.Problem
+	var problems []Problem
 	for rows.Next() {
-		var p models.Problem
+		var p Problem
 		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
@@ -82,8 +81,8 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	return problems, nil
 }
 
-func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
-	var p models.Problem
+func (ds *dataStore) GetRandomProblem() (*Problem, error) {
+	var p Problem
 	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
 						FROM problems
 						ORDER BY RANDOM()
@@ -94,7 +93,7 @@ func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 	return &p, nil
 }
 
-func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
+func (ds *dataStore) GetProblemsByTag(tagID int) ([]Problem, error) {
 	rows, err := ds.db.Query(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 							FROM problems p
 							INNER JOIN problem_tags pt
@@ -106,9 +105,9 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	}
 	defer rows.Close()
 
-	var problems []models.Problem
+	var problems []Problem
 	for rows.Next() {
-		var p models.Problem
+		var p Problem
 		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 			return nil, err
 		}
@@ -117,8 +116,8 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	return problems, nil
 }
 
-func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
-	var p models.Problem
+func (ds *dataStore) GetRandomProblemByTag(tagID int) (*Problem, error) {
+	var p Problem
 	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
 						INNER JOIN problem_tags pt 
@@ -173,8 +172,8 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
-func (ds *dataStore) GetRandomProblemByDifficulty(difficulty enums.Difficulty) (*models.Problem, error) {
-	var p models.Problem
+func (ds *dataStore) GetRandomProblemByDifficulty(difficulty enums.Difficulty) (*Problem, error) {
+	var p Problem
 	err := ds.db.QueryRow(`SELECT frontend_id, name, slug, difficulty
 						FROM problems 
 						WHERE difficulty = $1
@@ -188,8 +187,8 @@ func (ds *dataStore) GetRandomProblemByDifficulty(difficulty enums.Difficulty) (
 	return &p, nil
 }
 
-func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty enums.Difficulty) (*models.Problem, error) {
-	var p models.Problem
+func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty enums.Difficulty) (*Problem, error) {
+	var p Problem
 	err := ds.db.QueryRow(`SELECT p.frontend_id, p.name, p.slug, p.difficulty
 						FROM problems p 
 						WHERE difficulty = $1
@@ -205,7 +204,7 @@ func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty en
 }
 
 // Gets a random problem that matches a tag preference from both Player 1 and Player 2, and has one of the provided difficulties
-func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []enums.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []enums.Difficulty) (*Problem, error) {
 	if len(difficulties) < 1 || len(difficulties) > 3 {
 		// Must provide at least one difficulty
 		return nil, fmt.Errorf("error: invalid number of difficulties provided")
@@ -260,7 +259,7 @@ func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, dif
 	}
 
 	// Execute the query
-	var p models.Problem
+	var p Problem
 	err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty)
 	if err != nil {
 		return nil, err

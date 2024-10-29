@@ -146,6 +146,18 @@ func (gm *GameManager) IsPlayerInSession(playerID string) bool {
 	return ok
 }
 
+func (gm *GameManager) GetPlayersSessionID(playerID string) (int, err) {
+	gm.Lock()
+	defer gm.Unlock()
+
+	sessionID, err := gm.Players[playerID]
+	if err != nil {
+		return nil, "Player not in session."
+	}
+
+	return id, nil
+}
+
 func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID string) error {
 	player1, player2 := gm.Sessions[gm.Players[player1UUID]].Players[0], gm.Sessions[gm.Players[player2UUID]].Players[1]
 
