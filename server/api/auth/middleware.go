@@ -8,7 +8,7 @@ import (
 
 type contextKey string
 
-const userContextKey contextKey = "user"
+const UserContextKey contextKey = "user"
 
 // JWTMiddleware validates the JWT and attaches user information to the request context.
 func JWTMiddleware(next http.Handler) http.Handler {
@@ -34,7 +34,7 @@ func JWTMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Attach the user information to the request context.
-		ctx := context.WithValue(r.Context(), userContextKey, claims)
+		ctx := context.WithValue(r.Context(), UserContextKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

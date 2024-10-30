@@ -1,18 +1,18 @@
 package game
 
 import (
-	"leetcodeduels/pkg/models"
+	"leetcodeduels/pkg/store"
 	"testing"
 	"time"
 )
 
 // MockPlayerInfo implements PlayerInfo interface for testing
 type MockPlayerInfo struct {
-	id       string
+	id       int64
 	username string
 }
 
-func (mpi MockPlayerInfo) GetID() string {
+func (mpi MockPlayerInfo) GetID() int64 {
 	return mpi.id
 }
 
@@ -28,9 +28,9 @@ func (mpi MockPlayerInfo) GetRating() int {
 func TestCreateSession(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{"1", "Alice"}
-	player2 := MockPlayerInfo{"2", "Bob"}
-	problem := &models.Problem{
+	player1 := MockPlayerInfo{1, "Alice"}
+	player2 := MockPlayerInfo{2, "Bob"}
+	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
 		Slug:       "example-problem",
@@ -45,10 +45,10 @@ func TestCreateSession(t *testing.T) {
 	if len(gm.Sessions) != 1 {
 		t.Errorf("Expected 1 session, got %d", len(gm.Sessions))
 	}
-	if sessionID, ok := gm.Players["1"]; !ok || sessionID != session.ID {
+	if sessionID, ok := gm.Players[1]; !ok || sessionID != session.ID {
 		t.Errorf("Player1 is not correctly mapped to session")
 	}
-	if sessionID, ok := gm.Players["2"]; !ok || sessionID != session.ID {
+	if sessionID, ok := gm.Players[2]; !ok || sessionID != session.ID {
 		t.Errorf("Player2 is not correctly mapped to session")
 	}
 	if session.InProgress != true {
@@ -63,9 +63,9 @@ func TestCreateSession(t *testing.T) {
 func TestAddSubmission(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{"1", "Alice"}
-	player2 := MockPlayerInfo{"2", "Bob"}
-	problem := &models.Problem{
+	player1 := MockPlayerInfo{1, "Alice"}
+	player2 := MockPlayerInfo{2, "Bob"}
+	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
 		Slug:       "example-problem",
@@ -74,7 +74,7 @@ func TestAddSubmission(t *testing.T) {
 	session := gm.CreateSession(player1, player2, problem)
 
 	submission := PlayerSubmission{
-		PlayerUUID:      player1.GetID(),
+		PlayerID:        player1.GetID(),
 		PassedTestCases: 10,
 		TotalTestCases:  10,
 		Status:          Accepted,
@@ -82,7 +82,7 @@ func TestAddSubmission(t *testing.T) {
 		Time:            time.Now(),
 	}
 
-	gm.AddSubmission("1", submission)
+	gm.AddSubmission(1, submission)
 	if len(session.Submissions[0]) != 1 {
 		t.Errorf("Expected 1 submission for player 1, got %d", len(session.Submissions[0]))
 	}
@@ -92,9 +92,9 @@ func TestAddSubmission(t *testing.T) {
 func TestIsPlayerInSession(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{"1", "Alice"}
-	player2 := MockPlayerInfo{"2", "Bob"}
-	problem := &models.Problem{
+	player1 := MockPlayerInfo{1, "Alice"}
+	player2 := MockPlayerInfo{1, "Bob"}
+	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
 		Slug:       "example-problem",
@@ -102,13 +102,13 @@ func TestIsPlayerInSession(t *testing.T) {
 	}
 	gm.CreateSession(player1, player2, problem)
 
-	if !gm.IsPlayerInSession("1") {
+	if !gm.IsPlayerInSession(1) {
 		t.Error("Player1 should be in a session")
 	}
-	if !gm.IsPlayerInSession("2") {
+	if !gm.IsPlayerInSession(2) {
 		t.Error("Player2 should be in a session")
 	}
-	if gm.IsPlayerInSession("3") {
+	if gm.IsPlayerInSession(3) {
 		t.Error("Player3 should not be in a session")
 	}
 }

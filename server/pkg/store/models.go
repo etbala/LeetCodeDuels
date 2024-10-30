@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-/*
-	Database & HTTPS Models
-*/
-
 type Problem struct {
 	ID         int              `json:"id"`
 	Name       string           `json:"name"`
@@ -22,12 +18,12 @@ type Tag struct {
 }
 
 type User struct {
-	GithubID    int64
+	ID          int64
 	Username    string
 	AccessToken string
 	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Rating      int32
+	UpdatedAt   time.Time // (Last Logged In)
+	Rating      int
 }
 
 func NewProblem(ID int, name string, slug string, difficulty enums.Difficulty) *Problem {
@@ -46,11 +42,10 @@ func NewTag(ID int, Name string) *Tag {
 	}
 }
 
-func NewUser(UUID string, username string, rating int, friends []string) *User {
+func NewUser(ID int64, username string, rating int) *User {
 	return &User{
-		UUID:     UUID,
+		ID:       ID,
 		Username: username,
 		Rating:   rating,
-		Friends:  friends,
 	}
 }

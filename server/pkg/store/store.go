@@ -4,11 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/internal/enums"
-	"net/http"
 	"strings"
 
 	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var DataStore *dataStore
@@ -44,7 +42,7 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*User, error) {
 	row := ds.db.QueryRow(`SELECT github_id, username, access_token, created_at, updated_at, rating 
 			  			   FROM github_oauth_users WHERE github_id = $1`, githubID)
 	var user User
-	err := row.Scan(&user.GithubID, &user.Username, &user.AccessToken, &user.CreatedAt, &user.UpdatedAt, &user.Rating)
+	err := row.Scan(&user.ID, &user.Username, &user.AccessToken, &user.CreatedAt, &user.UpdatedAt, &user.Rating)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -267,70 +265,17 @@ func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, dif
 	return &p, nil
 }
 
-func (ds *dataStore) CreateUser(w http.ResponseWriter, username, password, email string) (bool, error) {
-	defaultRating := 1000
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return false, err
-	}
-
-	// Check if user is already in the database
-	var exists int
-	err = ds.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2", username, email).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-
-	if exists > 0 {
-		return false, fmt.Errorf("user with given username or email already exists")
-	}
-
-	// Insert the user into the database
-	_, err = ds.db.Exec("INSERT INTO users (username, password_hash, email, rating) VALUES ($1, $2, $3, $4)",
-		username, string(hashedPassword), email, defaultRating)
-	if err != nil {
-		return false, err
-	}
-
-	// Set a cookie to indicate successful sign-up
-	http.SetCookie(w, &http.Cookie{
-		Name:     "loggedIn",
-		Value:    "true",
-		Path:     "/",   // Cookie is valid for all paths
-		HttpOnly: true,  // The cookie cannot be accessed by client-side APIs, like JavaScript.
-		Secure:   true,  // Ensure this cookie is only sent over HTTPS.
-		MaxAge:   86400, // Sets the cookie to expire after 1 day (86400 seconds).
-	})
-
-	return true, nil
-}
-
-func (ds *dataStore) AuthenticateUser(username, password string) (bool, error) {
-	var hashedPassword string
-	err := ds.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&hashedPassword)
-	if err != nil {
-		return false, err // User not found or other database error
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	if err != nil {
-		return false, fmt.Errorf("invalid password") // Specific error for password mismatch
-	}
-
-	return true, nil
-}
-
-func (ds *dataStore) GetUserRating(UUID string, newRating int) error {
-	_, err := ds.db.Exec(`SELECT rating FROM users WHERE uuid = $1`, newRating, UUID)
+func (ds *dataStore) GetUserRating(userID int64, newRating int) error {
+	_, err := ds.db.Exec(`SELECT rating FROM github_oauth_users WHERE github_id = $1`, newRating, userID)
 	if err != nil {
 		return fmt.Errorf("error getting user rating: %w", err)
 	}
 	return nil
 }
 
-func (ds *dataStore) UpdateUserRating(UUID string, newRating int) error {
-	query := `UPDATE users SET rating = $1 WHERE uuid = $2`
-	_, err := ds.db.Exec(query, newRating, UUID)
+func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
+	query := `UPDATE github_oauth_users SET rating = $1 WHERE github_id = $2`
+	_, err := ds.db.Exec(query, newRating, userID)
 	if err != nil {
 		return fmt.Errorf("error updating user rating: %w", err)
 	}

@@ -6,7 +6,7 @@ between sections of code that use marginally different models.
 */
 
 type Player interface {
-	GetID() string
+	GetID() int64
 	GetUsername() string
 	GetRating() int
 }

@@ -11,8 +11,9 @@ import (
 	"io"
 	"leetcodeduels/api/auth"
 	"leetcodeduels/api/game"
+	"leetcodeduels/api/matchmaking"
+	"leetcodeduels/internal/enums"
 	"leetcodeduels/pkg/config"
-	"leetcodeduels/pkg/models"
 	"leetcodeduels/pkg/store"
 	"log"
 	"net/http"
@@ -22,7 +23,7 @@ import (
 	"time"
 )
 
-func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
+func fetchGitHubUser(accessToken string) (*store.User, error) {
 	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
 	if err != nil {
 		return nil, err
@@ -48,14 +49,14 @@ func fetchGitHubUser(accessToken string) (*models.OAuthUser, error) {
 		return nil, err
 	}
 
-	return &models.OAuthUser{
-		GithubID: user.ID,
+	return &store.User{
+		ID:       user.ID,
 		Username: user.Username,
 	}, nil
 }
 
 func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
-	// Parse the JSON body
+	// Parse JSON body
 	var reqBody struct {
 		Code string `json:"code"`
 	}
@@ -66,7 +67,7 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 
 	code := reqBody.Code
 
-	// Proceed to exchange the code for an access token
+	// Exchange code for access token
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
@@ -83,7 +84,7 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 
 	req, err := http.NewRequest("POST", tokenURL, strings.NewReader(formData.Encode()))
 	if err != nil {
-		http.Error(w, "Failed to create token request", http.StatusInternalServerError)
+		http.Error(w, "Bad code", http.StatusBadRequest)
 		return
 	}
 	req.Header.Set("Accept", "application/json")
@@ -97,7 +98,7 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Decode the response and handle errors
+	// Decode response
 	var tokenResponse struct {
 		AccessToken      string `json:"access_token"`
 		TokenType        string `json:"token_type"`
@@ -128,13 +129,13 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.DataStore.SaveOAuthUser(user.GithubID, user.Username, tokenResponse.AccessToken)
+	err = store.DataStore.SaveOAuthUser(user.ID, user.Username, tokenResponse.AccessToken)
 	if err != nil {
 		http.Error(w, "Failed to save OAuth user", http.StatusInternalServerError)
 		return
 	}
 
-	tokenString, err := auth.GenerateJWT(user.GithubID, user.Username)
+	tokenString, err := auth.GenerateJWT(user.ID, user.Username)
 	if err != nil {
 		http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
 		return
@@ -147,14 +148,22 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
-	user, err := store.DataStore.GetUserProfile()
+	userIDStr := r.URL.Query().Get("userID")
+	var userID int64
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Specified User Does Not Exist", http.StatusNotFound)
+		return
+	}
+
+	user, err := store.DataStore.GetUserProfile(userID)
 	if err != nil {
 		http.Error(w, "Failed to fetch user profile: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if user == nil || user.GithubID == nil {
-		http.Error(w, "Specified User Does Not Exist", http.NotFound)
+	if user == nil {
+		http.Error(w, "Specified User Does Not Exist", http.StatusNotFound)
 		return
 	}
 
@@ -162,16 +171,47 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddPlayerToPool(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userID")
 
-	gameManager := game.GetGameManager()
-	success := gameManager.IsPlayerInSession(userID)
+	claims, ok := r.Context().Value(auth.UserContextKey).(*auth.Claims)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	respondWithJSON(w, http.StatusOK, success)
+	var input struct {
+		Difficulties []enums.Difficulty `json:"difficulties"`
+		Tags         []int              `json:"tags"`
+		ForceMatch   bool               `json:"forceMatch"`
+	}
+
+	// Decode JSON input
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, "Invalid input format", http.StatusBadRequest)
+		return
+	}
+
+	pool := matchmaking.GetMatchmakingPool()
+	err = pool.AddPlayer(claims.UserID, input.Difficulties, input.Tags, input.ForceMatch)
+	if err != nil {
+		http.Error(w, "No user associated with provided id.", http.StatusBadRequest)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, "")
 }
 
 func RemovePlayerFromPool(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(auth.UserContextKey).(*auth.Claims)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
+	pool := matchmaking.GetMatchmakingPool()
+	success := pool.RemovePlayers(claims.UserID)
+
+	respondWithJSON(w, http.StatusOK, success)
 }
 
 // GetAllProblems handles the request to get all problems.
@@ -262,7 +302,12 @@ func GetTagsByProblem(w http.ResponseWriter, r *http.Request) {
 }
 
 func IsUserInGame(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userID")
+	userIDStr := r.URL.Query().Get("userID")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid ID provided.", http.StatusBadRequest)
+		return
+	}
 
 	gameManager := game.GetGameManager()
 	success := gameManager.IsPlayerInSession(userID)
@@ -274,28 +319,28 @@ func AddSubmission(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Sanitize params
 
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusOK)
+	claims, ok := r.Context().Value(auth.UserContextKey).(*auth.Claims)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	var submissionData game.PlayerSubmission
-
-	// Validate Status
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&submissionData); err != nil {
+
+	var submissionData game.PlayerSubmission
+	err := decoder.Decode(&submissionData)
+	if err != nil {
 		log.Printf("Error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("Received Submission Data: %+v", submissionData)
-
+	submissionData.PlayerID = claims.UserID
 	submissionData.Time = time.Now()
 
 	gm := game.GetGameManager()
-	gm.AddSubmission(submissionData.PlayerUUID, submissionData)
+	gm.AddSubmission(submissionData.PlayerID, submissionData)
 
 	w.WriteHeader(http.StatusOK)
 }

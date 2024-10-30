@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"leetcodeduels/pkg/models"
+	"leetcodeduels/pkg/store"
 	"time"
 )
 
@@ -139,7 +139,7 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 }
 
 type Player struct {
-	UUID     string
+	ID       int64
 	Username string
 	Rating   int
 	RoomID   int
@@ -147,7 +147,7 @@ type Player struct {
 
 type PlayerSubmission struct {
 	ID              int              `json:"SubmissionID"`
-	PlayerUUID      string           `json:"PlayerUUID"`
+	PlayerID        int64            `json:"PlayerID"`
 	PassedTestCases int              `json:"PassedTestCases"`
 	TotalTestCases  int              `json:"TotalTestCases"`
 	Status          SubmissionStatus `json:"Status"`
@@ -160,8 +160,8 @@ type PlayerSubmission struct {
 type Session struct {
 	ID          int
 	InProgress  bool
-	Problem     models.Problem
-	Players     []Player             // Should be set
+	Problem     store.Problem
+	Players     []Player
 	Submissions [][]PlayerSubmission // Should be Map of player to that players submissions
 	Winner      Player
 	StartTime   time.Time

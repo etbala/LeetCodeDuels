@@ -1,8 +1,8 @@
 package game
 
 import (
+	"errors"
 	"leetcodeduels/internal/interfaces"
-	"leetcodeduels/pkg/models"
 	"leetcodeduels/pkg/store"
 	"math"
 	"sync"
@@ -17,7 +17,7 @@ import (
 type GameManager struct {
 	sync.Mutex
 	Sessions map[int]*Session // Map session ID to Session
-	Players  map[string]int   // Map player ID to session ID
+	Players  map[int64]int    // Map player ID to session ID
 }
 
 var (
@@ -29,7 +29,7 @@ func GetGameManager() *GameManager {
 	once.Do(func() {
 		instance = &GameManager{
 			Sessions: make(map[int]*Session),
-			Players:  make(map[string]int),
+			Players:  make(map[int64]int),
 		}
 	})
 	return instance
@@ -40,7 +40,7 @@ func resetGameManager() {
 	once = sync.Once{}
 }
 
-func (gm *GameManager) CreateSession(player1, player2 interfaces.Player, problem *models.Problem) *Session {
+func (gm *GameManager) CreateSession(player1, player2 interfaces.Player, problem *store.Problem) *Session {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -50,8 +50,8 @@ func (gm *GameManager) CreateSession(player1, player2 interfaces.Player, problem
 		InProgress: true,
 		Problem:    *problem,
 		Players: []Player{
-			{UUID: player1.GetID(), Username: player1.GetUsername(), RoomID: sessionID},
-			{UUID: player2.GetID(), Username: player2.GetUsername(), RoomID: sessionID},
+			{ID: player1.GetID(), Username: player1.GetUsername(), RoomID: sessionID},
+			{ID: player2.GetID(), Username: player2.GetUsername(), RoomID: sessionID},
 		},
 		Submissions: make([][]PlayerSubmission, 2),
 		StartTime:   time.Now(),
@@ -83,8 +83,8 @@ func (gm *GameManager) EndSession(sessionID int) {
 	player1 := session.Players[0]
 	player2 := session.Players[1]
 
-	delete(gm.Players, player1.UUID)
-	delete(gm.Players, player2.UUID)
+	delete(gm.Players, player1.ID)
+	delete(gm.Players, player2.ID)
 
 	delete(gm.Sessions, sessionID)
 
@@ -103,7 +103,7 @@ func (gm *GameManager) ListSessions() []*Session {
 	return sessions
 }
 
-func (gm *GameManager) AddSubmission(playerID string, submission PlayerSubmission) {
+func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission) {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -121,7 +121,7 @@ func (gm *GameManager) AddSubmission(playerID string, submission PlayerSubmissio
 
 	// Assuming player1 is always at index 0 and player2 at index 1
 	playerIndex := 0
-	if session.Players[1].UUID == playerID {
+	if session.Players[1].ID == playerID {
 		playerIndex = 1
 	}
 
@@ -138,7 +138,7 @@ func (gm *GameManager) AddSubmission(playerID string, submission PlayerSubmissio
 	gm.EndSession(sessionID)
 }
 
-func (gm *GameManager) IsPlayerInSession(playerID string) bool {
+func (gm *GameManager) IsPlayerInSession(playerID int64) bool {
 	gm.Lock()
 	defer gm.Unlock()
 
@@ -146,20 +146,20 @@ func (gm *GameManager) IsPlayerInSession(playerID string) bool {
 	return ok
 }
 
-func (gm *GameManager) GetPlayersSessionID(playerID string) (int, err) {
+func (gm *GameManager) GetPlayersSessionID(playerID int64) (int, error) {
 	gm.Lock()
 	defer gm.Unlock()
 
 	sessionID, err := gm.Players[playerID]
-	if err != nil {
-		return nil, "Player not in session."
+	if err {
+		return -1, errors.New("Player not in session.")
 	}
 
-	return id, nil
+	return sessionID, nil
 }
 
-func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID string) error {
-	player1, player2 := gm.Sessions[gm.Players[player1UUID]].Players[0], gm.Sessions[gm.Players[player2UUID]].Players[1]
+func (gm *GameManager) CalculateNewMMR(player1ID, player2ID, winnerID int64) error {
+	player1, player2 := gm.Sessions[gm.Players[player1ID]].Players[0], gm.Sessions[gm.Players[player2ID]].Players[1]
 
 	kFactor := 32
 	rating1 := float64(player1.Rating)
@@ -171,10 +171,10 @@ func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID stri
 
 	// Actual scores
 	var actualScore1, actualScore2 float64
-	if winnerUUID == player1UUID {
+	if winnerID == player1ID {
 		actualScore1 = 1 // player1 wins
 		actualScore2 = 0 // player2 loses
-	} else if winnerUUID == player2UUID {
+	} else if winnerID == player2ID {
 		actualScore1 = 0 // player1 loses
 		actualScore2 = 1 // player2 wins
 	} else {
@@ -187,11 +187,11 @@ func (gm *GameManager) CalculateNewMMR(player1UUID, player2UUID, winnerUUID stri
 	newRating2 := int(rating2 + float64(kFactor)*(actualScore2-expScore2))
 
 	// Update the ratings in your database/store
-	err := store.DataStore.UpdateUserRating(player1.UUID, newRating1)
+	err := store.DataStore.UpdateUserRating(player1.ID, newRating1)
 	if err != nil {
 		return err
 	}
-	err = store.DataStore.UpdateUserRating(player2.UUID, newRating2)
+	err = store.DataStore.UpdateUserRating(player2.ID, newRating2)
 	if err != nil {
 		return err
 	}

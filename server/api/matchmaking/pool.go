@@ -1,6 +1,7 @@
 package matchmaking
 
 import (
+	"errors"
 	"leetcodeduels/api/game"
 	"leetcodeduels/internal/enums"
 	"leetcodeduels/pkg/store"
@@ -34,10 +35,30 @@ func resetMatchmakingPool() {
 	poolOnce = sync.Once{}
 }
 
-func (mp *MatchmakingPool) AddPlayer(player *Player) {
+func (mp *MatchmakingPool) AddPlayer(id int64, difficulties []enums.Difficulty, tags []int, forceMatch bool) error {
+	// TODO: Check if player is already in matchmaking pool
+
+	profile, err := store.DataStore.GetUserProfile(id)
+	if err != nil {
+		return errors.New("No player associated with provided ID")
+	}
+
+	player := &Player{
+		ID:           id,
+		Username:     profile.Username,
+		Rating:       profile.Rating,
+		Matched:      make(chan *Lobby, 1),
+		Difficulties: difficulties,
+		Tags:         tags,
+		JoinedAt:     time.Now(),
+		ForceMatch:   forceMatch,
+	}
+
 	mp.Lock()
 	mp.Players = append(mp.Players, player)
 	mp.Unlock()
+
+	return nil
 }
 
 func (mp *MatchmakingPool) periodicMatchmaking() {
@@ -53,7 +74,7 @@ func (mp *MatchmakingPool) periodicMatchmaking() {
 				if mp.shouldMatch(player1, player2) {
 					mp.createMatch(player1, player2)
 					mp.notifyMatch(player1, player2)
-					mp.removePlayers(player1.ID, player2.ID)
+					mp.RemovePlayers(player1.ID, player2.ID)
 					matchFound = true
 					break
 				}
@@ -117,7 +138,7 @@ func (mp *MatchmakingPool) createMatch(player1, player2 *Player) bool {
 	// Send to Game Manager to create Game Session with player1 and player2
 }
 
-func (mp *MatchmakingPool) removePlayers(ids ...string) {
+func (mp *MatchmakingPool) RemovePlayers(ids ...int64) bool {
 	var newPlayers []*Player
 	for _, player := range mp.Players {
 		keep := true
@@ -132,6 +153,7 @@ func (mp *MatchmakingPool) removePlayers(ids ...string) {
 		}
 	}
 	mp.Players = newPlayers
+	return true
 }
 
 func (mp *MatchmakingPool) Size() int {

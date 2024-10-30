@@ -11,7 +11,7 @@ type Lobby struct {
 }
 
 type Player struct {
-	ID           string
+	ID           int64
 	Username     string
 	Rating       int
 	Matched      chan *Lobby
@@ -21,7 +21,7 @@ type Player struct {
 	ForceMatch   bool      // Whether the player has opted for forced matching after a timeout
 }
 
-func NewPlayer(id string, username string, tags []int, difficulties []enums.Difficulty, rating int) *Player {
+func NewPlayer(id int64, username string, tags []int, difficulties []enums.Difficulty, rating int) *Player {
 	return &Player{
 		ID:           id,
 		Username:     username,
@@ -31,7 +31,7 @@ func NewPlayer(id string, username string, tags []int, difficulties []enums.Diff
 	}
 }
 
-func (p *Player) GetID() string {
+func (p *Player) GetID() int64 {
 	return p.ID
 }
 
