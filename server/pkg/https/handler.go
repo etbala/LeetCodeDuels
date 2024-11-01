@@ -149,7 +149,6 @@ func OAuthExchangeToken(w http.ResponseWriter, r *http.Request) {
 
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("userID")
-	var userID int64
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Specified User Does Not Exist", http.StatusNotFound)

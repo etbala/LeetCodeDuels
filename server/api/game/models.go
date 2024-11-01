@@ -138,13 +138,6 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 	}
 }
 
-type Player struct {
-	ID       int64
-	Username string
-	Rating   int
-	RoomID   int
-}
-
 type PlayerSubmission struct {
 	ID              int              `json:"SubmissionID"`
 	PlayerID        int64            `json:"PlayerID"`
@@ -161,9 +154,9 @@ type Session struct {
 	ID          int
 	InProgress  bool
 	Problem     store.Problem
-	Players     []Player
+	Players     []int64
 	Submissions [][]PlayerSubmission // Should be Map of player to that players submissions
-	Winner      Player
+	Winner      int64
 	StartTime   time.Time
 	EndTime     time.Time
 }

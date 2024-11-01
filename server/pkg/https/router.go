@@ -19,6 +19,9 @@ func NewRouter() *mux.Router {
 	publicRouter.HandleFunc("/user/profile", GetUserProfile).Methods("GET")
 	// publicRouter.HandleFunc("/user/match-history", GetUserMatchHistory).Methods("GET")
 
+	// Websocket Route
+	protectedRouter.HandleFunc("/ws", WsHandler).Methods("GET")
+
 	// Protected Routes
 	protectedRouter.HandleFunc("/game/submission", AddSubmission).Methods("POST")
 	protectedRouter.HandleFunc("/matchmaking/enter", AddPlayerToPool).Methods("POST")

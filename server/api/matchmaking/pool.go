@@ -131,7 +131,7 @@ func (mp *MatchmakingPool) createMatch(player1, player2 *Player) bool {
 	}
 
 	gameManager := game.GetGameManager()
-	gameManager.CreateSession(player1, player2, prob)
+	gameManager.CreateSession(player1.ID, player2.ID, prob)
 	return true
 
 	// Assign Problem Based on common tags (via store)
