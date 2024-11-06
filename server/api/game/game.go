@@ -17,7 +17,7 @@ import (
 // Some way to check if a user is currently in a game session, useful to prevent users from being in multiple games at once
 
 type GameManager struct {
-	sync.Mutex
+	sync.RWMutex
 	Sessions          map[int]*Session // Map session ID to Session
 	Players           map[int64]int    // Map player ID to session ID
 	PlayerConnections map[int64]*websocket.Conn
@@ -46,22 +46,22 @@ func resetGameManager() {
 // AddPlayerConnection associates a WebSocket connection with a player ID
 func (gm *GameManager) AddPlayerConnection(playerID int64, conn *websocket.Conn) {
 	gm.Lock()
-	defer gm.Unlock()
 	gm.PlayerConnections[playerID] = conn
+	gm.Unlock()
 }
 
 // RemovePlayerConnection removes the association between a player ID and their connection
 func (gm *GameManager) RemovePlayerConnection(playerID int64) {
 	gm.Lock()
-	defer gm.Unlock()
 	delete(gm.PlayerConnections, playerID)
+	gm.Unlock()
 }
 
 // SendMessageToPlayer sends a WebSocket message to a specific player
 func (gm *GameManager) SendMessageToPlayer(playerID int64, message ws.Message) error {
-	gm.Lock()
+	gm.RLock()
 	conn, exists := gm.PlayerConnections[playerID]
-	gm.Unlock()
+	gm.RUnlock()
 
 	if !exists {
 		return errors.New("player not connected")
@@ -72,10 +72,10 @@ func (gm *GameManager) SendMessageToPlayer(playerID int64, message ws.Message) e
 
 // BroadcastToSession sends a message to all players in a specific session
 func (gm *GameManager) BroadcastToSession(sessionID int, message ws.Message) {
-	gm.Lock()
+	gm.RLock()
 	session, exists := gm.Sessions[sessionID]
 	if !exists {
-		gm.Unlock()
+		gm.RUnlock()
 		return
 	}
 
@@ -83,21 +83,19 @@ func (gm *GameManager) BroadcastToSession(sessionID int, message ws.Message) {
 		conn, ok := gm.PlayerConnections[player]
 		if ok {
 			// It's safe to release the lock here as we're only reading
-			gm.Unlock()
+			gm.RUnlock()
 			conn.WriteJSON(message)
-			gm.Lock()
+			gm.RLock()
 		}
 	}
-	gm.Unlock()
+	gm.RUnlock()
 }
 
 func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.Problem) *Session {
-	// Get username
-
-	gm.Lock()
-	defer gm.Unlock()
-
+	gm.RLock()
 	sessionID := len(gm.Sessions) + 1
+	gm.RUnlock()
+
 	session := &Session{
 		ID:          sessionID,
 		InProgress:  true,
@@ -107,9 +105,11 @@ func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.
 		StartTime:   time.Now(),
 	}
 
+	gm.Lock()
 	gm.Sessions[sessionID] = session
 	gm.Players[player1ID] = sessionID
 	gm.Players[player2ID] = sessionID
+	gm.Unlock()
 
 	// Send start_game message to both players
 	startPayload := ws.StartGamePayload{
@@ -128,10 +128,10 @@ func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.
 }
 
 func (gm *GameManager) EndSession(sessionID int) {
-	gm.Lock()
+	gm.RLock()
 	session, exists := gm.Sessions[sessionID]
+	gm.RUnlock()
 	if !exists {
-		gm.Unlock()
 		return
 	}
 
@@ -141,9 +141,9 @@ func (gm *GameManager) EndSession(sessionID int) {
 	player1 := session.Players[0]
 	player2 := session.Players[1]
 
+	gm.Lock()
 	delete(gm.Players, player1)
 	delete(gm.Players, player2)
-
 	delete(gm.Sessions, sessionID)
 	gm.Unlock()
 
@@ -169,31 +169,32 @@ func (gm *GameManager) EndSession(sessionID int) {
 }
 
 func (gm *GameManager) ListSessions() []*Session {
-	gm.Lock()
-	defer gm.Unlock()
+	gm.RLock()
 
 	var sessions []*Session
 	for _, session := range gm.Sessions {
 		sessions = append(sessions, session)
 	}
+	gm.RUnlock()
 	return sessions
 }
 
 func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission) {
-	gm.Lock()
-	defer gm.Unlock()
-
+	gm.RLock()
 	sessionID, ok := gm.Players[playerID]
 	if !ok {
+		gm.RUnlock()
 		// Handle error: Player not in any session
 		return
 	}
 
 	session, ok := gm.Sessions[sessionID]
 	if !ok {
+		gm.RUnlock()
 		// Handle error: Session not found
 		return
 	}
+	gm.RUnlock()
 
 	// Determine player index
 	playerIndex := 0
@@ -205,7 +206,9 @@ func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission
 
 	if submission.Status != Accepted {
 		// Notify opponent about the submission
+		gm.RLock()
 		opponentID, err := gm.GetOpponentID(sessionID, playerID)
+		gm.RUnlock()
 		if err == nil {
 			opponentSubmissionPayload := ws.OpponentSubmissionPayload{
 				ID:              submission.ID,
@@ -232,18 +235,16 @@ func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission
 }
 
 func (gm *GameManager) IsPlayerInSession(playerID int64) bool {
-	gm.Lock()
-	defer gm.Unlock()
-
+	gm.RLock()
 	_, ok := gm.Players[playerID]
+	gm.RUnlock()
 	return ok
 }
 
 func (gm *GameManager) GetPlayersSessionID(playerID int64) (int, error) {
-	gm.Lock()
-	defer gm.Unlock()
-
+	gm.RLock()
 	sessionID, err := gm.Players[playerID]
+	gm.RUnlock()
 	if err {
 		return -1, errors.New("Player not in session.")
 	}
@@ -252,10 +253,9 @@ func (gm *GameManager) GetPlayersSessionID(playerID int64) (int, error) {
 }
 
 func (gm *GameManager) GetOpponentID(sessionID int, playerID int64) (int64, error) {
-	gm.Lock()
-	defer gm.Unlock()
-
+	gm.RLock()
 	session, exists := gm.Sessions[sessionID]
+	gm.RUnlock()
 	if !exists {
 		return 0, errors.New("session not found")
 	}
@@ -270,7 +270,9 @@ func (gm *GameManager) GetOpponentID(sessionID int, playerID int64) (int64, erro
 }
 
 func (gm *GameManager) CalculateNewMMR(player1ID, player2ID, winnerID int64) error {
+	gm.RLock()
 	player1, player2 := gm.Sessions[gm.Players[player1ID]].Players[0], gm.Sessions[gm.Players[player2ID]].Players[1]
+	gm.RUnlock()
 
 	// Get Profiles of Players
 	profile1, err := store.DataStore.GetUserProfile(player1ID)

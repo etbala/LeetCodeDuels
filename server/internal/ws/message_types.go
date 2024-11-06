@@ -6,5 +6,6 @@ const (
 	MessageTypeOpponentSubmission = "opponent_submission"
 	MessageTypeGameOver           = "game_over"
 	MessageTypeError              = "error"
+	MessageTypeHeartbeat          = "heartbeat"
 	// Add more types as needed
 )

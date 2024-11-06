@@ -10,8 +10,8 @@ func TestMatchmaking(t *testing.T) {
 	resetMatchmakingPool()
 	pool := GetMatchmakingPool()
 
-	player1 := &Player{ID: 01, Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
-	player2 := &Player{ID: 02, Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player1 := &Player{ID: 1, Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
+	player2 := &Player{ID: 2, Tags: []int{1}, Difficulties: []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, Matched: make(chan *Lobby, 1), JoinedAt: time.Now(), ForceMatch: false}
 
 	pool.AddPlayer(1, []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, []int{1}, false)
 	pool.AddPlayer(2, []enums.Difficulty{enums.EASY, enums.MEDIUM, enums.HARD}, []int{1}, false)
@@ -79,9 +79,9 @@ func validateMatch(t *testing.T, player *Player, expectedMatchID int64) {
 	select {
 	case lobby := <-player.Matched:
 		if (lobby.Player1.ID != expectedMatchID) && (lobby.Player2.ID != expectedMatchID) {
-			t.Errorf("Expected %s to be matched with %s, but did not happen", player.ID, expectedMatchID)
+			t.Errorf("Expected %d to be matched with %d, but did not happen", player.ID, expectedMatchID)
 		}
 	case <-time.After(10 * time.Second): // Waiting longer to ensure the test does not fail due to timing issues
-		t.Errorf("Timeout occurred while waiting for a match for player %s", player.ID)
+		t.Errorf("Timeout occurred while waiting for a match for player %d", player.ID)
 	}
 }

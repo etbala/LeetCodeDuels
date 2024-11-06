@@ -6,30 +6,10 @@ import (
 	"time"
 )
 
-// MockPlayerInfo implements PlayerInfo interface for testing
-type MockPlayerInfo struct {
-	id       int64
-	username string
-}
-
-func (mpi MockPlayerInfo) GetID() int64 {
-	return mpi.id
-}
-
-func (mpi MockPlayerInfo) GetUsername() string {
-	return mpi.username
-}
-
-func (mpi MockPlayerInfo) GetRating() int {
-	return 1200
-}
-
 // TestCreateSession tests creating a new session correctly adds sessions and updates player mapping
 func TestCreateSession(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{1, "Alice"}
-	player2 := MockPlayerInfo{2, "Bob"}
 	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
@@ -37,7 +17,7 @@ func TestCreateSession(t *testing.T) {
 		Difficulty: "Easy",
 	}
 
-	session := gm.CreateSession(player1, player2, problem)
+	session := gm.CreateSession(1, 2, problem)
 
 	if session == nil {
 		t.Fatal("CreateSession() failed, got nil")
@@ -63,18 +43,16 @@ func TestCreateSession(t *testing.T) {
 func TestAddSubmission(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{1, "Alice"}
-	player2 := MockPlayerInfo{2, "Bob"}
 	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
 		Slug:       "example-problem",
 		Difficulty: "Easy",
 	}
-	session := gm.CreateSession(player1, player2, problem)
+	session := gm.CreateSession(1, 2, problem)
 
 	submission := PlayerSubmission{
-		PlayerID:        player1.GetID(),
+		PlayerID:        1,
 		PassedTestCases: 10,
 		TotalTestCases:  10,
 		Status:          Accepted,
@@ -92,15 +70,13 @@ func TestAddSubmission(t *testing.T) {
 func TestIsPlayerInSession(t *testing.T) {
 	resetGameManager()
 	gm := GetGameManager()
-	player1 := MockPlayerInfo{1, "Alice"}
-	player2 := MockPlayerInfo{1, "Bob"}
 	problem := &store.Problem{
 		ID:         101,
 		Name:       "Example Problem",
 		Slug:       "example-problem",
 		Difficulty: "Easy",
 	}
-	gm.CreateSession(player1, player2, problem)
+	gm.CreateSession(1, 2, problem)
 
 	if !gm.IsPlayerInSession(1) {
 		t.Error("Player1 should be in a session")
