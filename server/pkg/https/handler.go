@@ -208,9 +208,9 @@ func RemovePlayerFromPool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pool := matchmaking.GetMatchmakingPool()
-	success := pool.RemovePlayers(claims.UserID)
+	pool.RemovePlayers(claims.UserID)
 
-	respondWithJSON(w, http.StatusOK, success)
+	respondWithJSON(w, http.StatusOK, "true")
 }
 
 // GetAllProblems handles the request to get all problems.

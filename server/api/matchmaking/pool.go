@@ -11,8 +11,9 @@ import (
 
 type MatchmakingPool struct {
 	sync.Mutex
-	Players    []*Player
+	Players    map[int64]*PlayerInfo
 	MatchCheck time.Duration
+	MatchChan  chan Match
 }
 
 var (
@@ -23,7 +24,9 @@ var (
 func GetMatchmakingPool() *MatchmakingPool {
 	poolOnce.Do(func() {
 		poolInstance = &MatchmakingPool{
-			MatchCheck: 2 * time.Second, // Check for matches every 2 seconds
+			Players:    make(map[int64]*PlayerInfo),
+			MatchCheck: 2 * time.Second,       // Check for matches every 2 seconds
+			MatchChan:  make(chan Match, 100), // Buffered channel
 		}
 		go poolInstance.periodicMatchmaking() // Start the periodic matchmaking routine
 	})
@@ -36,61 +39,66 @@ func resetMatchmakingPool() {
 }
 
 func (mp *MatchmakingPool) AddPlayer(id int64, difficulties []enums.Difficulty, tags []int, forceMatch bool) error {
-	// TODO: Check if player is already in matchmaking pool
+	mp.Lock()
+	defer mp.Unlock()
 
-	profile, err := store.DataStore.GetUserProfile(id)
-	if err != nil {
-		return errors.New("No player associated with provided ID")
+	// Check if player is already in matchmaking pool
+	if _, exists := mp.Players[id]; exists {
+		return errors.New("Player is already in the matchmaking pool")
 	}
 
-	player := &Player{
+	playerInfo := &PlayerInfo{
 		ID:           id,
-		Username:     profile.Username,
-		Rating:       profile.Rating,
-		Matched:      make(chan *Lobby, 1),
 		Difficulties: difficulties,
 		Tags:         tags,
 		JoinedAt:     time.Now(),
 		ForceMatch:   forceMatch,
 	}
 
-	mp.Lock()
-	mp.Players = append(mp.Players, player)
-	mp.Unlock()
+	mp.Players[id] = playerInfo
 
 	return nil
 }
 
 func (mp *MatchmakingPool) periodicMatchmaking() {
+	ticker := time.NewTicker(mp.MatchCheck)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(mp.MatchCheck) // Wait for the specified duration before checking for matches
+		<-ticker.C // Wait for the specified duration before checking for matches
 		mp.Lock()
-		i := 0
-		for i < len(mp.Players) {
-			player1 := mp.Players[i]
+		playerIDs := make([]int64, 0, len(mp.Players))
+		for id := range mp.Players {
+			playerIDs = append(playerIDs, id)
+		}
+
+		for i := 0; i < len(playerIDs); i++ {
+			player1 := mp.Players[playerIDs[i]]
 			matchFound := false
-			for j := i + 1; j < len(mp.Players); j++ {
-				player2 := mp.Players[j]
+			for j := i + 1; j < len(playerIDs); j++ {
+				player2 := mp.Players[playerIDs[j]]
 				if mp.shouldMatch(player1, player2) {
-					mp.createMatch(player1, player2)
-					mp.notifyMatch(player1, player2)
-					mp.RemovePlayers(player1.ID, player2.ID)
-					matchFound = true
-					break
+					success := mp.createMatch(player1.ID, player2.ID)
+					if success {
+						mp.MatchChan <- Match{Player1ID: player1.ID, Player2ID: player2.ID}
+						mp.RemovePlayers(player1.ID, player2.ID)
+						matchFound = true
+						break
+					}
 				}
 			}
-			if !matchFound {
-				i++
+			if matchFound {
+				// Remove player1 from the list to prevent further matching in this cycle
+				playerIDs = append(playerIDs[:i], playerIDs[i+1:]...)
+				i-- // Adjust index after removal
 			}
-			// If a match was found, don't increment i as the next player will have shifted to the current index
 		}
 		mp.Unlock()
 	}
 }
 
-func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
-	// Check for overlapping Difficulties (Difficulties do not overlap)
-	// Seems inefficient, but max 3 difficulties each
+func (mp *MatchmakingPool) shouldMatch(player1, player2 *PlayerInfo) bool {
+	// Check for overlapping Difficulties
 	for _, dif1 := range player1.Difficulties {
 		for _, dif2 := range player2.Difficulties {
 			if dif1 == dif2 {
@@ -99,7 +107,7 @@ func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
 		}
 	}
 
-	// Check if force matching is triggered (assuming a 'ForceMatch' field in Player model)
+	// Check if force matching is triggered
 	if time.Since(player1.JoinedAt) >= mp.MatchCheck && player1.ForceMatch ||
 		time.Since(player2.JoinedAt) >= mp.MatchCheck && player2.ForceMatch {
 		return true
@@ -107,15 +115,10 @@ func (mp *MatchmakingPool) shouldMatch(player1, player2 *Player) bool {
 	return false
 }
 
-func (mp *MatchmakingPool) notifyMatch(player1, player2 *Player) {
-	// TODO: Send session information in this function as well as making matched true
+func (mp *MatchmakingPool) createMatch(player1ID, player2ID int64) bool {
+	player1 := mp.Players[player1ID]
+	player2 := mp.Players[player2ID]
 
-	lobby := &Lobby{Player1: player1, Player2: player2}
-	player1.Matched <- lobby
-	player2.Matched <- lobby
-}
-
-func (mp *MatchmakingPool) createMatch(player1, player2 *Player) bool {
 	var difficulties []enums.Difficulty
 	for _, dif1 := range player1.Difficulties {
 		for _, dif2 := range player2.Difficulties {
@@ -125,35 +128,21 @@ func (mp *MatchmakingPool) createMatch(player1, player2 *Player) bool {
 		}
 	}
 
+	// Assuming GetRandomProblemForDuel uses the IDs to fetch problems
 	prob, err := store.DataStore.GetRandomProblemForDuel(player1.Tags, player2.Tags, difficulties)
 	if prob == nil || err != nil {
 		return false
 	}
 
 	gameManager := game.GetGameManager()
-	gameManager.CreateSession(player1.ID, player2.ID, prob)
+	gameManager.CreateSession(player1ID, player2ID, prob)
 	return true
-
-	// Assign Problem Based on common tags (via store)
-	// Send to Game Manager to create Game Session with player1 and player2
 }
 
-func (mp *MatchmakingPool) RemovePlayers(ids ...int64) bool {
-	var newPlayers []*Player
-	for _, player := range mp.Players {
-		keep := true
-		for _, id := range ids {
-			if player.ID == id {
-				keep = false
-				break
-			}
-		}
-		if keep {
-			newPlayers = append(newPlayers, player)
-		}
+func (mp *MatchmakingPool) RemovePlayers(ids ...int64) {
+	for _, id := range ids {
+		delete(mp.Players, id)
 	}
-	mp.Players = newPlayers
-	return true
 }
 
 func (mp *MatchmakingPool) Size() int {

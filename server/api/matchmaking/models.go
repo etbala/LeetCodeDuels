@@ -5,40 +5,15 @@ import (
 	"time"
 )
 
-type Lobby struct {
-	Player1 *Player
-	Player2 *Player
-}
-
-type Player struct {
+type PlayerInfo struct {
 	ID           int64
-	Username     string
-	Rating       int
-	Matched      chan *Lobby
 	Difficulties []enums.Difficulty
-	Tags         []int     // A slice of tags/flags for matchmaking
-	JoinedAt     time.Time // The time when the player joined the matchmaking pool
-	ForceMatch   bool      // Whether the player has opted for forced matching after a timeout
+	Tags         []int
+	JoinedAt     time.Time
+	ForceMatch   bool
 }
 
-func NewPlayer(id int64, username string, tags []int, difficulties []enums.Difficulty, rating int) *Player {
-	return &Player{
-		ID:           id,
-		Username:     username,
-		Tags:         tags,
-		Difficulties: difficulties,
-		Matched:      make(chan *Lobby, 1),
-	}
-}
-
-func (p *Player) GetID() int64 {
-	return p.ID
-}
-
-func (p *Player) GetUsername() string {
-	return p.Username
-}
-
-func (p *Player) GetRating() int {
-	return p.Rating
+type Match struct {
+	Player1ID int64
+	Player2ID int64
 }
