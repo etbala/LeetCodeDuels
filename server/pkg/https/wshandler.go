@@ -7,6 +7,7 @@ import (
 	"leetcodeduels/internal/ws"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -108,9 +109,27 @@ func processSubmission(playerID int64, payload ws.SubmissionPayload, gm *game.Ga
 
 // wsHandler handles WebSocket connection requests
 func WsHandler(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.UserContextKey).(*auth.Claims)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	// Extract token from query parameters or headers
+	tokenString := r.URL.Query().Get("token")
+	if tokenString == "" {
+		// Alternatively, extract from headers
+		tokenString = r.Header.Get("Authorization")
+		if tokenString == "" {
+			log.Println("Unauthorized: No token provided")
+			http.Error(w, "Unauthorized: No token provided", http.StatusUnauthorized)
+			return
+		}
+		// If using "Bearer " prefix in headers
+		if strings.HasPrefix(tokenString, "Bearer ") {
+			tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+		}
+	}
+
+	// Validate the token and extract claims
+	claims, err := auth.ValidateJWT(tokenString)
+	if err != nil {
+		log.Printf("Token validation failed: %v", err)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
 		return
 	}
 

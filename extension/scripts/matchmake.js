@@ -1,17 +1,72 @@
 
+function refreshJWT() {
+  chrome.storage.local.get(['token'], function(data) {
+      fetch('http://localhost:8080/oauth/refresh-token', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + data.token
+          }
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Failed to refresh token');
+          }
+          return response.json();
+      })
+      .then(data => {
+          const newToken = data.token;
+          chrome.storage.local.set({ "token": newToken }, function() {
+              console.log("JWT refreshed and saved");
+
+              // Update the UI as needed
+              window.location.reload(); // Reload to reinitialize with new token
+          });
+      })
+      .catch(error => {
+          console.error('Error refreshing token:', error);
+          logoutUser(); // Log out if refresh fails
+      });
+  });
+}
+
+
 window.onload = function() {
   // Check if the user is logged in by looking for the JWT
   chrome.storage.local.get(['token', 'github_username'], function(data) {
       if (data.token && data.github_username) {
-          // User is logged in, hide the login button and show user info
-          document.getElementById('login-btn').style.display = 'none';
-          document.getElementById('user-info').style.display = 'block';
-          document.getElementById('username').textContent = data.github_username;
+          const payloadBase64 = data.token.split('.')[1];
+          const decodedPayload = JSON.parse(atob(payloadBase64));
+          const expiry = decodedPayload.exp;
+          const now = Math.floor(Date.now() / 1000);
+          
+          if (expiry <= now) {
+              refreshJWT(); // Refresh the token if it's expired
+          } else {
+              console.log(data.token); // DEBUG ONLY
+              // User is logged in, hide the login button and show user info
+              document.getElementById('login-btn').style.display = 'none';
+              document.getElementById('user-info').style.display = 'block';
+              document.getElementById('username').textContent = data.github_username;
+          }
       } else {
           // User is not logged in, show the login button
           document.getElementById('login-btn').style.display = 'block';
           document.getElementById('user-info').style.display = 'none';
       }
+  });
+}
+
+document.getElementById('logout-btn').addEventListener('click', function() {
+  logoutUser();
+});
+
+function logoutUser() {
+  chrome.storage.local.remove(['token', 'github_username'], function() {
+      console.log("User logged out");
+      document.getElementById('login-btn').style.display = 'block';
+      document.getElementById('user-info').style.display = 'none';
+      window.location.reload(); // Optionally reload to reset the UI
   });
 }
 

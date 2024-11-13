@@ -31,8 +31,9 @@ var (
 func GetGameManager() *GameManager {
 	once.Do(func() {
 		instance = &GameManager{
-			Sessions: make(map[int]*Session),
-			Players:  make(map[int64]int),
+			Sessions:          make(map[int]*Session),
+			Players:           make(map[int64]int),
+			PlayerConnections: make(map[int64]*websocket.Conn),
 		}
 	})
 	return instance
