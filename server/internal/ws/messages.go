@@ -11,7 +11,17 @@ type Message struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// StartGamePayload is sent when a game session starts
+type InvitationPayload struct {
+	InvitationID string `json:"invitationID"`
+	FromUserID   int64  `json:"fromUserID"`
+	FromUsername string `json:"fromUsername"`
+}
+
+type InvitationResponsePayload struct {
+	InvitationID string `json:"invitationID"`
+	Accepted     bool   `json:"accepted"`
+}
+
 type StartGamePayload struct {
 	SessionID  int    `json:"sessionID"`
 	ProblemURL string `json:"problemURL"`

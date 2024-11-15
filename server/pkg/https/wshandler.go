@@ -109,7 +109,7 @@ func processSubmission(playerID int64, payload ws.SubmissionPayload, gm *game.Ga
 
 // wsHandler handles WebSocket connection requests
 func WsHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract token from query parameters or headers
+	// Extract token from query params
 	tokenString := r.URL.Query().Get("token")
 	if tokenString == "" {
 		// Alternatively, extract from headers
@@ -137,6 +137,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
+		http.Error(w, "Error: Could not upgrade to websocket connection", http.StatusBadRequest)
 		return
 	}
 	defer conn.Close()
