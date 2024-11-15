@@ -1,13 +1,18 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"leetcodeduels/internal/ws"
 	"leetcodeduels/pkg/connections"
 	"leetcodeduels/pkg/store"
+	"log"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // Handles Game Sessions
@@ -44,32 +49,40 @@ func resetGameManager() {
 // SendMessageToPlayer sends a WebSocket message to a specific player
 func SendMessageToPlayer(playerID int64, message ws.Message) error {
 	cm := connections.GetConnectionManager()
-	conn, exists := cm.UserConnections[playerID]
-	if !exists {
-		return errors.New("player not connected")
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		return err
 	}
-
-	return conn.WriteJSON(message)
+	err = cm.SendMessageToUser(playerID, websocket.TextMessage, messageBytes)
+	if err != nil {
+		// Handle the case where the user is not connected
+		// For example, log the error or handle accordingly
+		return fmt.Errorf("failed to send message to player %d: %v", playerID, err)
+	}
+	return nil
 }
 
 // BroadcastToSession sends a message to all players in a specific session
 func (gm *GameManager) BroadcastToSession(sessionID int, message ws.Message) {
 	gm.RLock()
-	defer gm.RUnlock()
 	session, exists := gm.Sessions[sessionID]
+	gm.RUnlock()
 	if !exists {
 		return
 	}
 
-	for _, player := range session.Players {
-		err := SendMessageToPlayer(player, message)
+	for _, playerID := range session.Players {
+		err := SendMessageToPlayer(playerID, message)
 		if err != nil {
-			// TODO: Handle Player not connected
+			// Log the error or handle as needed
+			log.Printf("Failed to send message to player %d: %v", playerID, err)
 		}
 	}
 }
 
 func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.Problem) *Session {
+	// TODO: Check if players are already in-game and error if they are
+
 	gm.RLock()
 	sessionID := len(gm.Sessions) + 1
 	gm.RUnlock()
@@ -82,6 +95,10 @@ func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.
 		Submissions: make([][]PlayerSubmission, 2),
 		StartTime:   time.Now(),
 	}
+
+	cm := connections.GetConnectionManager()
+	cm.SetUserInGame(player1ID, true)
+	cm.SetUserInGame(player2ID, true)
 
 	gm.Lock()
 	gm.Sessions[sessionID] = session
@@ -118,6 +135,10 @@ func (gm *GameManager) EndSession(sessionID int) {
 
 	player1 := session.Players[0]
 	player2 := session.Players[1]
+
+	cm := connections.GetConnectionManager()
+	cm.SetUserInGame(player1, false)
+	cm.SetUserInGame(player2, false)
 
 	gm.Lock()
 	delete(gm.Players, player1)
@@ -203,7 +224,11 @@ func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission
 				Type:    ws.MessageTypeOpponentSubmission,
 				Payload: ws.MarshalPayload(opponentSubmissionPayload),
 			}
-			SendMessageToPlayer(opponentID, opponentMessage)
+			err = SendMessageToPlayer(opponentID, opponentMessage)
+			if err != nil {
+				// Handle the case where the opponent is not connected
+				log.Printf("Failed to send opponent submission to player %d: %v", opponentID, err)
+			}
 		}
 		return nil
 	}
@@ -249,19 +274,55 @@ func (gm *GameManager) GetOpponentID(sessionID int, playerID int64) (int64, erro
 	return 0, errors.New("opponent not found")
 }
 
+func (gm *GameManager) HandleDisconnectedPlayers() {
+	cm := connections.GetConnectionManager()
+
+	gm.Lock()
+	defer gm.Unlock()
+
+	for sessionID, session := range gm.Sessions {
+		for _, playerID := range session.Players {
+			if !cm.IsUserOnline(playerID) {
+				// Start a timer for the disconnected player
+				go gm.handleDisconnectionTimeout(sessionID, playerID)
+			}
+		}
+	}
+}
+
+func (gm *GameManager) handleDisconnectionTimeout(sessionID int, playerID int64) {
+	time.Sleep(5 * time.Minute) // Wait for 5 minutes
+	cm := connections.GetConnectionManager()
+	if !cm.IsUserOnline(playerID) {
+		// Player did not reconnect, end the session
+		gm.Lock()
+		session, exists := gm.Sessions[sessionID]
+		gm.Unlock()
+		if exists {
+			// Declare the opponent as the winner
+			opponentID, err := gm.GetOpponentID(sessionID, playerID)
+			if err == nil {
+				session.Winner = opponentID
+				gm.EndSession(sessionID)
+			}
+		}
+	}
+}
+
 func (gm *GameManager) CalculateNewMMR(player1ID, player2ID, winnerID int64) error {
 	gm.RLock()
-	player1, player2 := gm.Sessions[gm.Players[player1ID]].Players[0], gm.Sessions[gm.Players[player2ID]].Players[1]
+	player1 := gm.Sessions[gm.Players[player1ID]].Players[0]
+	player2 := gm.Sessions[gm.Players[player2ID]].Players[1]
 	gm.RUnlock()
 
 	// Get Profiles of Players
 	profile1, err := store.DataStore.GetUserProfile(player1ID)
 	if err != nil {
-		return errors.New("Invalid Player1ID when calculating mmr change after match.")
+		return fmt.Errorf("Invalid Player1ID when calculating MMR change after match: %v", err)
 	}
 	profile2, err := store.DataStore.GetUserProfile(player2ID)
 	if err != nil {
-		return errors.New("Invalid Player2ID when calculating mmr change after match.")
+		return fmt.Errorf("Invalid Player2ID when calculating MMR change after match: %v", err)
 	}
 
 	kFactor := 32

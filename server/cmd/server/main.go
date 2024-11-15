@@ -31,6 +31,14 @@ func main() {
 
 	store.InitDataStore(cfg.DB_URL)
 
+	gm := GetGameManager()
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		for range ticker.C {
+			gm.HandleDisconnectedPlayers()
+		}
+	}()
+
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
