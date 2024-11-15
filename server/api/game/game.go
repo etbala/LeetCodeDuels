@@ -3,12 +3,11 @@ package game
 import (
 	"errors"
 	"leetcodeduels/internal/ws"
+	"leetcodeduels/pkg/connections"
 	"leetcodeduels/pkg/store"
 	"math"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 // Handles Game Sessions
@@ -18,9 +17,8 @@ import (
 
 type GameManager struct {
 	sync.RWMutex
-	Sessions          map[int]*Session // Map session ID to Session
-	Players           map[int64]int    // Map player ID to session ID
-	PlayerConnections map[int64]*websocket.Conn
+	Sessions map[int]*Session // Map session ID to Session
+	Players  map[int64]int    // Map player ID to session ID
 }
 
 var (
@@ -31,9 +29,8 @@ var (
 func GetGameManager() *GameManager {
 	once.Do(func() {
 		instance = &GameManager{
-			Sessions:          make(map[int]*Session),
-			Players:           make(map[int64]int),
-			PlayerConnections: make(map[int64]*websocket.Conn),
+			Sessions: make(map[int]*Session),
+			Players:  make(map[int64]int),
 		}
 	})
 	return instance
@@ -44,26 +41,10 @@ func resetGameManager() {
 	once = sync.Once{}
 }
 
-// AddPlayerConnection associates a WebSocket connection with a player ID
-func (gm *GameManager) AddPlayerConnection(playerID int64, conn *websocket.Conn) {
-	gm.Lock()
-	gm.PlayerConnections[playerID] = conn
-	gm.Unlock()
-}
-
-// RemovePlayerConnection removes the association between a player ID and their connection
-func (gm *GameManager) RemovePlayerConnection(playerID int64) {
-	gm.Lock()
-	delete(gm.PlayerConnections, playerID)
-	gm.Unlock()
-}
-
 // SendMessageToPlayer sends a WebSocket message to a specific player
-func (gm *GameManager) SendMessageToPlayer(playerID int64, message ws.Message) error {
-	gm.RLock()
-	conn, exists := gm.PlayerConnections[playerID]
-	gm.RUnlock()
-
+func SendMessageToPlayer(playerID int64, message ws.Message) error {
+	cm := connections.GetConnectionManager()
+	conn, exists := cm.UserConnections[playerID]
 	if !exists {
 		return errors.New("player not connected")
 	}
@@ -74,22 +55,18 @@ func (gm *GameManager) SendMessageToPlayer(playerID int64, message ws.Message) e
 // BroadcastToSession sends a message to all players in a specific session
 func (gm *GameManager) BroadcastToSession(sessionID int, message ws.Message) {
 	gm.RLock()
+	defer gm.RUnlock()
 	session, exists := gm.Sessions[sessionID]
 	if !exists {
-		gm.RUnlock()
 		return
 	}
 
 	for _, player := range session.Players {
-		conn, ok := gm.PlayerConnections[player]
-		if ok {
-			// It's safe to release the lock here as we're only reading
-			gm.RUnlock()
-			conn.WriteJSON(message)
-			gm.RLock()
+		err := SendMessageToPlayer(player, message)
+		if err != nil {
+			// TODO: Handle Player not connected
 		}
 	}
-	gm.RUnlock()
 }
 
 func (gm *GameManager) CreateSession(player1ID, player2ID int64, problem *store.Problem) *Session {
@@ -149,7 +126,10 @@ func (gm *GameManager) EndSession(sessionID int) {
 	gm.Unlock()
 
 	// Determine winner and send game_over message
-	winnerID := session.Winner // Assuming Winner is set
+	if session.Winner == -1 {
+		// TODO: Handle Draws/Canceled Games
+	}
+	winnerID := session.Winner
 	duration := session.EndTime.Sub(session.StartTime).Seconds()
 
 	gameOverPayload := ws.GameOverPayload{
@@ -180,20 +160,18 @@ func (gm *GameManager) ListSessions() []*Session {
 	return sessions
 }
 
-func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission) {
+func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission) error {
 	gm.RLock()
 	sessionID, ok := gm.Players[playerID]
 	if !ok {
 		gm.RUnlock()
-		// Handle error: Player not in any session
-		return
+		return errors.New("player not in any session")
 	}
 
 	session, ok := gm.Sessions[sessionID]
 	if !ok {
 		gm.RUnlock()
-		// Handle error: Session not found
-		return
+		return errors.New("internal error: session not found")
 	}
 	gm.RUnlock()
 
@@ -225,14 +203,15 @@ func (gm *GameManager) AddSubmission(playerID int64, submission PlayerSubmission
 				Type:    ws.MessageTypeOpponentSubmission,
 				Payload: ws.MarshalPayload(opponentSubmissionPayload),
 			}
-			gm.SendMessageToPlayer(opponentID, opponentMessage)
+			SendMessageToPlayer(opponentID, opponentMessage)
 		}
-		return
+		return nil
 	}
 
 	// If the submission is accepted, determine the winner and end the session
 	session.Winner = session.Players[playerIndex]
 	gm.EndSession(sessionID)
+	return nil
 }
 
 func (gm *GameManager) IsPlayerInSession(playerID int64) bool {
