@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"leetcodeduels/api/game"
 	"leetcodeduels/pkg/config"
 	"leetcodeduels/pkg/https"
 	"leetcodeduels/pkg/store"
@@ -31,7 +32,7 @@ func main() {
 
 	store.InitDataStore(cfg.DB_URL)
 
-	gm := GetGameManager()
+	gm := game.GetGameManager()
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
 		for range ticker.C {

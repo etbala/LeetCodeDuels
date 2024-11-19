@@ -105,6 +105,17 @@ func (cm *ConnectionManager) IsUserInGame(userID int64) bool {
 	return exists && status.InGame
 }
 
+func (cm *ConnectionManager) UpdateLastActivity(userID int64) {
+	cm.Lock()
+	defer cm.Unlock()
+	_, exists := cm.UserStatus[userID]
+	if !exists {
+		return
+	}
+
+	cm.UserStatus[userID].LastActivity = time.Now()
+}
+
 // CheckConnections checks the health of all connections and removes inactive ones.
 // For users in-game, sets their connections to nil instead of removing them.
 func (cm *ConnectionManager) CheckConnections() {

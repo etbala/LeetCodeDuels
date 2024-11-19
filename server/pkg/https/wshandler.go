@@ -5,6 +5,7 @@ import (
 	"leetcodeduels/api/auth"
 	"leetcodeduels/api/game"
 	"leetcodeduels/internal/ws"
+	"leetcodeduels/pkg/connections"
 	"log"
 	"net/http"
 	"strings"
@@ -24,29 +25,29 @@ var upgrader = websocket.Upgrader{
 }
 
 // handleMessage routes incoming messages to appropriate handlers
-func handleMessage(playerID int64, msg ws.Message, gm *game.GameManager) {
+func handleMessage(playerID int64, msg ws.Message, cm *connections.ConnectionManager) {
 	switch msg.Type {
 	case ws.MessageTypeSubmission:
 		var submissionPayload ws.SubmissionPayload
 		err := json.Unmarshal(msg.Payload, &submissionPayload)
 		if err != nil {
-			sendError(playerID, "INVALID_PAYLOAD", "Invalid submission payload", gm)
+			sendError(playerID, "INVALID_PAYLOAD", "Invalid submission payload")
 			return
 		}
 
 		// Process the submission
-		processSubmission(playerID, submissionPayload, gm)
+		processSubmission(playerID, submissionPayload)
 
 	case ws.MessageTypeHeartbeat:
-		// Handle heartbeat messages if implemented
-		// Optionally send a pong or update last active time
+		// Update last activity time
+		cm.UpdateLastActivity(playerID)
 	default:
-		sendError(playerID, "UNKNOWN_TYPE", "Unknown message type", gm)
+		sendError(playerID, "UNKNOWN_TYPE", "Unknown message type")
 	}
 }
 
 // sendError sends an error message to the specified player
-func sendError(playerID int64, code, message string, gm *game.GameManager) {
+func sendError(playerID int64, code, message string) {
 	errorPayload := ws.ErrorPayload{
 		Code:    code,
 		Message: message,
@@ -55,14 +56,25 @@ func sendError(playerID int64, code, message string, gm *game.GameManager) {
 		Type:    ws.MessageTypeError,
 		Payload: ws.MarshalPayload(errorPayload),
 	}
-	gm.SendMessageToPlayer(playerID, errorMessage)
+
+	messageBytes, err := json.Marshal(errorMessage)
+	if err != nil {
+		log.Printf("Failed to marshal error message: %v", err)
+		return
+	}
+
+	cm := connections.GetConnectionManager()
+	err = cm.SendMessageToUser(playerID, websocket.TextMessage, messageBytes)
+	if err != nil {
+		log.Printf("Failed to send error message to player %d: %v", playerID, err)
+	}
 }
 
 // processSubmission handles a player's code submission
-func processSubmission(playerID int64, payload ws.SubmissionPayload, gm *game.GameManager) {
+func processSubmission(playerID int64, payload ws.SubmissionPayload) {
 	status, err := game.ParseSubmissionStatus(payload.Status)
 	if err != nil {
-		// TODO: Handle invalid status
+		sendError(playerID, "INVALID_STATUS", "Invalid submission status")
 		return
 	}
 
@@ -78,33 +90,14 @@ func processSubmission(playerID int64, payload ws.SubmissionPayload, gm *game.Ga
 		Time:            time.Now(),
 	}
 
+	gm := game.GetGameManager()
+
 	// Add the submission to the game session
-	gm.AddSubmission(playerID, submission)
-
-	// Optionally, notify the opponent
-	sessionID, err := gm.GetPlayersSessionID(playerID)
+	err = gm.AddSubmission(playerID, submission)
 	if err != nil {
-		sendError(playerID, "NOT_IN_SESSION", "Player not in any session", gm)
+		sendError(playerID, "ADD_SUBMISSION_ERROR", err.Error())
 		return
 	}
-
-	opponentID, err := gm.GetOpponentID(sessionID, playerID)
-	if err != nil {
-		sendError(playerID, "OPPONENT_NOT_FOUND", "Opponent not found", gm)
-		return
-	}
-
-	opponentSubmissionPayload := ws.OpponentSubmissionPayload{
-		PlayerID: playerID,
-		Status:   string(submission.Status),
-	}
-
-	opponentMessage := ws.Message{
-		Type:    ws.MessageTypeOpponentSubmission,
-		Payload: ws.MarshalPayload(opponentSubmissionPayload),
-	}
-
-	gm.SendMessageToPlayer(opponentID, opponentMessage)
 }
 
 // wsHandler handles WebSocket connection requests
@@ -142,10 +135,12 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Register the connection with GameManager
-	gm := game.GetGameManager()
-	gm.AddPlayerConnection(claims.UserID, conn)
-	defer gm.RemovePlayerConnection(claims.UserID)
+	// Get the ConnectionManager instance
+	cm := connections.GetConnectionManager()
+
+	// Register the connection with ConnectionManager
+	cm.AddConnection(claims.UserID, conn)
+	defer cm.RemoveConnection(claims.UserID)
 
 	// Listen for incoming messages
 	for {
@@ -158,6 +153,6 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		handleMessage(claims.UserID, msg, gm)
+		handleMessage(claims.UserID, msg, cm)
 	}
 }
