@@ -1,6 +1,7 @@
 package connections
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,8 +10,10 @@ import (
 )
 
 type UserStatus struct {
-	InGame       bool
-	LastActivity time.Time
+	InGame            bool
+	LastActivity      time.Time
+	PendingInvitation bool
+	InvitedUserID     int64 // If pending invitation, stores the id of user that was invited
 }
 
 // ConnectionManager manages user WebSocket connections and usernames.
@@ -45,7 +48,7 @@ func (cm *ConnectionManager) AddConnection(userID int64, conn *websocket.Conn) {
 
 	// Initialize UserStatus if not already present
 	if _, exists := cm.UserStatus[userID]; !exists {
-		cm.UserStatus[userID] = &UserStatus{InGame: false}
+		cm.UserStatus[userID] = &UserStatus{InGame: false, PendingInvitation: false}
 	}
 }
 
@@ -92,7 +95,7 @@ func (cm *ConnectionManager) SetUserInGame(userID int64, inGame bool) {
 	if status, exists := cm.UserStatus[userID]; exists {
 		status.InGame = inGame
 	} else {
-		cm.UserStatus[userID] = &UserStatus{InGame: inGame}
+		cm.UserStatus[userID] = &UserStatus{InGame: inGame, PendingInvitation: false}
 	}
 	cm.Unlock()
 }
@@ -114,6 +117,47 @@ func (cm *ConnectionManager) UpdateLastActivity(userID int64) {
 	}
 
 	cm.UserStatus[userID].LastActivity = time.Now()
+}
+
+func (cm *ConnectionManager) SentInvitation(userID int64) (int64, bool) {
+	cm.RLock()
+	defer cm.RUnlock()
+	status, exists := cm.UserStatus[userID]
+	if exists && status.PendingInvitation {
+		return status.InvitedUserID, true
+	}
+	return -1, false
+}
+
+func (cm *ConnectionManager) SendInvitation(userID int64, destUserID int64) error {
+	cm.Lock()
+	defer cm.Unlock()
+
+	status, exists := cm.UserStatus[userID]
+	if !exists {
+		return errors.New("User is not online or does not exist.")
+	}
+
+	if status.PendingInvitation {
+		return errors.New("User already awaiting invitation response.")
+	}
+
+	status.InvitedUserID = destUserID
+	return nil
+}
+
+func (cm *ConnectionManager) CancelInvitation(userID int64) error {
+	cm.Lock()
+	defer cm.Unlock()
+
+	status, exists := cm.UserStatus[userID]
+	if !exists {
+		return errors.New("User is not online or does not exist.")
+	}
+
+	status.PendingInvitation = false
+	status.InvitedUserID = -1
+	return nil
 }
 
 // CheckConnections checks the health of all connections and removes inactive ones.

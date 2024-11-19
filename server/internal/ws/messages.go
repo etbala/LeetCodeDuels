@@ -12,14 +12,13 @@ type Message struct {
 }
 
 type InvitationPayload struct {
-	InvitationID string `json:"invitationID"`
 	FromUserID   int64  `json:"fromUserID"`
 	FromUsername string `json:"fromUsername"`
 }
 
 type InvitationResponsePayload struct {
-	InvitationID string `json:"invitationID"`
-	Accepted     bool   `json:"accepted"`
+	FromUserID int64 `json:"fromUserID"`
+	Accepted   bool  `json:"accepted"`
 }
 
 type StartGamePayload struct {
