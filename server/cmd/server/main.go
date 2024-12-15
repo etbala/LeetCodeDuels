@@ -1,92 +1,75 @@
-package main
 
-import (
-	"context"
-	"flag"
-	"leetcodeduels/api/game"
-	"leetcodeduels/pkg/config"
-	"leetcodeduels/pkg/https"
-	"leetcodeduels/pkg/store"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"github.com/joho/godotenv"
-	"github.com/rs/cors"
-)
 
-func main() {
 
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
+/*
 
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
+	Redis for Session Information:
 
-	store.InitDataStore(cfg.DB_URL)
+		Set TTL to expire after 24 hrs
 
-	gm := game.GetGameManager()
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		for range ticker.C {
-			gm.HandleDisconnectedPlayers()
+		Key: "match:<match_id>"
+		Value: {
+			"player_one": 1,
+			"player_two": 2,
+			"problem_id": 42,
+			"player_one_submissions": [],
+			"player_two_submissions": [],
 		}
-	}()
 
-	var port string
-	flag.StringVar(&port, "port", "8080", "Server port to listen on")
-	flag.Parse()
+		Key: "ws_connections:<match_id>"
+		Value: [
+			"conn1", "conn2"
+		]
 
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://leetcode.com"},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
-		AllowCredentials: true,
-	})
-
-	// Init Endpoints
-	router := https.NewRouter()
-	handler := c.Handler(router)
-
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: handler,
-	}
-
-	// Start server in a goroutine
-	go func() {
-		log.Printf("Starting server on port %s\n", port)
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %s", err)
+		Key: "user_session:<user_id>"
+		Value: {
+			"match_id": "12345"
 		}
-	}()
 
-	// Graceful Shutdown
-	waitForShutdown(srv)
-}
+	Postgres for long term storage
+	- Accounts
+	- Problem Metadata
+	- Match History (Aborted/Completed Matches)
 
-func waitForShutdown(srv *http.Server) {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+*/
 
-	<-stop
+/* Testing
 
-	// Shutdown the server with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
-	log.Println("Shutting down server...")
+Unit Tests
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
+    Focus on testing functions and methods for correctness.
+    Example:
+        Authentication:
+            Test JWT creation and validation.
+            Mock GitHub OAuth responses.
+        Redis/Database Operations:
+            Mock Redis/Postgres to ensure queries behave correctly.
 
-	log.Println("Server exiting")
-}
+Integration Tests
+
+    Test API endpoints with a mocked database and Redis.
+    Use httptest to simulate HTTP requests and responses.
+    Example:
+        Match Creation:
+            Simulate a user creating an invitation.
+            Ensure the match is stored in Redis and correctly linked to the user.
+
+WebSocket Testing
+
+    Simulate WebSocket connections and message exchanges.
+    Example:
+        Test that two users connected to the same match receive real-time updates when one submits code.
+    Use libraries like nhooyr/websocket or native WebSocket clients for testing.
+
+End-to-End Tests
+
+    Simulate real user workflows from authentication to match completion.
+    Example:
+        User logs in via GitHub OAuth.
+        User invites another user to a duel.
+        Match progresses with real-time updates.
+        Match completes and results are persisted in the database.
+
+*/
