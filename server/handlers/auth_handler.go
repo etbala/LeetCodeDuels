@@ -1,0 +1,25 @@
+package handlers
+
+import (
+    "leetcodeduels/services"
+)
+
+
+func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
+    code := r.URL.Query().Get("code")
+    state := r.URL.Query().Get("state")
+    
+    user, err := services.ExchangeCodeForUser(code, state)
+    if err != nil {
+        http.Error(w, "Invalid code or state", http.StatusBadRequest)
+        return
+    }
+
+    token, err := services.GenerateJWT(user.ID)
+    if err != nil {
+        http.Error(w, "Could not generate token", http.StatusInternalServerError)
+        return
+    }
+
+    json.NewEncoder(w).Encode(map[string]string{"token": token})
+}

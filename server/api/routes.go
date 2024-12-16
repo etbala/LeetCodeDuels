@@ -4,7 +4,6 @@ import (
     "net/http"
 
     "github.com/gorilla/mux"
-    // "leetcodeduels/handlers"
 )
 
 // SetupRoutes initializes and returns the main router with all route groups and middleware set up.
