@@ -1,38 +1,37 @@
-  {
+{
     "manifest_version": 3,
     "name": "LeetCode Duels",
     "version": "1.0",
-    "description": "Allows players to compete to complete leetcode problems first.",
+    "description": "Head-to-head LeetCode against your friends.",
     "permissions": [
-      "scripting",
-      "tabs",
-      "storage",
-      "identity",
-      "webNavigation"
+        "scripting",
+        "tabs",
+        "storage",
+        "identity",
+        "webNavigation"
     ],
     "host_permissions": [
-      "https://leetcode.com/*",
-      "https://github.com/*",
-      "http://localhost:8080/*"
+        "https://leetcode.com/*",
+        "https://github.com/*",
+        "http://localhost:8080/*"
     ],
     "background": {
-      "service_worker": "scripts/background.js"
+        "service_worker": "scripts/background.js"
     },
     "action": {
-      "default_popup": "hello.html",
-      "default_icon": "icon.png"
+        "default_popup": "src/index.html"
     },
     "content_scripts": [
-      {
-        "matches": ["https://leetcode.com/problems/*"],
-        "js": ["scripts/contentScript.js"],
-        "run_at": "document_start"
-      }
+        {
+            "matches": ["https://leetcode.com/problems/*"],
+            "js": ["scripts/contentScript.js"],
+            "run_at": "document_start"
+        }
     ],
     "web_accessible_resources": [
-      {
-        "resources": ["scripts/networkMonitor.js"],
-        "matches": ["https://leetcode.com/*"]
-      }
+        {
+            "resources": ["scripts/networkMonitor.js"],
+            "matches": ["https://leetcode.com/*"]
+        }
     ]
-  }
+}
