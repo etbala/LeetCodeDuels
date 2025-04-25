@@ -27,8 +27,19 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               {
+                "glob": "manifest.json",
+                "input": "src",
+                "output": "."
+              },
+              {
                 "glob": "**/*",
-                "input": "public"
+                "input": "src/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/scripts",
+                "output": "scripts"
               }
             ],
             "styles": [
@@ -50,7 +61,7 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "none"
             },
             "development": {
               "optimization": false,
