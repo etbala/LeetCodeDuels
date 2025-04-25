@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "leetcodeduels": {
+    "extension": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -64,10 +64,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "leetcodeduels:build:production"
+              "buildTarget": "extension:build:production"
             },
             "development": {
-              "buildTarget": "leetcodeduels:build:development"
+              "buildTarget": "extension:build:development"
             }
           },
           "defaultConfiguration": "development"

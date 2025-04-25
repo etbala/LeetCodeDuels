@@ -1,0 +1,89 @@
+/* FILEPATH: /Users/edenbendheim/Dropbox/LeetCodeDuels/extensions/hello.css */
+/* Styles for header */
+body{
+    height: 5%;
+    width: 400px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f2f2f2;
+}
+
+#loginButton,
+#helpButton {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Styles for main */
+main {
+  padding: 20px;
+  display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#matchmakeButton {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: auto;
+}
+
+/* Styles for footer */
+footer {
+  padding: 10px;
+  background-color: #f2f2f2;
+  text-align: center;
+}
+
+/* Styles for paragraph inside footer */
+footer p {
+  margin: 0;
+  font-size: 14px;
+  color: #888;
+}
+
+#difficulties {
+  display: flex;
+  /* make the conetet fit the width of  the div */
+  width: 50%;
+  justify-content: space-around;
+}
+
+.difficultyButton {
+  padding: 5px 10px;
+  background-color: #00695f;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#questions {
+  display: flex;
+  /* make the conetet fit the width of  the div */
+  width: 75%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.questionButton {
+  padding: 5px 10px;
+  background-color: #00a796;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 3px;
+}
