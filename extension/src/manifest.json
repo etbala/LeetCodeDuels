@@ -19,7 +19,7 @@
         "service_worker": "scripts/background.js"
     },
     "action": {
-        "default_popup": "src/index.html"
+        "default_popup": "index.html"
     },
     "content_scripts": [
         {

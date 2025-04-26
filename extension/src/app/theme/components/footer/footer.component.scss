@@ -1,0 +1,16 @@
+.app-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  
+    .rcos {
+        text-decoration: none;
+    }
+
+    .github-logo {
+        height: 16px;
+        margin-left: 0.25rem;
+    }
+}

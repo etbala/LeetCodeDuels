@@ -1,0 +1,25 @@
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--header-bg);
+
+    .logo {
+        height: 32px;
+    }
+    .actions button {
+        padding: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        margin-left: 0.75rem;
+
+        img {
+            display: block;
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+    }
+}
