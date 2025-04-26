@@ -1,0 +1,37 @@
+{
+    "manifest_version": 3,
+    "name": "LeetCode Duels",
+    "version": "1.0",
+    "description": "Head-to-head LeetCode against your friends.",
+    "permissions": [
+        "scripting",
+        "tabs",
+        "storage",
+        "identity",
+        "webNavigation"
+    ],
+    "host_permissions": [
+        "https://leetcode.com/*",
+        "https://api.github.com/*",
+        "http://localhost:8080/*"
+    ],
+    "background": {
+        "service_worker": "scripts/background.js"
+    },
+    "action": {
+        "default_popup": "index.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://leetcode.com/problems/*"],
+            "js": ["scripts/content-script.js"],
+            "run_at": "document_start"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["scripts/network-monitor.js"],
+            "matches": ["https://leetcode.com/*"]
+        }
+    ]
+}
