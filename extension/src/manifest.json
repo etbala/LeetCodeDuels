@@ -24,13 +24,13 @@
     "content_scripts": [
         {
             "matches": ["https://leetcode.com/problems/*"],
-            "js": ["scripts/contentScript.js"],
+            "js": ["scripts/content-script.js"],
             "run_at": "document_start"
         }
     ],
     "web_accessible_resources": [
         {
-            "resources": ["scripts/networkMonitor.js"],
+            "resources": ["scripts/network-monitor.js"],
             "matches": ["https://leetcode.com/*"]
         }
     ]

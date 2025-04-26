@@ -5,10 +5,10 @@ if (!window.__leetcode_duel_extension_injected__) {
     // Inject a script that will override the fetch method / XMLHttpRequest
     // Note: This is done to intercept the response data from the request 
     //       for submission status made by LeetCode's frontend.
-    if (!document.getElementById('networkMonitor')) {
+    if (!document.getElementById('network-monitor')) {
         const networkMonitor = document.createElement('script');
-        networkMonitor.id = 'networkMonitor';
-        networkMonitor.src = chrome.runtime.getURL('scripts/networkMonitor.js');
+        networkMonitor.id = 'network-monitor';
+        networkMonitor.src = chrome.runtime.getURL('scripts/network-monitor.js');
         (document.head || document.documentElement).appendChild(networkMonitor);
     }
 
