@@ -10,7 +10,7 @@ import { AuthService } from './auth.service';
 export class AuthInterceptor implements HttpInterceptor {
 constructor(private auth: AuthService) {}
 
-intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     return from(this.auth.token).pipe(
     switchMap(token => {
         if (!token) return next.handle(req);

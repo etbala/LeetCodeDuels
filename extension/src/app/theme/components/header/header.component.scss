@@ -6,8 +6,16 @@
     background: var(--header-bg);
 
     .logo {
-        height: 32px;
+        padding: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+
+        img {
+            height: 32px;
+        }
     }
+    
     .actions button {
         padding: 0;
         background: none;

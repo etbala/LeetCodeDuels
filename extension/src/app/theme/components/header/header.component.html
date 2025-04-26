@@ -1,12 +1,14 @@
 <header class="app-header">
-    <img src="assets/icon.png" alt="Logo" class="logo" />
+    <button class="logo" routerLink="/" aria-label="Logo">
+        <img src="assets/icon.png" alt="Logo" />
+    </button>
 
     <div class="actions">
         <button routerLink="/settings" aria-label="Settings">
             <img src="assets/settings.svg" alt="Settings" class="settings-icon" />
         </button>
-        <button (click)="close()" aria-label="Close">
-            <img src="assets/xmark.svg" alt="Exit" class="exit-icon" />
+        <button (click)="logout()" aria-label="logout">
+            <img src="assets/logout.svg" alt="logout" class="exit-icon" />
         </button>
     </div>
 </header>

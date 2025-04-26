@@ -1,20 +1,38 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { take } from 'rxjs';
 import { AuthService } from 'core/auth.service';
 
 @Component({
-  selector: 'login-page',
+  selector: 'app-login-page',
   standalone: true,
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './login-page.component.html',
-  styleUrl: './login-page.component.scss'
+  styleUrls: ['./login-page.component.scss']
 })
-export class LoginPageComponent {
-  constructor(private auth: AuthService) {}
+export class LoginPageComponent implements OnInit {
+  constructor(
+    private auth: AuthService,
+    private router: Router
+  ) {}
 
-  onLogin() {
+  ngOnInit(): void {
+    // If already logged in, go straight to dashboard
+    this.auth.isLoggedIn$
+      .pipe(take(1))
+      .subscribe(loggedIn => {
+        if (loggedIn) {
+          this.router.navigate(['dashboard']);
+        }
+      });
+  }
+
+  onLogin(): void {
     this.auth.login().subscribe({
       next: () => {
-        // after login, angular router will take you to dashboard via your routes
+        // After a successful login, route to dashboard
+        this.router.navigate(['dashboard']);
       },
       error: err => console.error('Login failed', err)
     });

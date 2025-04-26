@@ -10,14 +10,15 @@ export function chromeIdentityLaunchFlow(url: string): Promise<string> {
 }
 
 export function chromeStorageGet<T>(key: string): Promise<T | null> {
-  return new Promise(resolve => {
-    chrome.storage.local.get([key], result => {
-      resolve(result[key] ?? null);
+  return new Promise<T | null>(resolve => {
+    chrome.storage.local.get([key], (result: Record<string, unknown>) => {
+      const val = result[key];
+      resolve((val !== undefined ? (val as T) : null));
     });
   });
 }
 
-export function chromeStorageSet(key: string, value: any): Promise<void> {
+export function chromeStorageSet(key: string, value: unknown): Promise<void> {
   return new Promise(resolve => {
     chrome.storage.local.set({ [key]: value }, () => resolve());
   });

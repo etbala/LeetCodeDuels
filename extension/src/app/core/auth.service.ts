@@ -30,25 +30,40 @@ export class AuthService {
       .subscribe();
   }
 
+  // Login on opening extension
+  init(): Promise<void> {
+    return chromeStorageGet<string>(this.tokenKey).then(token => {
+      if (token) {
+        this.setSession(token);
+      }
+    });
+  }
+
   /** Kick off GitHub OAuth flow, exchange code, persist JWT */
   login() {
     const clientId = 'Ov23liQ4ERGhUYdeT8yb';
     const redirectUri = chrome.identity.getRedirectURL();
+    console.log('OAuth redirect URI:', redirectUri); // For development, print extension url to set redirect uri in github oauth
     const authURL = `https://github.com/login/oauth/authorize`
       + `?client_id=${encodeURIComponent(clientId)}`
       + `&redirect_uri=${encodeURIComponent(redirectUri)}`
       + `&scope=user`;
 
     return from(chromeIdentityLaunchFlow(authURL)).pipe(
+      tap(url => console.log('[AuthService] chromeIdentity returned', url)),
       switchMap(redirectUrl => {
         const code = new URL(redirectUrl).searchParams.get('code');
+        console.log('[AuthService] Got code', code);
         if (!code) throw new Error('No code returned');
         return this.http.post<{ token: string }>(
           'http://localhost:8080/oauth/exchange-token',
           { code }
         );
       }),
-      tap(({ token }) => this.setSession(token))
+      tap(({ token }) => {
+        console.log('[AuthService] Exchanging code succeeded, token=', token);
+        this.setSession(token)
+      })
     );
   }
 
