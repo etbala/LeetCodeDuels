@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"leetcodeduels/api"
+	"leetcodeduels/auth"
+	"leetcodeduels/config"
 	"log"
 	"net/http"
 	"os"
@@ -48,7 +51,7 @@ func main() {
 	})
 
 	// Init Endpoints
-	router := https.NewRouter()
+	router := api.SetupRoutes(auth.Middleware)
 	handler := c.Handler(router)
 
 	srv := &http.Server{

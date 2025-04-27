@@ -1,12 +1,12 @@
-package jwt
+package auth
 
 import (
-	"fmt"
-	"leetcodeduels/pkg/config"
-	"time"
 	"context"
+	"fmt"
+	"leetcodeduels/config"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )
