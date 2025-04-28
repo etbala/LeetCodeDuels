@@ -3,13 +3,14 @@ package api
 import (
 	"net/http"
 
+	"leetcodeduels/database"
 	"leetcodeduels/handlers"
 
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes initializes and returns the main router with all route groups and middleware set up.
-func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
+func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Router {
 	r := mux.NewRouter()
 
 	// --------------------
