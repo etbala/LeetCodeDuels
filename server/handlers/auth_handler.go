@@ -17,7 +17,7 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GenerateJWT(user.ID)
+	token, err := auth.GenerateJWT(user.ID, user.Username)
 	if err != nil {
 		http.Error(w, "Could not generate token", http.StatusInternalServerError)
 		return
