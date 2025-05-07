@@ -22,7 +22,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 
 	// Public routes for initiating and handling GitHub OAuth
 	publicAuthRouter.HandleFunc("/github/initiate", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.AuthGitHubInitiate(w, r)
+		handlers.AuthGitHubInitiate(w, r)
 	}).Methods("GET")
 
 	publicAuthRouter.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
