@@ -1,7 +1,7 @@
 # LeetCode Duels
 
 ![Server CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/go.yml/badge.svg?branch=main)
-![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/lint-extension.yml/badge.svg?branch=main)
+![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/extension.yml/badge.svg?branch=main)
 
 A competitive coding extension that lets you challenge friends to real-time LeetCode duels.
 
