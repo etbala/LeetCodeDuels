@@ -1,12 +1,41 @@
-# LeetCodeDuels
+# LeetCode Duels
 
-Our project revolves around the development of a browser extension that brings an exciting twist to LeetCode. 
+![Server CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/go.yml/badge.svg?branch=main)
+![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/lint-extension.yml/badge.svg?branch=main)
 
-This extension will enable users to engage in head-to-head coding duels, enhancing the traditional problem-solving experience. Users can challenge friends or random opponents in real-time. 
+A competitive coding extension that lets you challenge friends to real-time LeetCode duels.
 
-In addition to duels, we're implementing a matchmaking service that pairs users based on skill levels, problem difficulty preferences, and problem types. To ensure a seamless experience, we'll scrape and maintain a comprehensive database of LeetCode problems, complete with problem names, numbers, difficulties, and tags. 
+## Getting Started
 
-Users will also have the option to create accounts, enabling them to build connections, add friends, and initiate duels without relying solely on the matchmaking service. Additional features such as leaderboards and achievements may be added, further enhancing the competitive and social aspects of the extension. 
+### 1. Clone the repository
+```bash
+git clone https://github.com/etbala/LeetCodeDuels.git
+cd LeetCodeDuels
+```
 
-## How to start contributing
-Please feel free to contribute to this project by following the steps in the added file [getting_started.md](getting_started.md).
+### 2. Install Dependencies
+Install Go (v1.24+) and Node.js (v22+).
+```bash
+npm install -g @angular/cli
+```
+
+### 3. Run Server
+```bash
+cd server/cmd/server
+go run main.go
+```
+
+### 4. Compile Extension
+```bash
+cd extension
+npm install
+ng build
+```
+
+### 5. Load Extension in Browser
+Load Unpacked Extension from Directory: `/extension/dist/browser`
+
+> For Chrome, see https://support.google.com/chrome/a/answer/2714278
+
+> For Firefox, see https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/
+
