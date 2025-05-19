@@ -29,15 +29,9 @@ func main() {
 		panic(err)
 	}
 
-	// store.InitDataStore(cfg.DB_URL)
-
-	// gm := game.GetGameManager()
-	// go func() {
-	// 	ticker := time.NewTicker(10 * time.Minute)
-	// 	for range ticker.C {
-	// 		gm.HandleDisconnectedPlayers()
-	// 	}
-	// }()
+	// TODO: Init Database Obj
+	// TODO: Init Web Socket Conn Handler
+	// TOOD: Init Game Session Handler
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")

@@ -92,10 +92,12 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 
 	mmRouter.HandleFunc("/enter", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.EnterQueue(w, r)
+		http.Error(w, "Not yet implemented", http.StatusNotImplemented)
 	}).Methods("POST")
 
 	mmRouter.HandleFunc("/leave", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.LeaveQueue(w, r)
+		http.Error(w, "Not yet implemented", http.StatusNotImplemented)
 	}).Methods("POST")
 
 	// ----------------------
@@ -117,7 +119,6 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 	// --------------------
 	// Problems Routes
 	// --------------------
-	// Problem routes can be public (no authentication needed)
 	problemRouter := r.PathPrefix("/problems").Subrouter()
 	problemRouter.HandleFunc("/random", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.ProblemsRandom(w, r)
@@ -126,7 +127,6 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 	// --------------------
 	// WebSocket Upgrader
 	// --------------------
-	// WebSocket endpoint requires authentication
 	wsRouter := r.PathPrefix("/ws").Subrouter()
 	wsRouter.Use(authMiddleware)
 
