@@ -5,55 +5,50 @@ import (
 	"fmt"
 	"io"
 	"leetcodeduels/config"
-	"leetcodeduels/database"
 	"leetcodeduels/models"
+	"leetcodeduels/store"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
 // ExchangeCodeForUser handles the full OAuth + upsert flow, purely functional.
-func ExchangeCodeForUser(db database.I_DB, code, state string) (*models.User, error) {
+func ExchangeCodeForUser(code, state string) (*models.User, error) {
 	// load client credentials
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	// 1) swap code → access token
 	token, err := exchangeCode(cfg.GITHUB_CLIENT_ID, cfg.GITHUB_CLIENT_SECRET, code)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2) fetch GitHub user (ID + login)
 	ghID, login, err := fetchGitHubUser(token)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3) see if user already exists
-	existing, err := db.GetUserProfile(ghID)
+	existing, err := store.DataStore.GetUserProfile(ghID)
 	if err != nil {
-		// if your DB layer returns ErrNotFound, you could check errors.Is(err, database.ErrNotFound)
-		// here—but for simplicity we assume err!=nil is always a hard error.
 		return nil, err
 	}
 
 	var user models.User
 	if existing != nil {
 		// update their token and return
-		if err := db.UpdateGithubAccessToken(ghID, token); err != nil {
+		if err := store.DataStore.UpdateGithubAccessToken(ghID, token); err != nil {
 			return nil, err
 		}
 		user = *existing
 		user.AccessToken = token
 	} else {
-		// new user: save and then re-fetch to get full fields
-		if err := db.SaveOAuthUser(ghID, login, token); err != nil {
+		// TODO: new user, need to go through onboarding process (choose username/enter leetcode username)
+		if err := store.DataStore.SaveOAuthUser(ghID, login, token); err != nil {
 			return nil, err
 		}
-		created, err := db.GetUserProfile(ghID)
+		created, err := store.DataStore.GetUserProfile(ghID)
 		if err != nil {
 			return nil, err
 		}

@@ -6,6 +6,7 @@ import (
 	"leetcodeduels/api"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
+	"leetcodeduels/store"
 	"leetcodeduels/ws"
 	"log"
 	"net/http"
@@ -30,7 +31,9 @@ func main() {
 		panic(err)
 	}
 
-	// TODO: Init Database Obj
+	store.InitDataStore(cfg.DB_URL)
+
+	// TODO: Init OAuth State Handler
 
 	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
 	if err != nil {
@@ -38,9 +41,8 @@ func main() {
 	}
 	defer cm.Close()
 
-	// TODO: Init Game Session Handler
 	// TODO: Init Invite Handler
-	// TODO: Init State Handler
+	// TODO: Init Game Session Handler
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")

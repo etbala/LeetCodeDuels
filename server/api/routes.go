@@ -46,10 +46,6 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		// handlers.MyProfile(w, r)
 	}).Methods("GET")
 
-	accountRouter.HandleFunc("/me/onboard", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.CreateUser(w, r)
-	}).Methods("GET")
-
 	accountRouter.HandleFunc("/me/delete", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.DeleteUser(w, r)
 	}).Methods("GET")
