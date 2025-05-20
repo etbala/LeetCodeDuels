@@ -6,6 +6,7 @@ import (
 	"leetcodeduels/api"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
+	"leetcodeduels/ws"
 	"log"
 	"net/http"
 	"os"
@@ -29,6 +30,12 @@ func main() {
 		panic(err)
 	}
 
+	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("redis init failed: %v", err)
+	}
+	defer cm.Close()
+
 	// TODO: Init Database Obj
 	// TODO: Init Web Socket Conn Handler
 	// TOOD: Init Game Session Handler
@@ -38,7 +45,7 @@ func main() {
 	flag.Parse()
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://leetcode.com"},
+		AllowedOrigins:   []string{"https://leetcode.com", "http://127.0.0.1"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type"},
 		AllowCredentials: true,

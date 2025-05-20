@@ -5,14 +5,13 @@ import (
 	"time"
 )
 
-// NOTE: Payloads are exclusively sent by server, client always responds via API (excluding heartbeats)
-
 const (
 	MessageTypeStartGame          = "start_game"
 	MessageTypeGameOver           = "game_over"
 	MessageTypeError              = "error"
 	MessageTypeHeartbeat          = "heartbeat"
 	MessageTypeSendInvitation     = "send_invitation"
+	MessageTypeSubmission         = "submission"
 	MessageTypeOpponentSubmission = "opponent_submission"
 	MessageTypeTerminate          = "terminate"      // When another user logs on
 	MessageTypeInternalError      = "internal_error" // When server crashed and is shutting down
@@ -31,7 +30,7 @@ type ErrorPayload struct {
 type InvitationPayload struct {
 	FromUserID   int64    `json:"fromUserID"`
 	FromUsername string   `json:"fromUsername"`
-	Difficulties []string `json:"difficulties"'`
+	Difficulties []string `json:"difficulties"`
 	Tags         []string `json:"tags"`
 	// TODO: Add game information here
 }
@@ -59,7 +58,7 @@ type GameOverPayload struct {
 	Duration  int64 `json:"duration"` // in seconds
 }
 
-func MarshalPayload(v interface{}) json.RawMessage {
+func MarshalPayload(v any) json.RawMessage {
 	bytes, _ := json.Marshal(v)
 	return bytes
 }
