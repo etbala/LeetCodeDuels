@@ -9,20 +9,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// messageEnvelope is a generic wrapper for incoming messages.
+// generic wrapper for incoming messages.
 type messageEnvelope struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-// disconnectMsg is what we publish when we want another instance
-// to drop a given connID.
+// what we publish when we want another instance to drop a given connID.
 type disconnectMsg struct {
 	UserID int64  `json:"userID"`
 	ConnID string `json:"connID"`
 }
 
-// wsReadLoop reads from the socket, handles messages, and triggers cleanup on error.
+// reads from the socket, handles messages, and triggers cleanup on error.
 func ReadLoop(cm *ConnectionManager, userID int64, connID string, conn *websocket.Conn, sendCh chan<- []byte) {
 	// Set up Pong handler / deadlines
 	const pongWait = 60 * time.Second
@@ -60,8 +59,7 @@ func ReadLoop(cm *ConnectionManager, userID int64, connID string, conn *websocke
 	}
 }
 
-// wsWriteLoop pumps messages from sendCh to the socket, sends regular pings,
-// and cleans up on error or channel close.
+// pumps messages from sendCh to the socket, sends regular pings, and cleans up on error or channel close.
 func WriteLoop(cm *ConnectionManager, userID int64, connID string, conn *websocket.Conn, sendCh <-chan []byte) {
 	const (
 		writeWait  = 10 * time.Second

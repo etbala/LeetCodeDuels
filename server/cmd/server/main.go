@@ -30,15 +30,17 @@ func main() {
 		panic(err)
 	}
 
+	// TODO: Init Database Obj
+
 	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
 	if err != nil {
 		log.Fatalf("redis init failed: %v", err)
 	}
 	defer cm.Close()
 
-	// TODO: Init Database Obj
-	// TODO: Init Web Socket Conn Handler
-	// TOOD: Init Game Session Handler
+	// TODO: Init Game Session Handler
+	// TODO: Init Invite Handler
+	// TODO: Init State Handler
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")

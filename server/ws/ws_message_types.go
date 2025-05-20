@@ -6,15 +6,18 @@ import (
 )
 
 const (
-	MessageTypeStartGame          = "start_game"
-	MessageTypeGameOver           = "game_over"
 	MessageTypeError              = "error"
 	MessageTypeHeartbeat          = "heartbeat"
 	MessageTypeSendInvitation     = "send_invitation"
+	MessageTypeAcceptInvitation   = "accept_invitation"
+	MessageTypeDeclineInvitation  = "decline_invitation"
+	MessageTypeCancelInvitation   = "cancel_invitation"
+	MessageTypeInvitationCanceled = "invitation_canceled"
+	MessageTypeStartGame          = "start_game"
+	MessageTypeGameOver           = "game_over"
 	MessageTypeSubmission         = "submission"
 	MessageTypeOpponentSubmission = "opponent_submission"
-	MessageTypeTerminate          = "terminate"      // When another user logs on
-	MessageTypeInternalError      = "internal_error" // When server crashed and is shutting down
+	MessageTypeOtherLogon         = "other_logon" // When another device logs into same account
 )
 
 type Message struct {
@@ -27,17 +30,38 @@ type ErrorPayload struct {
 	Message string `json:"message"`
 }
 
-type InvitationPayload struct {
+type SendInvitationPayload struct {
 	FromUserID   int64    `json:"fromUserID"`
-	FromUsername string   `json:"fromUsername"`
 	Difficulties []string `json:"difficulties"`
 	Tags         []string `json:"tags"`
 	// TODO: Add game information here
 }
 
+type AcceptInvitationPayload struct {
+	InviteeID int64 `json:"inviteeID"`
+}
+
+type DeclineInvitationPayload struct {
+	InviteeID int64 `json:"inviteeID"`
+}
+
+type InvitationCanceledPayload struct {
+	InviteeID int64 `json:"inviteeID"`
+}
+
 type StartGamePayload struct {
-	SessionID  int    `json:"sessionID"`
+	SessionID  int64  `json:"sessionID"`
 	ProblemURL string `json:"problemURL"`
+	OpponentID int64  `json:"opponentID"`
+}
+
+type SubmissionPayload struct {
+	Status          string    `json:"status"`
+	PassedTestCases int       `json:"PassedTestCases"`
+	TotalTestCases  int       `json:"TotalTestCases"`
+	Runtime         int       `json:"Runtime"`
+	Memory          int       `json:"Memory"`
+	Time            time.Time `json:"Time"`
 }
 
 // Notifies a player about the opponent's submission
