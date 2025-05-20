@@ -36,13 +36,17 @@ func main() {
 		log.Fatalf("Failed to Init DataStore: %v", err)
 	}
 
+	err = auth.InitStateStore(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init StateStore: %v", err)
+	}
+	defer auth.StateStore.Close()
+
 	err = ws.InitConnManager(cfg.RDB_URL)
 	if err != nil {
 		log.Fatalf("Failed to Init ConnManager: %v", err)
 	}
 	defer ws.ConnManager.Close()
-
-	// TODO: Init OAuth State Handler
 
 	// TODO: Init Invite Handler
 	// TODO: Init Game Session Handler

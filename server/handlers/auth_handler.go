@@ -1,44 +1,31 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"net/http"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 )
 
-// generateState returns a URL-safe random string.
-func generateState() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
-}
-
 // AuthGitHubInitiate stores a random state in Redis (TTL 5m) then redirects.
 func AuthGitHubInitiate(rdb *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		state, err := generateState()
+		state, err := auth.GenerateState()
 		if err != nil {
 			http.Error(w, "could not generate state", http.StatusInternalServerError)
 			return
 		}
 
-		// store `state` → "1" for 5 minutes
-		if err := rdb.Set(r.Context(), state, "1", 5*time.Minute).Err(); err != nil {
-			http.Error(w, "could not save oauth state", http.StatusInternalServerError)
+		err = auth.StateStore.StoreState(r.Context(), state)
+		if err != nil {
+			http.Error(w, "could not save state", http.StatusInternalServerError)
 			return
 		}
 
-		// build GitHub auth URL
 		cfg, _ := config.LoadConfig()
 		url := fmt.Sprintf(
 			"https://github.com/login/oauth/authorize?client_id=%s&state=%s",
@@ -52,9 +39,19 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
-	user, err := services.ExchangeCodeForUser(code, state)
+	valid, err := auth.StateStore.ValidateState(r.Context(), state)
 	if err != nil {
-		http.Error(w, "Invalid code or state", http.StatusBadRequest)
+		http.Error(w, "could not validate state", http.StatusInternalServerError)
+		return
+	}
+	if !valid {
+		http.Error(w, "Invalid state", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := services.ExchangeCodeForUser(code)
+	if err != nil {
+		http.Error(w, "Invalid code", http.StatusBadRequest)
 		return
 	}
 
