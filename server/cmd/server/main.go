@@ -31,15 +31,18 @@ func main() {
 		panic(err)
 	}
 
-	store.InitDataStore(cfg.DB_URL)
+	err = store.InitDataStore(cfg.DB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init DataStore: %v", err)
+	}
+
+	err = ws.InitConnManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init ConnManager: %v", err)
+	}
+	defer ws.ConnManager.Close()
 
 	// TODO: Init OAuth State Handler
-
-	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
-	if err != nil {
-		log.Fatalf("redis init failed: %v", err)
-	}
-	defer cm.Close()
 
 	// TODO: Init Invite Handler
 	// TODO: Init Game Session Handler

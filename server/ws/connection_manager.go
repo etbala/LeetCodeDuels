@@ -4,51 +4,38 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/go-redis/redis/v8"
 )
 
-type ConnectionManager struct {
+var ConnManager *connManager
+
+type connManager struct {
 	client *redis.Client
 	ctx    context.Context
 }
 
-var (
-	mgr  *ConnectionManager
-	once sync.Once
-)
-
-// GetConnectionManager returns the singleton, initializing it on the first call.
 // redisURL should be in the format "redis://<user>:<pass>@<host>:<port>/<db>"
-func GetConnectionManager(redisURL string) (*ConnectionManager, error) {
-	var initErr error
-	once.Do(func() {
-		opts, err := redis.ParseURL(redisURL)
-		if err != nil {
-			initErr = fmt.Errorf("invalid redis URL: %w", err)
-			return
-		}
-		client := redis.NewClient(opts)
-		if err := client.Ping(context.Background()).Err(); err != nil {
-			initErr = fmt.Errorf("redis ping failed: %w", err)
-			return
-		}
-		mgr = &ConnectionManager{
-			client: client,
-			ctx:    context.Background(),
-		}
-	})
-	if initErr != nil {
-		return nil, initErr
+func InitConnManager(redisURL string) error {
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return fmt.Errorf("invalid redis URL: %w", err)
 	}
-	return mgr, nil
+	client := redis.NewClient(opts)
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return fmt.Errorf("redis ping failed: %w", err)
+	}
+	ConnManager = &connManager{
+		client: client,
+		ctx:    context.Background(),
+	}
+	return nil
 }
 
 // AddConnection atomically registers a new connection for this user.
 // It returns the oldConnID (if any) so that your WS handler can
 // immediately terminate that socket.
-func (c *ConnectionManager) AddConnection(userID int64, connID string) (oldConnID string, err error) {
+func (c *connManager) AddConnection(userID int64, connID string) (oldConnID string, err error) {
 	key := fmt.Sprintf("connection:%d", userID)
 	oldConnID, err = c.client.GetSet(c.ctx, key, connID).Result()
 	if err == redis.Nil {
@@ -68,7 +55,7 @@ func (c *ConnectionManager) AddConnection(userID int64, connID string) (oldConnI
 // RemoveConnection removes the given connID for the user—**but only if it
 // matches the current active connID**.  Returns (stillOnline, error).
 // If this was the active connection, the user goes fully offline.
-func (c *ConnectionManager) RemoveConnection(userID int64, connID string) (stillOnline bool, err error) {
+func (c *connManager) RemoveConnection(userID int64, connID string) (stillOnline bool, err error) {
 	key := fmt.Sprintf("connection:%d", userID)
 
 	current, err := c.client.Get(c.ctx, key).Result()
@@ -95,7 +82,7 @@ func (c *ConnectionManager) RemoveConnection(userID int64, connID string) (still
 }
 
 // GetConnection fetches the single active connID for a user (or "" if offline).
-func (c *ConnectionManager) GetConnection(userID int64) (string, error) {
+func (c *connManager) GetConnection(userID int64) (string, error) {
 	key := fmt.Sprintf("connection:%d", userID)
 	connID, err := c.client.Get(c.ctx, key).Result()
 	if err == redis.Nil {
@@ -105,12 +92,12 @@ func (c *ConnectionManager) GetConnection(userID int64) (string, error) {
 }
 
 // IsOnline checks if a user has any active connections.
-func (c *ConnectionManager) IsOnline(userID int64) (bool, error) {
+func (c *connManager) IsOnline(userID int64) (bool, error) {
 	return c.client.SIsMember(c.ctx, "online_users", strconv.FormatInt(userID, 10)).Result()
 }
 
 // AllOnlineUsers returns the list of userIDs currently online.
-func (c *ConnectionManager) AllOnlineUsers() ([]int64, error) {
+func (c *connManager) AllOnlineUsers() ([]int64, error) {
 	strs, err := c.client.SMembers(c.ctx, "online_users").Result()
 	if err != nil {
 		return nil, err
@@ -127,11 +114,11 @@ func (c *ConnectionManager) AllOnlineUsers() ([]int64, error) {
 }
 
 // OnlineCount returns the number of users currently online.
-func (c *ConnectionManager) OnlineCount() (int64, error) {
+func (c *connManager) OnlineCount() (int64, error) {
 	return c.client.SCard(c.ctx, "online_users").Result()
 }
 
 // Close shuts down the Redis client.
-func (c *ConnectionManager) Close() error {
+func (c *connManager) Close() error {
 	return c.client.Close()
 }

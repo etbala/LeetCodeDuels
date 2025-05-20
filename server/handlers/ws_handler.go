@@ -30,25 +30,19 @@ func WSConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cm, err := ws.GetConnectionManager("")
-	if err != nil {
-		http.Error(w, "could not access connection manager", http.StatusInternalServerError)
-		return
-	}
-
 	userID := claims.UserID
 	connID := fmt.Sprintf("%p", conn)
-	oldConnID, err := cm.AddConnection(userID, connID)
+	oldConnID, err := ws.ConnManager.AddConnection(userID, connID)
 	if err != nil {
 		conn.Close()
 		return
 	}
 
 	if oldConnID != "" {
-		ws.PublishDisconnect(cm, userID, oldConnID)
+		ws.PublishDisconnect(userID, oldConnID)
 	}
 
 	sendCh := make(chan []byte, 256)
-	go ws.ReadLoop(cm, userID, connID, conn, sendCh)
-	go ws.WriteLoop(cm, userID, connID, conn, sendCh)
+	go ws.ReadLoop(userID, connID, conn, sendCh)
+	go ws.WriteLoop(userID, connID, conn, sendCh)
 }

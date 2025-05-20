@@ -13,15 +13,16 @@ type dataStore struct {
 	db *sql.DB
 }
 
-func InitDataStore(connStr string) {
+func InitDataStore(connStr string) error {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err = db.Ping(); err != nil {
-		panic(err)
+		return err
 	}
 	DataStore = &dataStore{db: db}
+	return nil
 }
 
 // SaveOAuthUser inserts or updates a GitHub OAuth user.
