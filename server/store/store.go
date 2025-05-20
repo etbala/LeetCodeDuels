@@ -1,57 +1,55 @@
-package database
+package store
 
 import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/models"
 	"strings"
-
-	_ "github.com/lib/pq"
 )
 
-// SQLDB is the production implementation of I_DB backed by PostgreSQL.
-type SQLDB struct {
+var DataStore *dataStore
+
+type dataStore struct {
 	db *sql.DB
 }
 
-// NewSQLDB opens a PostgreSQL connection and returns a SQLDB.
-func NewSQLDB(connStr string) (*SQLDB, error) {
+func InitDataStore(connStr string) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		panic(err)
 	}
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	if err = db.Ping(); err != nil {
+		panic(err)
 	}
-	return &SQLDB{db: db}, nil
+	DataStore = &dataStore{db: db}
 }
 
 // SaveOAuthUser inserts or updates a GitHub OAuth user.
-func (s *SQLDB) SaveOAuthUser(githubID int64, username string, accessToken string) error {
+func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken string) error {
 	query := `INSERT INTO github_oauth_users (github_id, username, access_token, created_at, updated_at)
 			VALUES ($1, $2, $3, NOW(), NOW())
 			ON CONFLICT (github_id)
 			DO UPDATE SET access_token = $3, updated_at = NOW()`
-	if _, err := s.db.Exec(query, githubID, username, accessToken); err != nil {
+	if _, err := ds.db.Exec(query, githubID, username, accessToken); err != nil {
 		return fmt.Errorf("SaveOAuthUser: %w", err)
 	}
 	return nil
 }
 
 // UpdateGithubAccessToken updates only the access token for a user.
-func (s *SQLDB) UpdateGithubAccessToken(githubID int64, newToken string) error {
+func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) error {
 	query := `UPDATE github_oauth_users SET access_token = $1, updated_at = NOW() WHERE github_id = $2`
-	if _, err := s.db.Exec(query, newToken, githubID); err != nil {
+	if _, err := ds.db.Exec(query, newToken, githubID); err != nil {
 		return fmt.Errorf("UpdateGithubAccessToken: %w", err)
 	}
 	return nil
 }
 
 // GetUserProfile retrieves the full user record, or nil if not found.
-func (s *SQLDB) GetUserProfile(githubID int64) (*models.User, error) {
+func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 	query := `SELECT github_id, username, access_token, created_at, updated_at, rating
 			FROM github_oauth_users WHERE github_id = $1`
-	row := s.db.QueryRow(query, githubID)
+	row := ds.db.QueryRow(query, githubID)
 	var u models.User
 	if err := row.Scan(&u.ID, &u.Username, &u.AccessToken, &u.CreatedAt, &u.UpdatedAt, &u.Rating); err != nil {
 		if err == sql.ErrNoRows {
@@ -63,28 +61,28 @@ func (s *SQLDB) GetUserProfile(githubID int64) (*models.User, error) {
 }
 
 // GetUserRating fetches a user's current rating.
-func (s *SQLDB) GetUserRating(userID int64) (int, error) {
+func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	var rating int
 	query := `SELECT rating FROM github_oauth_users WHERE github_id = $1`
-	if err := s.db.QueryRow(query, userID).Scan(&rating); err != nil {
+	if err := ds.db.QueryRow(query, userID).Scan(&rating); err != nil {
 		return 0, fmt.Errorf("GetUserRating: %w", err)
 	}
 	return rating, nil
 }
 
 // UpdateUserRating sets a user's rating to newRating.
-func (s *SQLDB) UpdateUserRating(userID int64, newRating int) error {
+func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
 	query := `UPDATE github_oauth_users SET rating = $1 WHERE github_id = $2`
-	if _, err := s.db.Exec(query, newRating, userID); err != nil {
+	if _, err := ds.db.Exec(query, newRating, userID); err != nil {
 		return fmt.Errorf("UpdateUserRating: %w", err)
 	}
 	return nil
 }
 
 // GetAllProblems returns every problem in the table.
-func (s *SQLDB) GetAllProblems() ([]models.Problem, error) {
+func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	query := `SELECT id, name, slug, difficulty FROM problems`
-	rows, err := s.db.Query(query)
+	rows, err := ds.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllProblems: %w", err)
 	}
@@ -102,23 +100,23 @@ func (s *SQLDB) GetAllProblems() ([]models.Problem, error) {
 }
 
 // GetRandomProblem picks one random problem.
-func (s *SQLDB) GetRandomProblem() (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 	query := `SELECT id, name, slug, difficulty FROM problems ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
-	if err := s.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+	if err := ds.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblem: %w", err)
 	}
 	return &p, nil
 }
 
 // GetProblemsByTag returns all problems having the given tag ID.
-func (s *SQLDB) GetProblemsByTag(tagID int) ([]models.Problem, error) {
+func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	query := `
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = $1`
-	rows, err := s.db.Query(query, tagID)
+	rows, err := ds.db.Query(query, tagID)
 	if err != nil {
 		return nil, fmt.Errorf("GetProblemsByTag: %w", err)
 	}
@@ -136,7 +134,7 @@ func (s *SQLDB) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 }
 
 // GetRandomProblemByTag returns a single random problem for a tag.
-func (s *SQLDB) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	query := `
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
@@ -144,16 +142,16 @@ func (s *SQLDB) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	WHERE pt.tag_id = $1
 	ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
-	if err := s.db.QueryRow(query, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+	if err := ds.db.QueryRow(query, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblemByTag: %w", err)
 	}
 	return &p, nil
 }
 
 // GetAllTags returns every tag name.
-func (s *SQLDB) GetAllTags() ([]string, error) {
+func (ds *dataStore) GetAllTags() ([]string, error) {
 	query := `SELECT name FROM tags`
-	rows, err := s.db.Query(query)
+	rows, err := ds.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllTags: %w", err)
 	}
@@ -171,13 +169,13 @@ func (s *SQLDB) GetAllTags() ([]string, error) {
 }
 
 // GetTagsByProblem returns names of tags for a given problem ID.
-func (s *SQLDB) GetTagsByProblem(problemID int) ([]string, error) {
+func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	query := `
 	SELECT t.name
 	FROM tags t
 	JOIN problem_tags pt ON t.id = pt.tag_id
 	WHERE pt.problem_id = $1`
-	rows, err := s.db.Query(query, problemID)
+	rows, err := ds.db.Query(query, problemID)
 	if err != nil {
 		return nil, fmt.Errorf("GetTagsByProblem: %w", err)
 	}
@@ -195,17 +193,17 @@ func (s *SQLDB) GetTagsByProblem(problemID int) ([]string, error) {
 }
 
 // GetRandomProblemByDifficulty picks a random problem with the given difficulty.
-func (s *SQLDB) GetRandomProblemByDifficulty(difficulty models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemByDifficulty(difficulty models.Difficulty) (*models.Problem, error) {
 	query := `SELECT id, name, slug, difficulty FROM problems WHERE difficulty = $1 ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
-	if err := s.db.QueryRow(query, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+	if err := ds.db.QueryRow(query, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblemByDifficulty: %w", err)
 	}
 	return &p, nil
 }
 
 // GetRandomProblemByDifficultyAndTag picks a random problem filtered by difficulty and tag.
-func (s *SQLDB) GetRandomProblemByDifficultyAndTag(tagID int, difficulty models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty models.Difficulty) (*models.Problem, error) {
 	query := `
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
@@ -213,14 +211,14 @@ func (s *SQLDB) GetRandomProblemByDifficultyAndTag(tagID int, difficulty models.
 	WHERE pt.tag_id = $1 AND p.difficulty = $2
 	ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
-	if err := s.db.QueryRow(query, tagID, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+	if err := ds.db.QueryRow(query, tagID, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblemByDifficultyAndTag: %w", err)
 	}
 	return &p, nil
 }
 
 // GetRandomProblemForDuel picks a random problem matching preferences of both players and a set of difficulties.
-func (s *SQLDB) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
 	// Build IN clauses dynamically
 	if len(difficulties) == 0 {
 		return nil, fmt.Errorf("GetRandomProblemForDuel: no difficulties provided")
@@ -262,7 +260,7 @@ func (s *SQLDB) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficul
 	}
 
 	var p models.Problem
-	if err := s.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+	if err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblemForDuel: %w", err)
 	}
 	return &p, nil
