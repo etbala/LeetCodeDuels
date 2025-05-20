@@ -3,13 +3,13 @@ package api
 import (
 	"net/http"
 
-	"leetcodeduels/database"
+	"leetcodeduels/handlers"
 
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes initializes and returns the main router with all route groups and middleware set up.
-func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Router {
+func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	r := mux.NewRouter()
 
 	// ----------------------
@@ -35,6 +35,10 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 
 	accountRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.GetProfile(w, r)
+	}).Methods("GET")
+
+	accountRouter.HandleFunc("/{id}/in-game", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.UserInGame(w, r)
 	}).Methods("GET")
 
 	// Get current user's profile information
@@ -124,6 +128,10 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 		// handlers.ProblemsRandom(w, r)
 	}).Methods("GET")
 
+	problemRouter.HandleFunc("/tags", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.AllTags(w, r)
+	}).Methods("GET")
+
 	// --------------------
 	// WebSocket Upgrader
 	// --------------------
@@ -131,7 +139,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc, db database.I_DB) *mux.Route
 	wsRouter.Use(authMiddleware)
 
 	wsRouter.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.WSConnect(w, r)
+		handlers.WSConnect(w, r)
 	}).Methods("GET")
 
 	return r

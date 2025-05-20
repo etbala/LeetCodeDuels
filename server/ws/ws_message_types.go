@@ -5,15 +5,17 @@ import (
 	"time"
 )
 
+// NOTE: Payloads are exclusively sent by server, client always responds via API (excluding heartbeats)
+
 const (
 	MessageTypeStartGame          = "start_game"
-	MessageTypeSubmission         = "submission"
-	MessageTypeOpponentSubmission = "opponent_submission"
 	MessageTypeGameOver           = "game_over"
 	MessageTypeError              = "error"
 	MessageTypeHeartbeat          = "heartbeat"
 	MessageTypeSendInvitation     = "send_invitation"
-	MessageTypeInvitationResponse = "invitation_response"
+	MessageTypeOpponentSubmission = "opponent_submission"
+	MessageTypeTerminate          = "terminate"      // When another user logs on
+	MessageTypeInternalError      = "internal_error" // When server crashed and is shutting down
 )
 
 type Message struct {
@@ -21,39 +23,16 @@ type Message struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// --------------------------------
-// Client Payloads (Sent by Client)
-// --------------------------------
-
-type InvitationResponsePayload struct {
-	FromUserID int64 `json:"fromUserID"`
-	Accepted   bool  `json:"accepted"`
-}
-
-// Note: Temporary, Until LeetCode API is used to verify submissions.
-type SubmissionPayload struct {
-	ID              int    `json:"SubmissionID"`
-	PlayerID        int64  `json:"PlayerID"`
-	PassedTestCases int    `json:"PassedTestCases"`
-	TotalTestCases  int    `json:"TotalTestCases"`
-	Status          string `json:"Status"`
-	Runtime         int    `json:"Runtime"`
-	Memory          int    `json:"Memory"`
-	Lang            string `json:"Lang"`
-}
-
-// --------------------------------
-// Server Payloads (Sent by Server)
-// --------------------------------
-
 type ErrorPayload struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
 type InvitationPayload struct {
-	FromUserID   int64  `json:"fromUserID"`
-	FromUsername string `json:"fromUsername"`
+	FromUserID   int64    `json:"fromUserID"`
+	FromUsername string   `json:"fromUsername"`
+	Difficulties []string `json:"difficulties"'`
+	Tags         []string `json:"tags"`
 	// TODO: Add game information here
 }
 

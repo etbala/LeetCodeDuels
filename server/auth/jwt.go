@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"leetcodeduels/config"
 	"net/http"
@@ -12,8 +13,7 @@ import (
 )
 
 type Claims struct {
-	UserID   int64  `json:"sub"`
-	Username string `json:"username"`
+	UserID int64 `json:"sub"`
 	jwt.RegisteredClaims
 }
 
@@ -23,17 +23,16 @@ const UserContextKey contextKey = "user"
 
 // GenerateJWT generates a JWT for the given user ID and username.
 // It returns the signed token as a string.
-func GenerateJWT(userID int64, username string) (string, error) {
+func GenerateJWT(userID int64) (string, error) {
 	cfg, _ := config.LoadConfig()
 	secretKey := cfg.JWT_SECRET
 
 	// Create the JWT claims, including the user ID and username.
 	claims := Claims{
-		UserID:   userID,
-		Username: username,
+		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 Hour Lifetime
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)), // 72 Hour Lifetime
 		},
 	}
 
@@ -79,22 +78,29 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
+func ExtractTokenString(r *http.Request) (string, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("Missing Authorization Header")
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		return "", errors.New("Invalid Authorization Header Format")
+	}
+
+	return parts[1], nil
+}
+
 // Middleware validates the JWT and attaches user information to the request context.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+
+		tokenString, err := ExtractTokenString(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
-			return
-		}
-
-		tokenString := parts[1]
 
 		claims, err := ValidateJWT(tokenString)
 		if err != nil {
