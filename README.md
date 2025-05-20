@@ -3,7 +3,7 @@
 ![Server CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/go.yml/badge.svg?branch=main)
 ![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/extension.yml/badge.svg?branch=main)
 
-A competitive coding extension that lets you challenge friends to real-time LeetCode duels.
+A browser extension that lets you challenge friends to real-time LeetCode duels.
 
 ## Getting Started
 
@@ -39,3 +39,10 @@ Load Unpacked Extension from Directory: `/extension/dist/browser`
 
 > For Firefox, see https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/
 
+## Testing
+
+### Server Tests
+```bash
+cd server
+go test ./... -v
+```
