@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"leetcodeduels/api/game"
-	"leetcodeduels/pkg/config"
-	"leetcodeduels/pkg/https"
-	"leetcodeduels/pkg/store"
+	"leetcodeduels/api"
+	"leetcodeduels/auth"
+	"leetcodeduels/config"
+	"leetcodeduels/store"
+	"leetcodeduels/ws"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ import (
 )
 
 func main() {
-
+	// Load environment variables from .env file (at root of server dir)
 	err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
@@ -32,27 +33,30 @@ func main() {
 
 	store.InitDataStore(cfg.DB_URL)
 
-	gm := game.GetGameManager()
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		for range ticker.C {
-			gm.HandleDisconnectedPlayers()
-		}
-	}()
+	// TODO: Init OAuth State Handler
+
+	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("redis init failed: %v", err)
+	}
+	defer cm.Close()
+
+	// TODO: Init Invite Handler
+	// TODO: Init Game Session Handler
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://leetcode.com"},
+		AllowedOrigins:   []string{"https://leetcode.com", "http://127.0.0.1"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type"},
 		AllowCredentials: true,
 	})
 
 	// Init Endpoints
-	router := https.NewRouter()
+	router := api.SetupRoutes(auth.Middleware)
 	handler := c.Handler(router)
 
 	srv := &http.Server{
