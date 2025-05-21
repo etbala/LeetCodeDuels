@@ -150,8 +150,9 @@ type PlayerSubmission struct {
 }
 
 type Session struct {
-	ID          int
+	ID          string
 	InProgress  bool
+	IsCanceled  bool
 	IsRated     bool
 	Problem     Problem
 	Players     []int64
@@ -165,4 +166,10 @@ type MatchDetails struct {
 	IsRated      bool     `json:"IsRated"`
 	Difficulties []string `json:"Difficulties"`
 	Tags         []string `json:"Tags"`
+}
+
+type InvitePayload struct {
+	InviteeID    int64        `json:"inviteeID"`
+	MatchDetails MatchDetails `json:"matchDetails"`
+	CreatedAt    time.Time    `json:"createdAt"`
 }
