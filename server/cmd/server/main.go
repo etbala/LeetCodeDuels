@@ -6,6 +6,7 @@ import (
 	"leetcodeduels/api"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
+	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"leetcodeduels/ws"
 	"log"
@@ -48,7 +49,12 @@ func main() {
 	}
 	defer ws.ConnManager.Close()
 
-	// TODO: Init Invite Handler
+	err = services.InitInviteManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init InviteManager: %v", err)
+	}
+	defer services.InviteManager.Close()
+
 	// TODO: Init Game Session Handler
 
 	var port string

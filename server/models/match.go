@@ -160,3 +160,9 @@ type Session struct {
 	StartTime   time.Time
 	EndTime     time.Time
 }
+
+type MatchDetails struct {
+	IsRated      bool     `json:"IsRated"`
+	Difficulties []string `json:"Difficulties"`
+	Tags         []string `json:"Tags"`
+}

@@ -33,8 +33,7 @@ func InitConnManager(redisURL string) error {
 }
 
 // AddConnection atomically registers a new connection for this user.
-// It returns the oldConnID (if any) so that your WS handler can
-// immediately terminate that socket.
+// It returns the oldConnID (if any) for termination
 func (c *connManager) AddConnection(userID int64, connID string) (oldConnID string, err error) {
 	key := fmt.Sprintf("connection:%d", userID)
 	oldConnID, err = c.client.GetSet(c.ctx, key, connID).Result()

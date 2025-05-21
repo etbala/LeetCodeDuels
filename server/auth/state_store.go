@@ -14,7 +14,6 @@ var StateStore *stateStore
 
 type stateStore struct {
 	client *redis.Client
-	ctx    context.Context
 }
 
 // redisURL should be in the format "redis://<user>:<pass>@<host>:<port>/<db>"
@@ -29,7 +28,6 @@ func InitStateStore(redisURL string) error {
 	}
 	StateStore = &stateStore{
 		client: client,
-		ctx:    context.Background(),
 	}
 	return nil
 }
