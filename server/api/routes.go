@@ -18,11 +18,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	authRouter := r.PathPrefix("/auth").Subrouter()
 
 	authRouter.HandleFunc("/github/initiate", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.AuthGitHubInitiate(w, r)
+		handlers.AuthGitHubInitiate(w, r)
 	}).Methods("GET")
 
 	authRouter.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.AuthGitHubCallback(w, r)
+		handlers.AuthGitHubCallback(w, r)
 	}).Methods("GET")
 
 	// ----------------------
