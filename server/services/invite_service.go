@@ -36,7 +36,7 @@ func InitInviteManager(redisURL string) error {
 	return nil
 }
 
-// CreateInvite stores a new invite with a 3-minute TTL, fails if one already exists
+// Stores a new invite with a 3-minute TTL, fails if one already exists
 func (i *inviteManager) CreateInvite(inviterID, inviteeID int64, matchDetails models.MatchDetails) (bool, error) {
 	key := inviteKeyPrefix + strconv.FormatInt(inviterID, 10)
 	// Ensure no existing invite

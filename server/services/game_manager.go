@@ -36,7 +36,7 @@ func InitGameManager(redisURL string) error {
 	return nil
 }
 
-// GetGame returns the session for the given ID (or nil if not found)
+// Returns the session for the given ID (or nil if not found)
 func (gm *gameManager) GetGame(sessionID string) (*models.Session, error) {
 	key := gameKeyPrefix + sessionID
 	data, err := gm.client.Get(gm.ctx, key).Result()
@@ -52,7 +52,7 @@ func (gm *gameManager) GetGame(sessionID string) (*models.Session, error) {
 	return &session, nil
 }
 
-// StartGame creates a new session, stores it in Redis, and returns its ID
+// Creates a new session, stores it in Redis, and returns its ID
 func (gm *gameManager) StartGame(players []int64, problem models.Problem) (string, error) {
 	sessionID := uuid.NewString()
 	session := &models.Session{
@@ -76,7 +76,7 @@ func (gm *gameManager) StartGame(players []int64, problem models.Problem) (strin
 	return sessionID, nil
 }
 
-// AddSubmission appends a player's submission to the session and updates Redis
+// Appends a player's submission to the session and updates Redis
 func (gm *gameManager) AddSubmission(sessionID string, submission models.PlayerSubmission) error {
 	session, err := gm.GetGame(sessionID)
 	if err != nil {
@@ -103,7 +103,7 @@ func (gm *gameManager) AddSubmission(sessionID string, submission models.PlayerS
 	return gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 0).Err()
 }
 
-// CompleteGame marks the session as completed, sets its end time, and expires it in 3 minutes
+// Marks the session as completed, sets its end time, and expires it in 3 minutes
 func (gm *gameManager) CompleteGame(sessionID string) error {
 	session, err := gm.GetGame(sessionID)
 	if err != nil {
@@ -121,7 +121,7 @@ func (gm *gameManager) CompleteGame(sessionID string) error {
 	return gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
 }
 
-// CancelGame marks the session as canceled, sets its end time, and expires it in 3 minutes
+// Marks the session as canceled, sets its end time, and expires it in 3 minutes
 func (gm *gameManager) CancelGame(sessionID string) error {
 	session, err := gm.GetGame(sessionID)
 	if err != nil {
