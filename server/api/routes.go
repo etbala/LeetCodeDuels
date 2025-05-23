@@ -68,12 +68,8 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 
 	// TODO: Figure out nice way to pass all params through /enter
 
-	mmRouter.HandleFunc("/enter", func(w http.ResponseWriter, r *http.Request) {
-		handlers.EnterQueue(w, r)
-	}).Methods("POST")
-
-	mmRouter.HandleFunc("/leave", func(w http.ResponseWriter, r *http.Request) {
-		handlers.LeaveQueue(w, r)
+	mmRouter.HandleFunc("/count", func(w http.ResponseWriter, r *http.Request) {
+		handlers.QueueSize(w, r)
 	}).Methods("POST")
 
 	// ----------------------
@@ -96,11 +92,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// --------------------
 	problemRouter := r.PathPrefix("/problems").Subrouter()
 	problemRouter.HandleFunc("/random", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.ProblemsRandom(w, r)
+		handlers.ProblemsRandom(w, r)
 	}).Methods("GET")
 
 	problemRouter.HandleFunc("/tags", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.AllTags(w, r)
+		handlers.AllTags(w, r)
 	}).Methods("GET")
 
 	// --------------------

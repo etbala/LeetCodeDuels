@@ -55,7 +55,11 @@ func main() {
 	}
 	defer services.InviteManager.Close()
 
-	// TODO: Init Game Session Handler
+	err = services.InitGameManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init InviteManager: %v", err)
+	}
+	defer services.GameManager.Close()
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
@@ -68,10 +72,8 @@ func main() {
 		AllowCredentials: true,
 	})
 
-	// Init Endpoints
 	router := api.SetupRoutes(auth.Middleware)
 	handler := c.Handler(router)
-
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: handler,

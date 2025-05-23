@@ -139,3 +139,7 @@ func (gm *gameManager) CancelGame(sessionID string) error {
 	}
 	return gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
 }
+
+func (i *gameManager) Close() error {
+	return i.client.Close()
+}

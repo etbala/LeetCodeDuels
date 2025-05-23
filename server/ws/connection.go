@@ -47,14 +47,22 @@ func ReadLoop(userID int64, connID string, conn *websocket.Conn, sendCh chan<- [
 		}
 
 		switch env.Type {
-		case MessageTypeHeartbeat:
-
-		case MessageTypeError:
-
-		case MessageTypeSubmission:
-
+		case ClientMsgSendInvitation:
+			HandleSendInvitation(env)
+		case ClientMsgAcceptInvitation:
+			HandleAcceptInvitation(env)
+		case ClientMsgDeclineInvitation:
+			HandleDeclineInvitation(env)
+		case ClientMsgCancelInvitation:
+			HandleCancelInvitation(env)
+		case ClientMsgEnterQueue:
+			HandleEnterQueue(env)
+		case ClientMsgLeaveQueue:
+			HandleLeaveQueue(env)
+		case ClientMsgSubmission:
+			HandleSendInvitation(env)
 		default:
-			// unknown type
+			// unknown msg type
 		}
 	}
 }
@@ -112,6 +120,6 @@ func cleanup(userID int64, connID string, conn *websocket.Conn) {
 	conn.Close()
 	stillOnline, _ := ConnManager.RemoveConnection(userID, connID)
 	if !stillOnline {
-		// user is now offline (broadcast here is necessary)
+		// user is now offline (broadcast here if necessary)
 	}
 }
