@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"leetcodeduels/models"
 	"time"
 )
 
@@ -18,8 +19,10 @@ const (
 
 // Messages Server Sends
 const (
-	ServerMsgError              = "error"
+	ServerMsgError              = "server_error"
+	ServerMsgInvitationRequest  = "invitation_request"
 	ServerMsgInvitationCanceled = "invitation_canceled"
+	ServerMsgUserOffline        = "user_offline"
 	ServerMsgInviteDoesNotExist = "invitation_nonexistant" // No Payload
 	ServerMsgStartGame          = "start_game"
 	ServerMsgGameOver           = "game_over"
@@ -38,10 +41,8 @@ type ErrorPayload struct {
 }
 
 type SendInvitationPayload struct {
-	FromUserID   int64    `json:"fromUserID"`
-	IsRated      bool     `json:"IsRated"` // Possibly replace with "Mode" param in the future
-	Difficulties []string `json:"difficulties"`
-	Tags         []string `json:"tags"`
+	InviteeID    int64               `json:"inviteeID"`
+	MatchDetails models.MatchDetails `json:"MatchDetails"`
 }
 
 type AcceptInvitationPayload struct {
@@ -64,6 +65,11 @@ type SubmissionPayload struct {
 	Runtime         int       `json:"Runtime"`
 	Memory          int       `json:"Memory"`
 	Time            time.Time `json:"Time"`
+}
+
+type InvitationRequestPayload struct {
+	InviterID    int64               `json:"inviteeID"`
+	MatchDetails models.MatchDetails `json:"MatchDetails"`
 }
 
 type InvitationCanceledPayload struct {

@@ -31,39 +31,26 @@ func ReadLoop(userID int64, connID string, conn *websocket.Conn, sendCh chan<- [
 		return nil
 	})
 
+	registerConn(connID, sendCh)
+	defer unregisterConn(connID)
 	defer cleanup(userID, connID, conn)
+
+	ctx := &wsContext{UserID: userID, ConnID: connID, SendCh: sendCh}
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			// EOF or protocol error → exit loop
+			// EOF or protocol error
 			return
 		}
 
 		var env messageEnvelope
 		if err := json.Unmarshal(msg, &env); err != nil {
-			// malformed → ignore or send an ERROR frame back
+			// malformed
 			continue
 		}
 
-		switch env.Type {
-		case ClientMsgSendInvitation:
-			HandleSendInvitation(env)
-		case ClientMsgAcceptInvitation:
-			HandleAcceptInvitation(env)
-		case ClientMsgDeclineInvitation:
-			HandleDeclineInvitation(env)
-		case ClientMsgCancelInvitation:
-			HandleCancelInvitation(env)
-		case ClientMsgEnterQueue:
-			HandleEnterQueue(env)
-		case ClientMsgLeaveQueue:
-			HandleLeaveQueue(env)
-		case ClientMsgSubmission:
-			HandleSendInvitation(env)
-		default:
-			// unknown msg type
-		}
+		ctx.Handle(env)
 	}
 }
 
@@ -118,6 +105,11 @@ func PublishDisconnect(userID int64, oldConnID string) error {
 
 func cleanup(userID int64, connID string, conn *websocket.Conn) {
 	conn.Close()
+	sendCh, exists := lookupSendCh(connID)
+	if exists {
+		close(sendCh)
+	}
+
 	stillOnline, _ := ConnManager.RemoveConnection(userID, connID)
 	if !stillOnline {
 		// user is now offline (broadcast here if necessary)

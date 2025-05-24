@@ -138,15 +138,15 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 }
 
 type PlayerSubmission struct {
-	ID              int              `json:"SubmissionID"`
-	PlayerID        int64            `json:"PlayerID"`
-	PassedTestCases int              `json:"PassedTestCases"`
-	TotalTestCases  int              `json:"TotalTestCases"`
-	Status          SubmissionStatus `json:"Status"`
-	Runtime         int              `json:"Runtime"`
-	Memory          int              `json:"Memory"`
-	Lang            LanguageType     `json:"Lang"`
-	Time            time.Time        `json:"Time"`
+	ID              int              `json:"submissionID"`
+	PlayerID        int64            `json:"playerID"`
+	PassedTestCases int              `json:"passedTestCases"`
+	TotalTestCases  int              `json:"totalTestCases"`
+	Status          SubmissionStatus `json:"status"`
+	Runtime         int              `json:"runtime"`
+	Memory          int              `json:"memory"`
+	Lang            LanguageType     `json:"lang"`
+	Time            time.Time        `json:"time"`
 }
 
 type Session struct {
@@ -163,9 +163,9 @@ type Session struct {
 }
 
 type MatchDetails struct {
-	IsRated      bool     `json:"IsRated"`
-	Difficulties []string `json:"Difficulties"`
-	Tags         []string `json:"Tags"`
+	IsRated      bool     `json:"isRated"`
+	Difficulties []string `json:"difficulties"`
+	Tags         []string `json:"tags"`
 }
 
 type InvitePayload struct {

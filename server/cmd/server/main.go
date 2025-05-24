@@ -61,6 +61,8 @@ func main() {
 	}
 	defer services.GameManager.Close()
 
+	ws.InitPubSub()
+
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
 	flag.Parse()

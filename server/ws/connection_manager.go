@@ -80,6 +80,12 @@ func (c *connManager) RemoveConnection(userID int64, connID string) (stillOnline
 	return false, nil
 }
 
+// Used to send msg to connection whose location (process/device) is not necessarily known
+func (c *connManager) SendToConn(connID string, msg []byte) error {
+	channel := fmt.Sprintf("ws:instance:%s", connID)
+	return c.client.Publish(c.ctx, channel, msg).Err()
+}
+
 // GetConnection fetches the single active connID for a user (or "" if offline).
 func (c *connManager) GetConnection(userID int64) (string, error) {
 	key := fmt.Sprintf("connection:%d", userID)
