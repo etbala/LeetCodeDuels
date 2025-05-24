@@ -42,7 +42,7 @@ type ErrorPayload struct {
 
 type SendInvitationPayload struct {
 	InviteeID    int64               `json:"inviteeID"`
-	MatchDetails models.MatchDetails `json:"MatchDetails"`
+	MatchDetails models.MatchDetails `json:"matchDetails"`
 }
 
 type AcceptInvitationPayload struct {
@@ -60,16 +60,17 @@ type EnterQueue struct {
 
 type SubmissionPayload struct {
 	Status          string    `json:"status"`
-	PassedTestCases int       `json:"PassedTestCases"`
-	TotalTestCases  int       `json:"TotalTestCases"`
-	Runtime         int       `json:"Runtime"`
-	Memory          int       `json:"Memory"`
-	Time            time.Time `json:"Time"`
+	PassedTestCases int       `json:"passedTestCases"`
+	TotalTestCases  int       `json:"totalTestCases"`
+	Runtime         int       `json:"runtime"`
+	Memory          int       `json:"memory"`
+	Language        string    `json:"language"`
+	Time            time.Time `json:"time"`
 }
 
 type InvitationRequestPayload struct {
 	InviterID    int64               `json:"inviteeID"`
-	MatchDetails models.MatchDetails `json:"MatchDetails"`
+	MatchDetails models.MatchDetails `json:"matchDetails"`
 }
 
 type InvitationCanceledPayload struct {
@@ -77,27 +78,28 @@ type InvitationCanceledPayload struct {
 }
 
 type StartGamePayload struct {
-	SessionID  int64  `json:"sessionID"`
+	SessionID  string `json:"sessionID"`
 	ProblemURL string `json:"problemURL"`
 	OpponentID int64  `json:"opponentID"`
 }
 
 // Notifies a player about the opponent's submission
 type OpponentSubmissionPayload struct {
-	ID              int       `json:"SubmissionID"`
+	ID              int       `json:"submissionID"`
 	PlayerID        int64     `json:"playerID"`
 	Status          string    `json:"status"`
-	PassedTestCases int       `json:"PassedTestCases"`
-	TotalTestCases  int       `json:"TotalTestCases"`
-	Runtime         int       `json:"Runtime"`
-	Memory          int       `json:"Memory"`
-	Time            time.Time `json:"Time"`
+	PassedTestCases int       `json:"passedTestCases"`
+	TotalTestCases  int       `json:"totalTestCases"`
+	Runtime         int       `json:"runtime"`
+	Memory          int       `json:"memory"`
+	Language        string    `json:"language"`
+	Time            time.Time `json:"time"`
 }
 
 type GameOverPayload struct {
-	WinnerID  int64 `json:"winnerID"`
-	SessionID int   `json:"sessionID"`
-	Duration  int64 `json:"duration"` // in seconds
+	WinnerID  int64  `json:"winnerID"`
+	SessionID string `json:"sessionID"`
+	Duration  int64  `json:"duration"` // in seconds
 }
 
 func MarshalPayload(v any) json.RawMessage {

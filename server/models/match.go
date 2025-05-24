@@ -150,16 +150,16 @@ type PlayerSubmission struct {
 }
 
 type Session struct {
-	ID          string
-	InProgress  bool
-	IsCanceled  bool
-	IsRated     bool
-	Problem     Problem
-	Players     []int64
-	Submissions [][]PlayerSubmission // Map of player to that players submissions
-	Winner      int64
-	StartTime   time.Time
-	EndTime     time.Time
+	ID          string             `json:"sessionID"`
+	InProgress  bool               `json:"active"`
+	IsCanceled  bool               `json:"canceled"`
+	IsRated     bool               `json:"rated"`
+	Problem     Problem            `json:"problem"`
+	Players     []int64            `json:"players"`
+	Submissions []PlayerSubmission `json:"submissions"`
+	Winner      int64              `json:"winner"`
+	StartTime   time.Time          `json:"startTime"`
+	EndTime     time.Time          `json:"endTime"`
 }
 
 type MatchDetails struct {

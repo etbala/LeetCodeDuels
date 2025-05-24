@@ -22,7 +22,7 @@ func (ctx *wsContext) Handle(env messageEnvelope) {
 	case ClientMsgDeclineInvitation:
 		ctx.handleDeclineInvitation(env.Payload)
 	case ClientMsgCancelInvitation:
-		ctx.handleCancelInvitation(env.Payload)
+		ctx.handleCancelInvitation()
 	case ClientMsgEnterQueue:
 		ctx.handleEnterQueue(env.Payload)
 	case ClientMsgLeaveQueue:
@@ -42,8 +42,7 @@ func (ctx *wsContext) handleSendInvitation(raw json.RawMessage) {
 		return
 	}
 
-	matchDetails := models.MatchDetails{IsRated: p.IsRated, Difficulties: p.Difficulties, Tags: p.Tags}
-	success, err := services.InviteManager.CreateInvite(ctx.UserID, p.InviteeID, matchDetails)
+	success, err := services.InviteManager.CreateInvite(ctx.UserID, p.InviteeID, p.MatchDetails)
 	if err != nil {
 		ctx.replyError("server_error", err.Error())
 		return
@@ -65,7 +64,7 @@ func (ctx *wsContext) handleSendInvitation(raw json.RawMessage) {
 		return
 	}
 
-	request := InvitationRequestPayload{InviterID: ctx.UserID, IsRated: p.IsRated, Difficulties: p.Difficulties, Tags: p.Tags}
+	request := InvitationRequestPayload{InviterID: ctx.UserID, MatchDetails: p.MatchDetails}
 	payload, _ := json.Marshal(request)
 
 	// Forward the InvitationPayload to invitee via Redis pub/sub
@@ -91,19 +90,116 @@ func (ctx *wsContext) handleDeclineInvitation(raw json.RawMessage) {
 
 }
 
-func (ctx *wsContext) handleCancelInvitation(raw json.RawMessage) {
-
+func (ctx *wsContext) handleCancelInvitation() {
+	success, err := services.InviteManager.RemoveInvite(ctx.UserID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if success == false {
+		// No Invitation to Cancel
+	}
 }
 
 func (ctx *wsContext) handleEnterQueue(raw json.RawMessage) {
-
+	ctx.replyError("unimplemented", "")
 }
 
 func (ctx *wsContext) handleLeaveQueue(raw json.RawMessage) {
-
+	ctx.replyError("unimplemented", "")
 }
 
 func (ctx *wsContext) handleSubmission(raw json.RawMessage) {
+	var p SubmissionPayload
+	err := json.Unmarshal(raw, &p)
+	if err != nil {
+
+	}
+
+	// Get the session id associated with userID
+	sessionID, err := services.GameManager.GetSessionIDByPlayer(ctx.UserID)
+	if err != nil {
+
+	}
+	if sessionID == "" {
+		// User is not in-game
+		return
+	}
+
+	session, err := services.GameManager.GetGame(sessionID)
+	if err != nil {
+
+	}
+	if session == nil {
+		// this shouldn’t really happen, but guard anyway
+		return
+	}
+
+	submissionID := len(session.Submissions)
+	submissionStatus, _ := models.ParseSubmissionStatus(p.Status)
+	submissionLang, _ := models.ParseLang(p.Language)
+	submission := models.PlayerSubmission{
+		ID:              submissionID,
+		PlayerID:        ctx.UserID,
+		PassedTestCases: p.PassedTestCases,
+		TotalTestCases:  p.TotalTestCases,
+		Status:          submissionStatus,
+		Runtime:         p.Runtime,
+		Memory:          p.Memory,
+		Lang:            submissionLang,
+		Time:            p.Time,
+	}
+
+	// TODO: Verify submission information is correct against LeetCode's API
+
+	err = services.GameManager.AddSubmission(sessionID, submission)
+	if err != nil {
+
+	}
+
+	opponentID, err := services.GameManager.GetOpponent(sessionID, ctx.UserID)
+	if err != nil {
+
+	}
+
+	opponentConn, err := ConnManager.GetConnection(opponentID)
+	if err != nil {
+
+	}
+
+	if submissionStatus == models.Accepted {
+		err = services.GameManager.CompleteGame(sessionID, ctx.UserID)
+		if err != nil {
+
+		}
+
+		// TODO: Notify both players of completed game
+		return
+	}
+
+	// TODO: Notify opponent of failed player submission
+	reply := OpponentSubmissionPayload{
+		ID:              submissionID,
+		PlayerID:        ctx.UserID,
+		PassedTestCases: p.PassedTestCases,
+		TotalTestCases:  p.TotalTestCases,
+		Status:          p.Status,
+		Runtime:         p.Runtime,
+		Memory:          p.Memory,
+		Language:        p.Language,
+		Time:            p.Time,
+	}
+
+	payload, _ := json.Marshal(reply)
+
+	// Forward the InvitationPayload to invitee via Redis pub/sub
+	msg := Message{Type: ServerMsgInvitationRequest, Payload: payload}
+	b, _ := json.Marshal(msg)
+
+	err = ConnManager.SendToConn(opponentConn, b)
+	if err != nil {
+
+	}
 
 }
 
