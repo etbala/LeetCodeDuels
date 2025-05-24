@@ -45,7 +45,7 @@ func (i *inviteManager) CreateInvite(inviterID, inviteeID int64, matchDetails mo
 	} else if exists != 0 {
 		return false, nil
 	}
-	payload := models.InvitePayload{
+	payload := models.Invite{
 		InviteeID:    inviteeID,
 		MatchDetails: matchDetails,
 		CreatedAt:    time.Now(),
@@ -59,6 +59,22 @@ func (i *inviteManager) CreateInvite(inviterID, inviteeID int64, matchDetails mo
 		return false, err
 	}
 	return true, nil
+}
+
+func (i *inviteManager) InviteDetails(inviterID int64) (*models.Invite, error) {
+	key := inviteKeyPrefix + strconv.FormatInt(inviterID, 10)
+	data, err := i.client.Get(i.ctx, key).Result()
+	if err == redis.Nil {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("redis get failed: %w", err)
+	}
+	var invite models.Invite
+	err = json.Unmarshal([]byte(data), &invite)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
+	}
+	return &invite, nil
 }
 
 // Deletes an existing invite; returns true if one was removed

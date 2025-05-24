@@ -1,11 +1,21 @@
 package handlers
 
-import "net/http"
+import (
+	"encoding/json"
+	"leetcodeduels/store"
+	"net/http"
+)
 
-func ProblemsRandom(w http.ResponseWriter, r *http.Request) {
+func RandomProblem(w http.ResponseWriter, r *http.Request) {
 
 }
 
 func AllTags(w http.ResponseWriter, r *http.Request) {
+	tags, err := store.DataStore.GetAllTags()
+	if err != nil {
+		http.Error(w, "could not retrieve tags", http.StatusInternalServerError)
+		return
+	}
 
+	json.NewEncoder(w).Encode(tags)
 }

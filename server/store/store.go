@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"leetcodeduels/models"
 	"strings"
+
+	"github.com/lib/pq"
 )
 
 var DataStore *dataStore
@@ -149,21 +151,22 @@ func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	return &p, nil
 }
 
-// GetAllTags returns every tag name.
-func (ds *dataStore) GetAllTags() ([]string, error) {
-	query := `SELECT name FROM tags`
+func (ds *dataStore) GetAllTags() ([]models.Tag, error) {
+	query := `SELECT id, name FROM tags`
 	rows, err := ds.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllTags: %w", err)
 	}
 	defer rows.Close()
 
-	var tags []string
+	var tags []models.Tag
 	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, fmt.Errorf("GetAllTags scan: %w", err)
 		}
+		t := models.Tag{ID: id, Name: name}
 		tags = append(tags, t)
 	}
 	return tags, nil
@@ -219,10 +222,10 @@ func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty mo
 }
 
 // GetRandomProblemForDuel picks a random problem matching preferences of both players and a set of difficulties.
-func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemMatchmaking(player1Tags, player2Tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
 	// Build IN clauses dynamically
 	if len(difficulties) == 0 {
-		return nil, fmt.Errorf("GetRandomProblemForDuel: no difficulties provided")
+		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
 	}
 
 	// placeholders
@@ -262,7 +265,41 @@ func (ds *dataStore) GetRandomProblemForDuel(player1Tags, player2Tags []int, dif
 
 	var p models.Problem
 	if err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblemForDuel: %w", err)
+		return nil, fmt.Errorf("GetRandomProblemMatchmaking: %w", err)
+	}
+	return &p, nil
+}
+
+func (ds *dataStore) GetRandomProblemDuel(tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
+	if len(difficulties) == 0 {
+		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
+	}
+
+	args := []interface{}{pq.Array(difficulties)}
+
+	tagSubquery := ``
+	if len(tags) > 0 {
+		args = append(args, pq.Array(tags))
+		tagSubquery = `
+		AND EXISTS (
+			SELECT 1 
+			FROM problem_tags pt 
+			WHERE pt1.problem_id = p.id 
+			  AND pt.tag_id = ANY($2)
+		)`
+	}
+
+	query := fmt.Sprintf(`
+	SELECT p.id, p.name, p.slug, p.difficulty
+	FROM problems p
+	WHERE p.difficulty = ANY($1)
+	%s
+	ORDER BY RANDOM() LIMIT 1`,
+		tagSubquery)
+
+	var p models.Problem
+	if err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		return nil, fmt.Errorf("GetRandomProblemDuel: %w", err)
 	}
 	return &p, nil
 }

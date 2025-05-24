@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"leetcodeduels/models"
 	"leetcodeduels/services"
+	"leetcodeduels/store"
 )
 
 type wsContext struct {
@@ -79,11 +80,77 @@ func (ctx *wsContext) handleSendInvitation(raw json.RawMessage) {
 
 func (ctx *wsContext) handleAcceptInvitation(raw json.RawMessage) {
 	var p AcceptInvitationPayload
-	err := json.Unmarshal(raw, &p)
-	if err != nil {
-
+	if err := json.Unmarshal(raw, &p); err != nil {
+		ctx.replyError("invalid_payload", "couldn't parse accept_invitation")
+		return
 	}
 
+	invite, err := services.InviteManager.InviteDetails(p.InviterID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if invite == nil {
+		ctx.replyError("invite_not_found", "no pending invitation to accept")
+		return
+	}
+
+	// remove the invite
+	removed, err := services.InviteManager.RemoveInvite(p.InviterID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if !removed {
+		ctx.replyError("invite_not_found", "no pending invitation to accept")
+		return
+	}
+
+	problem, err := store.DataStore.GetRandomProblemDuel(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
+
+	// start the session
+	sessionID, err := services.GameManager.StartGame(
+		[]int64{p.InviterID, ctx.UserID},
+		*problem,
+	)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+
+	// re-fetch to read the chosen problem URL
+	session, err := services.GameManager.GetGame(sessionID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+
+	problemURL := fmt.Sprintf("https://leetcode.com/problems/%s", session.Problem.Slug)
+
+	// notify inviter
+	inviterConn, err := ConnManager.GetConnection(p.InviterID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if inviterConn != "" {
+		startInv := StartGamePayload{
+			SessionID:  sessionID,
+			ProblemURL: problemURL,
+			OpponentID: ctx.UserID,
+		}
+		b, _ := json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startInv)})
+		_ = ConnManager.SendToConn(inviterConn, b)
+	}
+
+	// notify accepter
+	startYou := StartGamePayload{
+		SessionID:  sessionID,
+		ProblemURL: problemURL,
+		OpponentID: p.InviterID,
+	}
+	b2, _ := json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startYou)})
+	ctx.SendCh <- b2
 }
 
 func (ctx *wsContext) handleDeclineInvitation(raw json.RawMessage) {

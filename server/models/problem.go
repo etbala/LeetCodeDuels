@@ -3,9 +3,9 @@ package models
 type Difficulty string
 
 const (
-	EASY   Difficulty = "Easy"
-	MEDIUM Difficulty = "Medium"
-	HARD   Difficulty = "Hard"
+	Easy   Difficulty = "Easy"
+	Medium Difficulty = "Medium"
+	Hard   Difficulty = "Hard"
 )
 
 type Problem struct {

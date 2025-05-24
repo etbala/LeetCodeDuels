@@ -46,7 +46,7 @@ type SendInvitationPayload struct {
 }
 
 type AcceptInvitationPayload struct {
-	InviteeID int64 `json:"inviteeID"`
+	InviterID int64 `json:"inviteeID"`
 }
 
 type DeclineInvitationPayload struct {
@@ -55,7 +55,7 @@ type DeclineInvitationPayload struct {
 
 type EnterQueue struct {
 	Difficulties []string `json:"difficulties"`
-	Tags         []string `json:"tags"`
+	Tags         []int    `json:"tags"`
 }
 
 type SubmissionPayload struct {

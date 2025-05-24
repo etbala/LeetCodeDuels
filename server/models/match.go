@@ -163,12 +163,12 @@ type Session struct {
 }
 
 type MatchDetails struct {
-	IsRated      bool     `json:"isRated"`
-	Difficulties []string `json:"difficulties"`
-	Tags         []string `json:"tags"`
+	IsRated      bool         `json:"isRated"`
+	Difficulties []Difficulty `json:"difficulties"`
+	Tags         []int        `json:"tags"`
 }
 
-type InvitePayload struct {
+type Invite struct {
 	InviteeID    int64        `json:"inviteeID"`
 	MatchDetails MatchDetails `json:"matchDetails"`
 	CreatedAt    time.Time    `json:"createdAt"`
