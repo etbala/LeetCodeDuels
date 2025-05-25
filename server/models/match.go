@@ -137,26 +137,78 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 	}
 }
 
+type MatchStatus string
+
+const (
+	MatchActive   MatchStatus = "Active"
+	MatchWon      MatchStatus = "Won"
+	MatchCanceled MatchStatus = "Canceled"
+	MatchReverted MatchStatus = "Reverted"
+)
+
+func ParseMatchStatus(status string) (MatchStatus, error) {
+	switch status {
+	case "Accepted":
+		return MatchActive, nil
+	case "Won":
+		return MatchWon, nil
+	case "Canceled":
+		return MatchCanceled, nil
+	case "Reverted":
+		return MatchReverted, nil
+	default:
+		return "", errors.New("invalid MatchStatus value")
+	}
+}
+
+func (s *MatchStatus) UnmarshalJSON(data []byte) error {
+	// Trim quotes from JSON string
+	var statusStr string
+	if err := json.Unmarshal(data, &statusStr); err != nil {
+		return err
+	}
+
+	switch statusStr {
+	case "Active", "Won", "Canceled", "Reverted":
+		*s = MatchStatus(statusStr)
+		return nil
+	default:
+		return fmt.Errorf("invalid match status: %s", statusStr)
+	}
+}
+
 type PlayerSubmission struct {
-	ID              int              `json:"SubmissionID"`
-	PlayerID        int64            `json:"PlayerID"`
-	PassedTestCases int              `json:"PassedTestCases"`
-	TotalTestCases  int              `json:"TotalTestCases"`
-	Status          SubmissionStatus `json:"Status"`
-	Runtime         int              `json:"Runtime"`
-	Memory          int              `json:"Memory"`
-	Lang            LanguageType     `json:"Lang"`
-	Time            time.Time        `json:"Time"`
+	ID              int              `json:"submissionID"`
+	PlayerID        int64            `json:"playerID"`
+	PassedTestCases int              `json:"passedTestCases"`
+	TotalTestCases  int              `json:"totalTestCases"`
+	Status          SubmissionStatus `json:"status"`
+	Runtime         int              `json:"runtime"`
+	Memory          int              `json:"memory"`
+	Lang            LanguageType     `json:"lang"`
+	Time            time.Time        `json:"time"`
 }
 
 type Session struct {
-	ID          int
-	InProgress  bool
-	IsRated     bool
-	Problem     Problem
-	Players     []int64
-	Submissions [][]PlayerSubmission // Map of player to that players submissions
-	Winner      int64
-	StartTime   time.Time
-	EndTime     time.Time
+	ID          string             `json:"sessionID"`
+	Status      MatchStatus        `json:"status"`
+	IsRated     bool               `json:"rated"`
+	Problem     Problem            `json:"problem"`
+	Players     []int64            `json:"players"`
+	Submissions []PlayerSubmission `json:"submissions"`
+	Winner      int64              `json:"winner"` // <= 0 if no winner
+	StartTime   time.Time          `json:"startTime"`
+	EndTime     time.Time          `json:"endTime"`
+}
+
+type MatchDetails struct {
+	IsRated      bool         `json:"isRated"`
+	Difficulties []Difficulty `json:"difficulties"`
+	Tags         []int        `json:"tags"`
+}
+
+type Invite struct {
+	InviteeID    int64        `json:"inviteeID"`
+	MatchDetails MatchDetails `json:"matchDetails"`
+	CreatedAt    time.Time    `json:"createdAt"`
 }

@@ -6,6 +6,7 @@ import (
 	"leetcodeduels/api"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
+	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"leetcodeduels/ws"
 	"log"
@@ -31,18 +32,36 @@ func main() {
 		panic(err)
 	}
 
-	store.InitDataStore(cfg.DB_URL)
-
-	// TODO: Init OAuth State Handler
-
-	cm, err := ws.GetConnectionManager(cfg.RDB_URL)
+	err = store.InitDataStore(cfg.DB_URL)
 	if err != nil {
-		log.Fatalf("redis init failed: %v", err)
+		log.Fatalf("Failed to Init DataStore: %v", err)
 	}
-	defer cm.Close()
 
-	// TODO: Init Invite Handler
-	// TODO: Init Game Session Handler
+	err = auth.InitStateStore(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init StateStore: %v", err)
+	}
+	defer auth.StateStore.Close()
+
+	err = ws.InitConnManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init ConnManager: %v", err)
+	}
+	defer ws.ConnManager.Close()
+
+	err = services.InitInviteManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init InviteManager: %v", err)
+	}
+	defer services.InviteManager.Close()
+
+	err = services.InitGameManager(cfg.RDB_URL)
+	if err != nil {
+		log.Fatalf("Failed to Init InviteManager: %v", err)
+	}
+	defer services.GameManager.Close()
+
+	ws.InitPubSub()
 
 	var port string
 	flag.StringVar(&port, "port", "8080", "Server port to listen on")
@@ -55,10 +74,8 @@ func main() {
 		AllowCredentials: true,
 	})
 
-	// Init Endpoints
 	router := api.SetupRoutes(auth.Middleware)
 	handler := c.Handler(router)
-
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: handler,

@@ -22,7 +22,7 @@ type disconnectMsg struct {
 }
 
 // reads from the socket, handles messages, and triggers cleanup on error.
-func ReadLoop(cm *ConnectionManager, userID int64, connID string, conn *websocket.Conn, sendCh chan<- []byte) {
+func ReadLoop(userID int64, connID string, conn *websocket.Conn, sendCh chan<- []byte) {
 	// Set up Pong handler / deadlines
 	const pongWait = 60 * time.Second
 	conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -31,36 +31,31 @@ func ReadLoop(cm *ConnectionManager, userID int64, connID string, conn *websocke
 		return nil
 	})
 
-	defer cleanup(cm, userID, connID, conn)
+	registerConn(connID, sendCh)
+	defer unregisterConn(connID)
+	defer cleanup(userID, connID, conn)
+
+	ctx := &wsContext{UserID: userID, ConnID: connID, SendCh: sendCh}
 
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			// EOF or protocol error → exit loop
+			// EOF or protocol error
 			return
 		}
 
 		var env messageEnvelope
 		if err := json.Unmarshal(msg, &env); err != nil {
-			// malformed → ignore or send an ERROR frame back
+			// malformed
 			continue
 		}
 
-		switch env.Type {
-		case MessageTypeHeartbeat:
-
-		case MessageTypeError:
-
-		case MessageTypeSubmission:
-
-		default:
-			// unknown type
-		}
+		ctx.Handle(env)
 	}
 }
 
 // pumps messages from sendCh to the socket, sends regular pings, and cleans up on error or channel close.
-func WriteLoop(cm *ConnectionManager, userID int64, connID string, conn *websocket.Conn, sendCh <-chan []byte) {
+func WriteLoop(userID int64, connID string, conn *websocket.Conn, sendCh <-chan []byte) {
 	const (
 		writeWait  = 10 * time.Second
 		pingPeriod = 54 * time.Second // must be < pongWait
@@ -68,7 +63,7 @@ func WriteLoop(cm *ConnectionManager, userID int64, connID string, conn *websock
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		cleanup(cm, userID, connID, conn)
+		cleanup(userID, connID, conn)
 	}()
 
 	for {
@@ -95,7 +90,7 @@ func WriteLoop(cm *ConnectionManager, userID int64, connID string, conn *websock
 }
 
 // tells whichever WS server holds that oldConnID to tear it down.
-func PublishDisconnect(cm *ConnectionManager, userID int64, oldConnID string) error {
+func PublishDisconnect(userID int64, oldConnID string) error {
 	dm := disconnectMsg{
 		UserID: userID,
 		ConnID: oldConnID,
@@ -105,13 +100,18 @@ func PublishDisconnect(cm *ConnectionManager, userID int64, oldConnID string) er
 		return fmt.Errorf("marshal disconnect message: %w", err)
 	}
 	// publish on the shared "disconnect" channel
-	return cm.client.Publish(context.Background(), "disconnect", payload).Err()
+	return ConnManager.client.Publish(context.Background(), "disconnect", payload).Err()
 }
 
-func cleanup(cm *ConnectionManager, userID int64, connID string, conn *websocket.Conn) {
+func cleanup(userID int64, connID string, conn *websocket.Conn) {
 	conn.Close()
-	stillOnline, _ := cm.RemoveConnection(userID, connID)
+	sendCh, exists := lookupSendCh(connID)
+	if exists {
+		close(sendCh)
+	}
+
+	stillOnline, _ := ConnManager.RemoveConnection(userID, connID)
 	if !stillOnline {
-		// user is now offline (broadcast here is necessary)
+		// user is now offline (broadcast here if necessary)
 	}
 }

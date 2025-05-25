@@ -13,7 +13,7 @@ import (
 )
 
 // ExchangeCodeForUser handles the full OAuth + upsert flow, purely functional.
-func ExchangeCodeForUser(code, state string) (*models.User, error) {
+func ExchangeCodeForUser(code string) (*models.User, error) {
 	// load client credentials
 	cfg, err := config.LoadConfig()
 	if err != nil {
