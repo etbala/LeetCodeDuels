@@ -326,6 +326,95 @@ func (ds *dataStore) StoreMatch(match *models.Session) error {
 	return nil
 }
 
+// TODO: Investigate if triple query or single query with ARRAY_AGG is better
+func (ds *dataStore) GetMatch(matchID string) (*models.Session, error) {
+	const matchQ = `
+	SELECT 
+	  m.id, 
+	  m.problem_id, 
+	  p.name, 
+	  p.slug, 
+	  p.difficulty, 
+	  m.is_rated, 
+	  m.status, 
+	  m.winner_id, 
+	  m.start_time, 
+	  m.end_time
+	FROM matches m
+	JOIN problems p ON p.id = m.problem_id
+	WHERE m.id = $1`
+
+	var (
+		id        string
+		probID    int
+		probName  string
+		probSlug  string
+		probDiff  string
+		isRated   bool
+		statusStr string
+		winnerID  int64
+		startTime time.Time
+		endTime   time.Time
+	)
+	err := ds.db.QueryRow(matchQ, matchID).
+		Scan(&id, &probID, &probName, &probSlug, &probDiff, &isRated, &statusStr, &winnerID, &startTime, &endTime)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("GetMatch: querying match: %w", err)
+	}
+
+	parsedStatus, err := models.ParseMatchStatus(statusStr)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatch: parse status: %w", err)
+	}
+	parsedDiff, err := models.ParseDifficulty(probDiff)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatch: parse difficulty: %w", err)
+	}
+
+	const playersQ = `
+	SELECT player_id
+	FROM match_players
+	WHERE match_id = $1`
+
+	rows, err := ds.db.Query(playersQ, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatch: querying players: %w", err)
+	}
+	defer rows.Close()
+
+	var players []int64
+	for rows.Next() {
+		var pid int64
+		if err := rows.Scan(&pid); err != nil {
+			return nil, fmt.Errorf("GetMatch: scanning player: %w", err)
+		}
+		players = append(players, pid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("GetMatch: players rows error: %w", err)
+	}
+
+	subs, err := ds.GetMatchSubmissions(matchID)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatch: fetching submissions: %w", err)
+	}
+
+	return &models.Session{
+		ID:          id,
+		Problem:     models.Problem{ID: probID, Name: probName, Slug: probSlug, Difficulty: parsedDiff},
+		IsRated:     isRated,
+		Status:      parsedStatus,
+		Winner:      winnerID,
+		StartTime:   startTime,
+		EndTime:     endTime,
+		Players:     players,
+		Submissions: subs,
+	}, nil
+}
+
 // Returns match information (EXCEPT SUBMISSIONS, MUST GET SEPARATELY)
 func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	query := `

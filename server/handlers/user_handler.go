@@ -26,7 +26,7 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if profile == nil {
-		http.Error(w, "No Profile to Retrieve", http.StatusNotFound)
+		http.Error(w, "User Not Found", http.StatusNotFound)
 		return
 	}
 
