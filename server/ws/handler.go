@@ -279,13 +279,27 @@ func (ctx *wsContext) handleSubmission(raw json.RawMessage) {
 	}
 
 	if submissionStatus == models.Accepted {
-		err = services.GameManager.CompleteGame(sessionID, ctx.UserID)
+		session, err = services.GameManager.CompleteGame(sessionID, ctx.UserID)
 		if err != nil {
 
 		}
 
-		// TODO: Notify both players of completed game
-		// TODO: Store this match in long-term storage
+		duration := submission.Time.Sub(session.StartTime)
+		durationSecs := int64(duration.Seconds())
+
+		reply := GameOverPayload{
+			WinnerID:  ctx.UserID,
+			SessionID: sessionID,
+			Duration:  durationSecs,
+		}
+		payload, _ := json.Marshal(reply)
+		msg := Message{Type: ServerMsgGameOver, Payload: payload}
+		b, _ := json.Marshal(msg)
+
+		ctx.SendCh <- b
+		err = ConnManager.SendToConn(opponentConn, b)
+
+		err = store.DataStore.StoreMatch(session)
 		return
 	}
 

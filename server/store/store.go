@@ -284,10 +284,10 @@ func (ds *dataStore) GetRandomProblemDuel(
 	return &p, nil
 }
 
-func (ds *dataStore) StoreMatch(match models.Session) error {
+func (ds *dataStore) StoreMatch(match *models.Session) error {
 	query := `
 	INSERT INTO matches (id, problem_id, is_rated, status, winner_id, start_time, end_time)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := ds.db.Exec(query, match.ID, match.Problem.ID, match.IsRated,
 		match.Status, match.Winner, match.StartTime, match.EndTime)
@@ -301,9 +301,25 @@ func (ds *dataStore) StoreMatch(match models.Session) error {
 // Returns match information (EXCEPT SUBMISSIONS, MUST GET SEPARATELY)
 func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	query := `
-	SELECT m.id, m.problem_id, m.is_rated, m.status, m.winner_id, m.start_time, m.end_time
-	FROM match_players mp, matches m
-	WHERE mp.player_id = $1`
+	SELECT 
+		m.id, 
+		m.problem_id, 
+		p.name, 
+		p.slug, 
+		p.difficulty, 
+		m.is_rated, 
+		m.status, 
+		m.winner_id, 
+		m.start_time, 
+		m.end_time,
+		ARRAY_AGG(mp2.player_id) AS player_ids
+	FROM match_players mp
+	JOIN matches m ON mp.match_id = m.id
+	JOIN problems p ON m.problem_id = p.id
+	JOIN match_players mp2 ON mp2.match_id = m.id
+	WHERE mp.player_id = $1
+	GROUP BY m.id, m.problem_id, p.name, p.slug, p.difficulty, m.is_rated, m.status, m.winner_id, m.start_time, m.end_time
+	ORDER BY m.start_time DESC`
 
 	rows, err := ds.db.Query(query, userID)
 	if err != nil {
@@ -314,30 +330,40 @@ func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	var sessions []models.Session
 	for rows.Next() {
 		var id string
+		var probID int
+		var probName string
+		var probSlug string
+		var probDifficulty string
 		var status string
 		var isRated bool
-		var problemID int
 		var winnerID int64
 		var startTime time.Time
 		var endTime time.Time
+		var playerIDs pq.Int64Array
 
-		err = rows.Scan(&id, &problemID, &isRated, &status, &winnerID, &startTime, &endTime)
+		err = rows.Scan(&id, &probID, &probName, &probSlug, &probDifficulty,
+			&isRated, &status, &winnerID, &startTime, &endTime, &playerIDs)
 		if err != nil {
 			return nil, fmt.Errorf("GetPlayerMatches scan: %w", err)
 		}
 
 		parsedStatus, err := models.ParseMatchStatus(status)
 		if err != nil {
-			return nil, fmt.Errorf("GetPlayerMatches: %w", err)
+			return nil, fmt.Errorf("GetPlayerMatches parse: %w", err)
+		}
+
+		parsedDifficulty, err := models.ParseDifficulty(probDifficulty)
+		if err != nil {
+			return nil, fmt.Errorf("GetPlayerMatches parse: %w", err)
 		}
 
 		sesh := models.Session{
 			ID:          id,
 			Status:      parsedStatus,
 			IsRated:     isRated,
-			Problem:     models.Problem{}, // TODO: Get problem from problem_id
-			Players:     nil,              // TODO: Get player ids from DB
-			Submissions: nil,              // Do not populate submissions
+			Problem:     models.Problem{ID: probID, Name: probName, Slug: probSlug, Difficulty: parsedDifficulty},
+			Players:     playerIDs,
+			Submissions: nil, // Do not populate submissions
 			Winner:      winnerID,
 			StartTime:   startTime,
 			EndTime:     endTime,
@@ -348,7 +374,6 @@ func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 }
 
 func (ds *dataStore) GetMatchSubmissions(matchID string) ([]models.PlayerSubmission, error) {
-
 	query := `
 	SELECT submission_id, player_id, passed_test_cases, total_test_cases, 
 		status, runtime, memory, lang, submitted_at

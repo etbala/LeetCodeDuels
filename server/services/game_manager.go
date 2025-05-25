@@ -148,32 +148,33 @@ func (gm *gameManager) AddSubmission(sessionID string, submission models.PlayerS
 }
 
 // Marks the session as completed, sets its end time, and expires it in 3 minutes
-func (gm *gameManager) CompleteGame(sessionID string, winnerID int64) error {
+// Returns the final session state
+func (gm *gameManager) CompleteGame(sessionID string, winnerID int64) (*models.Session, error) {
 	session, err := gm.GetGame(sessionID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if session == nil {
-		return fmt.Errorf("session %s not found", sessionID)
+		return nil, fmt.Errorf("session %s not found", sessionID)
 	}
 	session.Status = models.MatchWon
 	session.EndTime = time.Now()
 	session.Winner = winnerID // TODO: Verify winner is in session.Players
 	data, err := json.Marshal(session)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
 	if err != nil {
-
+		return nil, err
 	}
 
 	for _, pid := range session.Players {
 		key := playerGameKeyPrefix + strconv.FormatInt(pid, 10)
 		_ = gm.client.Del(gm.ctx, key).Err()
 	}
-	return nil
+	return session, nil
 }
 
 // Marks the session as canceled, sets its end time, and expires it in 3 minutes
