@@ -68,17 +68,45 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	var rating int
 	query := `SELECT rating FROM github_oauth_users WHERE github_id = $1`
-	if err := ds.db.QueryRow(query, userID).Scan(&rating); err != nil {
+	err := ds.db.QueryRow(query, userID).Scan(&rating)
+	if err != nil {
 		return 0, fmt.Errorf("GetUserRating: %w", err)
 	}
 	return rating, nil
 }
 
-// UpdateUserRating sets a user's rating to newRating.
+func (ds *dataStore) UpdateUsername(userID int64, newUsername string) error {
+	query := `UPDATE github_oauth_users SET username = $1 WHERE github_id = $2`
+	_, err := ds.db.Exec(query, newUsername, userID)
+	if err != nil {
+		return fmt.Errorf("UpdateUsername: %w", err)
+	}
+	return nil
+}
+
+func (ds *dataStore) UpdateLCUsername(userID int64, newLCUsername string) error {
+	query := `UPDATE github_oauth_users SET lc_username = $1 WHERE github_id = $2`
+	_, err := ds.db.Exec(query, newLCUsername, userID)
+	if err != nil {
+		return fmt.Errorf("UpdateLCUsername: %w", err)
+	}
+	return nil
+}
+
 func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
 	query := `UPDATE github_oauth_users SET rating = $1 WHERE github_id = $2`
-	if _, err := ds.db.Exec(query, newRating, userID); err != nil {
+	_, err := ds.db.Exec(query, newRating, userID)
+	if err != nil {
 		return fmt.Errorf("UpdateUserRating: %w", err)
+	}
+	return nil
+}
+
+func (ds *dataStore) DeleteUser(userID int64) error {
+	query := `DELETE FROM github_oauth_users WHERE github_id = $1`
+	_, err := ds.db.Exec(query, userID)
+	if err != nil {
+		return fmt.Errorf("DeleteUser: %w", err)
 	}
 	return nil
 }

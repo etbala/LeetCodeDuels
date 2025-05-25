@@ -8,6 +8,7 @@ package store
 CREATE TABLE github_oauth_users (
     github_id BIGINT PRIMARY KEY,
     username TEXT NOT NULL,
+    lc_username TEXT NOT NULL,
     access_token TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
