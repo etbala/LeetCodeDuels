@@ -27,7 +27,7 @@ func (ctx *wsContext) Handle(env messageEnvelope) {
 	case ClientMsgEnterQueue:
 		ctx.handleEnterQueue(env.Payload)
 	case ClientMsgLeaveQueue:
-		ctx.handleLeaveQueue(env.Payload)
+		ctx.handleLeaveQueue()
 	case ClientMsgSubmission:
 		ctx.handleSubmission(env.Payload)
 	default:
@@ -91,7 +91,8 @@ func (ctx *wsContext) handleAcceptInvitation(raw json.RawMessage) {
 		return
 	}
 	if invite == nil {
-		ctx.replyError("invite_not_found", "no pending invitation to accept")
+		b2, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
+		ctx.SendCh <- b2
 		return
 	}
 
@@ -154,25 +155,68 @@ func (ctx *wsContext) handleAcceptInvitation(raw json.RawMessage) {
 }
 
 func (ctx *wsContext) handleDeclineInvitation(raw json.RawMessage) {
+	var p AcceptInvitationPayload
+	if err := json.Unmarshal(raw, &p); err != nil {
+		ctx.replyError("invalid_payload", "couldn't parse decline_invitation")
+		return
+	}
 
+	invite, err := services.InviteManager.InviteDetails(p.InviterID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if invite == nil {
+		// No invite to decline
+		return
+	}
+
+	inviterConn, err := ConnManager.GetConnection(p.InviterID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+
+	b, _ := json.Marshal(Message{Type: ServerMsgInvitationDeclined})
+	_ = ConnManager.SendToConn(inviterConn, b)
 }
 
 func (ctx *wsContext) handleCancelInvitation() {
+	invite, err := services.InviteManager.InviteDetails(ctx.UserID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+	if invite == nil {
+		// No invite to cancel
+		return
+	}
+
 	success, err := services.InviteManager.RemoveInvite(ctx.UserID)
 	if err != nil {
 		ctx.replyError("server_error", err.Error())
 		return
 	}
 	if success == false {
-		// No Invitation to Cancel
+		// this shouldn’t really happen, but guard anyway
 	}
+
+	inviterConn, err := ConnManager.GetConnection(ctx.UserID)
+	if err != nil {
+		ctx.replyError("server_error", err.Error())
+		return
+	}
+
+	payload := InvitationCanceledPayload{InviterID: ctx.UserID}
+	b, _ := json.Marshal(Message{Type: ServerMsgInvitationCanceled, Payload: MarshalPayload(payload)})
+	_ = ConnManager.SendToConn(inviterConn, b)
 }
 
 func (ctx *wsContext) handleEnterQueue(raw json.RawMessage) {
 	ctx.replyError("unimplemented", "")
 }
 
-func (ctx *wsContext) handleLeaveQueue(raw json.RawMessage) {
+func (ctx *wsContext) handleLeaveQueue() {
 	ctx.replyError("unimplemented", "")
 }
 
@@ -241,6 +285,7 @@ func (ctx *wsContext) handleSubmission(raw json.RawMessage) {
 		}
 
 		// TODO: Notify both players of completed game
+		// TODO: Store this match in long-term storage
 		return
 	}
 

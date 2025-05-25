@@ -96,8 +96,7 @@ func (gm *gameManager) StartGame(players []int64, problem models.Problem) (strin
 	sessionID := uuid.NewString()
 	session := &models.Session{
 		ID:          sessionID,
-		InProgress:  true,
-		IsCanceled:  false,
+		Status:      models.MatchActive,
 		IsRated:     false,
 		Problem:     problem,
 		Players:     players,
@@ -157,7 +156,7 @@ func (gm *gameManager) CompleteGame(sessionID string, winnerID int64) error {
 	if session == nil {
 		return fmt.Errorf("session %s not found", sessionID)
 	}
-	session.InProgress = false
+	session.Status = models.MatchWon
 	session.EndTime = time.Now()
 	session.Winner = winnerID // TODO: Verify winner is in session.Players
 	data, err := json.Marshal(session)
@@ -186,15 +185,15 @@ func (gm *gameManager) CancelGame(sessionID string) error {
 	if session == nil {
 		return fmt.Errorf("session %s not found", sessionID)
 	}
-	session.InProgress = false
-	session.IsCanceled = true
+	session.Status = models.MatchCanceled
 	session.EndTime = time.Now()
 	data, err := json.Marshal(session)
 	if err != nil {
 		return err
 	}
 
-	if err := gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err(); err != nil {
+	err = gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
+	if err != nil {
 		return err
 	}
 

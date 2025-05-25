@@ -137,6 +137,46 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 	}
 }
 
+type MatchStatus string
+
+const (
+	MatchActive   MatchStatus = "Active"
+	MatchWon      MatchStatus = "Won"
+	MatchCanceled MatchStatus = "Canceled"
+	MatchReverted MatchStatus = "Reverted"
+)
+
+func ParseMatchStatus(status string) (MatchStatus, error) {
+	switch status {
+	case "Accepted":
+		return MatchActive, nil
+	case "Won":
+		return MatchWon, nil
+	case "Canceled":
+		return MatchCanceled, nil
+	case "Reverted":
+		return MatchReverted, nil
+	default:
+		return "", errors.New("invalid MatchStatus value")
+	}
+}
+
+func (s *MatchStatus) UnmarshalJSON(data []byte) error {
+	// Trim quotes from JSON string
+	var statusStr string
+	if err := json.Unmarshal(data, &statusStr); err != nil {
+		return err
+	}
+
+	switch statusStr {
+	case "Active", "Won", "Canceled", "Reverted":
+		*s = MatchStatus(statusStr)
+		return nil
+	default:
+		return fmt.Errorf("invalid match status: %s", statusStr)
+	}
+}
+
 type PlayerSubmission struct {
 	ID              int              `json:"submissionID"`
 	PlayerID        int64            `json:"playerID"`
@@ -151,13 +191,12 @@ type PlayerSubmission struct {
 
 type Session struct {
 	ID          string             `json:"sessionID"`
-	InProgress  bool               `json:"active"`
-	IsCanceled  bool               `json:"canceled"`
+	Status      MatchStatus        `json:"status"`
 	IsRated     bool               `json:"rated"`
 	Problem     Problem            `json:"problem"`
 	Players     []int64            `json:"players"`
 	Submissions []PlayerSubmission `json:"submissions"`
-	Winner      int64              `json:"winner"`
+	Winner      int64              `json:"winner"` // <= 0 if no winner
 	StartTime   time.Time          `json:"startTime"`
 	EndTime     time.Time          `json:"endTime"`
 }

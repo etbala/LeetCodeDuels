@@ -22,6 +22,7 @@ const (
 	ServerMsgError              = "server_error"
 	ServerMsgInvitationRequest  = "invitation_request"
 	ServerMsgInvitationCanceled = "invitation_canceled"
+	ServerMsgInvitationDeclined = "invitation_declined"
 	ServerMsgUserOffline        = "user_offline"
 	ServerMsgInviteDoesNotExist = "invitation_nonexistant" // No Payload
 	ServerMsgStartGame          = "start_game"
@@ -46,11 +47,11 @@ type SendInvitationPayload struct {
 }
 
 type AcceptInvitationPayload struct {
-	InviterID int64 `json:"inviteeID"`
+	InviterID int64 `json:"inviterID"`
 }
 
 type DeclineInvitationPayload struct {
-	InviteeID int64 `json:"inviteeID"`
+	InviterID int64 `json:"inviterID"`
 }
 
 type EnterQueue struct {
@@ -69,12 +70,12 @@ type SubmissionPayload struct {
 }
 
 type InvitationRequestPayload struct {
-	InviterID    int64               `json:"inviteeID"`
+	InviterID    int64               `json:"inviterID"`
 	MatchDetails models.MatchDetails `json:"matchDetails"`
 }
 
 type InvitationCanceledPayload struct {
-	InviteeID int64 `json:"inviteeID"`
+	InviterID int64 `json:"inviterID"`
 }
 
 type StartGamePayload struct {

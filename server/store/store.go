@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"leetcodeduels/models"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -196,33 +197,10 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
-// GetRandomProblemByDifficulty picks a random problem with the given difficulty.
-func (ds *dataStore) GetRandomProblemByDifficulty(difficulty models.Difficulty) (*models.Problem, error) {
-	query := `SELECT id, name, slug, difficulty FROM problems WHERE difficulty = $1 ORDER BY RANDOM() LIMIT 1`
-	var p models.Problem
-	if err := ds.db.QueryRow(query, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblemByDifficulty: %w", err)
-	}
-	return &p, nil
-}
-
-// GetRandomProblemByDifficultyAndTag picks a random problem filtered by difficulty and tag.
-func (ds *dataStore) GetRandomProblemByDifficultyAndTag(tagID int, difficulty models.Difficulty) (*models.Problem, error) {
-	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
-	FROM problems p
-	JOIN problem_tags pt ON p.id = pt.problem_id
-	WHERE pt.tag_id = $1 AND p.difficulty = $2
-	ORDER BY RANDOM() LIMIT 1`
-	var p models.Problem
-	if err := ds.db.QueryRow(query, tagID, difficulty).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblemByDifficultyAndTag: %w", err)
-	}
-	return &p, nil
-}
-
 // GetRandomProblemForDuel picks a random problem matching preferences of both players and a set of difficulties.
-func (ds *dataStore) GetRandomProblemMatchmaking(player1Tags, player2Tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemMatchmaking(
+	player1Tags, player2Tags []int, difficulties []models.Difficulty,
+) (*models.Problem, error) {
 	// Build IN clauses dynamically
 	if len(difficulties) == 0 {
 		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
@@ -270,7 +248,9 @@ func (ds *dataStore) GetRandomProblemMatchmaking(player1Tags, player2Tags []int,
 	return &p, nil
 }
 
-func (ds *dataStore) GetRandomProblemDuel(tags []int, difficulties []models.Difficulty) (*models.Problem, error) {
+func (ds *dataStore) GetRandomProblemDuel(
+	tags []int, difficulties []models.Difficulty,
+) (*models.Problem, error) {
 	if len(difficulties) == 0 {
 		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
 	}
@@ -302,4 +282,124 @@ func (ds *dataStore) GetRandomProblemDuel(tags []int, difficulties []models.Diff
 		return nil, fmt.Errorf("GetRandomProblemDuel: %w", err)
 	}
 	return &p, nil
+}
+
+func (ds *dataStore) StoreMatch(match models.Session) error {
+	query := `
+	INSERT INTO matches (id, problem_id, is_rated, status, winner_id, start_time, end_time)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	_, err := ds.db.Exec(query, match.ID, match.Problem.ID, match.IsRated,
+		match.Status, match.Winner, match.StartTime, match.EndTime)
+	if err != nil {
+		return fmt.Errorf("StoreMatch: %w", err)
+	}
+
+	return nil
+}
+
+// Returns match information (EXCEPT SUBMISSIONS, MUST GET SEPARATELY)
+func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
+	query := `
+	SELECT m.id, m.problem_id, m.is_rated, m.status, m.winner_id, m.start_time, m.end_time
+	FROM match_players mp, matches m
+	WHERE mp.player_id = $1`
+
+	rows, err := ds.db.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlayerMatches: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []models.Session
+	for rows.Next() {
+		var id string
+		var status string
+		var isRated bool
+		var problemID int
+		var winnerID int64
+		var startTime time.Time
+		var endTime time.Time
+
+		err = rows.Scan(&id, &problemID, &isRated, &status, &winnerID, &startTime, &endTime)
+		if err != nil {
+			return nil, fmt.Errorf("GetPlayerMatches scan: %w", err)
+		}
+
+		parsedStatus, err := models.ParseMatchStatus(status)
+		if err != nil {
+			return nil, fmt.Errorf("GetPlayerMatches: %w", err)
+		}
+
+		sesh := models.Session{
+			ID:          id,
+			Status:      parsedStatus,
+			IsRated:     isRated,
+			Problem:     models.Problem{}, // TODO: Get problem from problem_id
+			Players:     nil,              // TODO: Get player ids from DB
+			Submissions: nil,              // Do not populate submissions
+			Winner:      winnerID,
+			StartTime:   startTime,
+			EndTime:     endTime,
+		}
+		sessions = append(sessions, sesh)
+	}
+	return sessions, nil
+}
+
+func (ds *dataStore) GetMatchSubmissions(matchID string) ([]models.PlayerSubmission, error) {
+
+	query := `
+	SELECT submission_id, player_id, passed_test_cases, total_test_cases, 
+		status, runtime, memory, lang, submitted_at
+	FROM submissions
+	WHERE match_id = $1`
+
+	rows, err := ds.db.Query(query, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatchSubmissions: %w", err)
+	}
+	defer rows.Close()
+
+	var submissions []models.PlayerSubmission
+	for rows.Next() {
+		var id int
+		var playerID int64
+		var passedTestCases int
+		var totalTestCases int
+		var status string
+		var runtime int
+		var memory int
+		var lang string
+		var time time.Time
+
+		err = rows.Scan(&id, &playerID, &passedTestCases, &totalTestCases, &status, &runtime, &memory, &lang, &time)
+		if err != nil {
+			return nil, fmt.Errorf("GetMatchSubmissions scan: %w", err)
+		}
+
+		parsedStatus, err := models.ParseSubmissionStatus(status)
+		if err != nil {
+			return nil, fmt.Errorf("GetMatchSubmissions parse: %w", err)
+		}
+
+		parsedLang, err := models.ParseLang(lang)
+		if err != nil {
+			return nil, fmt.Errorf("GetMatchSubmissions parse: %w", err)
+		}
+
+		submission := models.PlayerSubmission{
+			ID:              id,
+			PlayerID:        playerID,
+			PassedTestCases: passedTestCases,
+			TotalTestCases:  totalTestCases,
+			Status:          parsedStatus,
+			Runtime:         runtime,
+			Memory:          memory,
+			Lang:            parsedLang,
+			Time:            time,
+		}
+		submissions = append(submissions, submission)
+	}
+	return submissions, nil
 }
