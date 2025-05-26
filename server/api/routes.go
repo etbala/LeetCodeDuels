@@ -48,17 +48,17 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 
 	accountRouter.HandleFunc("/me/delete", func(w http.ResponseWriter, r *http.Request) {
 		handlers.DeleteUser(w, r)
-	}).Methods("GET")
+	}).Methods("POST")
 
 	// Change username
 	accountRouter.HandleFunc("/me/rename", func(w http.ResponseWriter, r *http.Request) {
 		handlers.RenameUser(w, r)
-	}).Methods("GET")
+	}).Methods("POST")
 
 	// Change associated leetcode username
 	accountRouter.HandleFunc("/me/lcrename", func(w http.ResponseWriter, r *http.Request) {
 		handlers.RenameLCUser(w, r)
-	}).Methods("GET")
+	}).Methods("POST")
 
 	// ----------------------
 	// Matchmaking Routes
@@ -69,7 +69,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// Number of people currently in queue
 	mmRouter.HandleFunc("/count", func(w http.ResponseWriter, r *http.Request) {
 		handlers.QueueSize(w, r)
-	}).Methods("POST")
+	}).Methods("GET")
 
 	// ----------------------
 	// Game Session Routes
@@ -80,6 +80,10 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// Get match details
 	matchRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchesGet(w, r)
+	}).Methods("GET")
+
+	matchRouter.HandleFunc("/{id}/submissions", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MatchSubmissions(w, r)
 	}).Methods("GET")
 
 	matchRouter.HandleFunc("/history/{userid}", func(w http.ResponseWriter, r *http.Request) {
