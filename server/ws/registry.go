@@ -12,6 +12,7 @@ import (
 var (
 	connMu       sync.RWMutex
 	connChannels = make(map[string]chan<- []byte)
+	ps           *redis.PubSub
 )
 
 func registerConn(connID string, ch chan<- []byte) {
@@ -35,8 +36,8 @@ func lookupSendCh(connID string) (chan<- []byte, bool) {
 }
 
 func InitPubSub() {
-	pubsub := ConnManager.client.PSubscribe(context.Background(), "ws:instance:*", "disconnect")
-	go pubSubRoutine(pubsub)
+	ps = ConnManager.client.PSubscribe(context.Background(), "ws:instance:*", "disconnect")
+	go pubSubRoutine(ps)
 }
 
 func pubSubRoutine(pubsub *redis.PubSub) {
@@ -61,4 +62,30 @@ func pubSubRoutine(pubsub *redis.PubSub) {
 			}
 		}
 	}
+}
+
+func CleanupPubSub(ctx context.Context) error {
+	if ps != nil {
+		// Unsubscribe from patterns (PUnsubscribe)
+		if err := ps.PUnsubscribe(ctx); err != nil {
+			return err
+		}
+		// and from any normal channel subscriptions (Unsubscribe)
+		if err := ps.Unsubscribe(ctx); err != nil {
+			return err
+		}
+		// Only now close the PubSub, which will close the Channel() and make your for-range exit
+		if err := ps.Close(); err != nil {
+			return err
+		}
+	}
+
+	// Clean up any in-flight per-connection channels
+	connMu.Lock()
+	for id, ch := range connChannels {
+		close(ch)
+		delete(connChannels, id)
+	}
+	connMu.Unlock()
+	return nil
 }

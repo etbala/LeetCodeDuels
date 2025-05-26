@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"leetcodeduels/api"
 	"leetcodeduels/auth"
 	"leetcodeduels/config"
@@ -8,6 +9,7 @@ import (
 	"leetcodeduels/store"
 	"leetcodeduels/ws"
 	"net/http"
+	"time"
 
 	"github.com/rs/cors"
 )
@@ -22,25 +24,21 @@ func New(cfg *config.Config) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer auth.StateStore.Close()
 
 	err = ws.InitConnManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
 	}
-	defer ws.ConnManager.Close()
 
 	err = services.InitInviteManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
 	}
-	defer services.InviteManager.Close()
 
 	err = services.InitGameManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
 	}
-	defer services.GameManager.Close()
 
 	ws.InitPubSub()
 
@@ -59,4 +57,24 @@ func New(cfg *config.Config) (*http.Server, error) {
 		Handler: handler,
 	}
 	return srv, nil
+}
+
+func Cleanup(srv *http.Server) error {
+	// shut down HTTP server first
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		return err
+	}
+
+	if err := ws.CleanupPubSub(ctx); err != nil {
+		return err
+	}
+
+	ws.ConnManager.Close()
+	auth.StateStore.Close()
+	services.InviteManager.Close()
+	services.GameManager.Close()
+
+	return nil
 }
