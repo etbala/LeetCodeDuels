@@ -26,15 +26,14 @@ func main() {
 		panic(err)
 	}
 
-	port := "8080"
-	srv, err := server.New(cfg, port)
+	srv, err := server.New(cfg)
 	if err != nil {
 		panic(err)
 	}
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on port %s\n", port)
+		log.Printf("Starting server on port %s\n", cfg.PORT)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %s", err)
 		}

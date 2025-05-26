@@ -12,7 +12,7 @@ import (
 	"github.com/rs/cors"
 )
 
-func New(cfg *config.Config, port string) (*http.Server, error) {
+func New(cfg *config.Config) (*http.Server, error) {
 	err := store.InitDataStore(cfg.DB_URL)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func New(cfg *config.Config, port string) (*http.Server, error) {
 	handler := c.Handler(router)
 
 	srv := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + cfg.PORT,
 		Handler: handler,
 	}
 	return srv, nil
