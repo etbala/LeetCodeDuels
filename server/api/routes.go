@@ -82,6 +82,10 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.MatchesGet(w, r)
 	}).Methods("GET")
 
+	matchRouter.HandleFunc("/{id}/submissions", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MatchSubmissions(w, r)
+	}).Methods("GET")
+
 	matchRouter.HandleFunc("/history/{userid}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchHistory(w, r)
 	}).Methods("GET")
