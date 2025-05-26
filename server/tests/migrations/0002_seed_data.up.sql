@@ -28,7 +28,8 @@ INSERT INTO github_oauth_users (
   (49876, 'willow', 'willow_lc', 'dummy-token', now(), now(), 1000),
   (53468, 'xavier', 'xavier_lc', 'dummy-token', now(), now(), 1000),
   (41529, 'yash', 'yash_lc', 'dummy-token', now(), now(), 1000),
-  (61539, 'zoe', 'zoe_lc', 'dummy-token', now(), now(), 1000);
+  (61539, 'zoe', 'zoe_lc', 'dummy-token', now(), now(), 1000)
+;
 
 -- problems
 INSERT INTO problems (id, name, slug, difficulty) VALUES
@@ -36,7 +37,7 @@ INSERT INTO problems (id, name, slug, difficulty) VALUES
   (2, 'Add Two Numbers', 'add-two-numbers', 'Medium'),
   (4, 'Median of Two Sorted Arrays', 'median-of-two-sorted-arrays', 'Hard'),
   (5, 'Longest Palindromic Substring', 'longest-palindromic-substring', 'Medium'),
-  (7, 'Reverse Integer', 'reverse-integer', 'Medium'),
+  (7, 'Reverse Integer', 'reverse-integer', 'Medium')
 ;
 
 -- tags
@@ -50,7 +51,8 @@ INSERT INTO tags (id, name) VALUES
   (8, 'two-pointers'),
   (9, 'linked-list'),
   (10, 'divide-and-conquer'),
-  (11, 'recursion');
+  (11, 'recursion')
+;
 
 -- problem_tags
 INSERT INTO problem_tags (problem_id, tag_id) VALUES
@@ -65,4 +67,5 @@ INSERT INTO problem_tags (problem_id, tag_id) VALUES
   (5, 2),
   (5, 5),
   (5, 8),
-  (7, 6);
+  (7, 6)
+;
