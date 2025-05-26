@@ -12,6 +12,10 @@ import (
 func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	r := mux.NewRouter()
 
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
+
 	// ----------------------
 	// Authentication Routes
 	// ----------------------

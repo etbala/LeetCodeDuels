@@ -3,25 +3,54 @@ package tests
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"leetcodeduels/config"
 	"leetcodeduels/server"
 	"log"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/go-redis/redis/v8"
+	_ "github.com/lib/pq"
+	"github.com/ory/dockertest/v3"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
-	"github.com/ory/dockertest/v3"
 )
 
-var ts *httptest.Server
-var pool *dockertest.Pool
-var pgResource, redisResource *dockertest.Resource
+var (
+	ts            *httptest.Server
+	pool          *dockertest.Pool
+	pgResource    *dockertest.Resource
+	redisResource *dockertest.Resource
+)
+
+func mustMigrate(dbURL string) {
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		panic(fmt.Sprintf("migrate: open db: %v", err))
+	}
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		panic(fmt.Sprintf("migrate: driver init: %v", err))
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://../migrations",
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("migrate: new instance: %v", err))
+	}
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		panic(fmt.Sprintf("migrate: up failed: %v", err))
+	}
+}
 
 func TestMain(m *testing.M) {
 	var err error
@@ -86,48 +115,58 @@ func TestMain(m *testing.M) {
 
 	// Migrations (Create Tables)
 	cfg, _ := config.LoadConfig()
-	mustMigrate(cfg.DB_URL, "../migrations")
+	mustMigrate(cfg.DB_URL)
 
+	// Start Server
 	srv, err := server.New(cfg)
 	if err != nil {
 		log.Fatalf("could not init server: %s", err)
 	}
-	ts = httptest.NewServer(srv.Handler) // uses the Handler you wired up
+	ts = httptest.NewServer(srv.Handler)
 	defer ts.Close()
 
-	// 6) Run tests
+	// Run tests
 	code := m.Run()
 
-	// 7) Teardown Docker resources
-	if err := pool.Purge(pgResource); err != nil {
-		log.Printf("could not purge postgres: %s", err)
-	}
-	if err := pool.Purge(redisResource); err != nil {
-		log.Printf("could not purge redis: %s", err)
-	}
+	// Close connections before killing databases
+	server.Cleanup(srv)
+
+	// Teardown Docker resources
+	pool.Purge(pgResource)
+	pool.Purge(redisResource)
 
 	os.Exit(code)
 }
 
-func mustMigrate(dbURL, migrationsPath string) {
-	db, err := sql.Open("postgres", dbURL)
-	if err != nil {
-		log.Fatalf("open db for migrations: %v", err)
-	}
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		log.Fatalf("postgres driver: %v", err)
-	}
+func TestHealth(t *testing.T) {
+	res, err := http.Get(ts.URL + "/health")
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
 
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+migrationsPath,
-		"postgres", driver,
-	)
-	if err != nil {
-		log.Fatalf("migrate init: %v", err)
+func TestAllTags(t *testing.T) {
+	res, err := http.Get(ts.URL + "/problems/tags")
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	var tags []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
 	}
-	// ErrNoChange is fine if already up to date
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("migrate up: %v", err)
+	err = json.NewDecoder(res.Body).Decode(&tags)
+	assert.NoError(t, err)
+	// we seeded 10 tags
+	assert.True(t, len(tags) >= 10, fmt.Sprintf("expected at least 10 tags, got %d", len(tags)))
+
+	// ensure a known tag is present
+	found := false
+	for _, tag := range tags {
+		if tag.Name == "array" {
+			found = true
+			break
+		}
 	}
+	assert.True(t, found, "expected tag 'array' not found")
 }
