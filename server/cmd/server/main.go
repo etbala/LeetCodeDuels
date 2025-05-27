@@ -2,13 +2,8 @@ package main
 
 import (
 	"context"
-	"flag"
-	"leetcodeduels/api"
-	"leetcodeduels/auth"
 	"leetcodeduels/config"
-	"leetcodeduels/services"
-	"leetcodeduels/store"
-	"leetcodeduels/ws"
+	"leetcodeduels/server"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +12,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 )
 
 func main() {
@@ -32,58 +26,14 @@ func main() {
 		panic(err)
 	}
 
-	err = store.InitDataStore(cfg.DB_URL)
+	srv, err := server.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to Init DataStore: %v", err)
-	}
-
-	err = auth.InitStateStore(cfg.RDB_URL)
-	if err != nil {
-		log.Fatalf("Failed to Init StateStore: %v", err)
-	}
-	defer auth.StateStore.Close()
-
-	err = ws.InitConnManager(cfg.RDB_URL)
-	if err != nil {
-		log.Fatalf("Failed to Init ConnManager: %v", err)
-	}
-	defer ws.ConnManager.Close()
-
-	err = services.InitInviteManager(cfg.RDB_URL)
-	if err != nil {
-		log.Fatalf("Failed to Init InviteManager: %v", err)
-	}
-	defer services.InviteManager.Close()
-
-	err = services.InitGameManager(cfg.RDB_URL)
-	if err != nil {
-		log.Fatalf("Failed to Init InviteManager: %v", err)
-	}
-	defer services.GameManager.Close()
-
-	ws.InitPubSub()
-
-	var port string
-	flag.StringVar(&port, "port", "8080", "Server port to listen on")
-	flag.Parse()
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://leetcode.com", "http://127.0.0.1"},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
-		AllowCredentials: true,
-	})
-
-	router := api.SetupRoutes(auth.Middleware)
-	handler := c.Handler(router)
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: handler,
+		panic(err)
 	}
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on port %s\n", port)
+		log.Printf("Starting server on port %s\n", cfg.PORT)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %s", err)
 		}

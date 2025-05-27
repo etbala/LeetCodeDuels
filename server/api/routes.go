@@ -12,6 +12,10 @@ import (
 func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	r := mux.NewRouter()
 
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}).Methods("GET")
+
 	// ----------------------
 	// Authentication Routes
 	// ----------------------
@@ -33,14 +37,6 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 
 	// TODO: Friend System (friend invites & notification for invites system)
 
-	accountRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetProfile(w, r)
-	}).Methods("GET")
-
-	accountRouter.HandleFunc("/{id}/in-game", func(w http.ResponseWriter, r *http.Request) {
-		handlers.UserInGame(w, r)
-	}).Methods("GET")
-
 	// Get current user's profile information
 	accountRouter.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MyProfile(w, r)
@@ -60,6 +56,14 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.RenameLCUser(w, r)
 	}).Methods("POST")
 
+	accountRouter.HandleFunc("/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetProfile(w, r)
+	}).Methods("GET")
+
+	accountRouter.HandleFunc("/{id:[0-9]+}/in-game", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UserInGame(w, r)
+	}).Methods("GET")
+
 	// ----------------------
 	// Matchmaking Routes
 	// ----------------------
@@ -77,17 +81,17 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	matchRouter := r.PathPrefix("/game").Subrouter()
 	matchRouter.Use(authMiddleware)
 
+	matchRouter.HandleFunc("/history/{id}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MatchHistory(w, r)
+	}).Methods("GET")
+
 	// Get match details
-	matchRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchesGet(w, r)
 	}).Methods("GET")
 
-	matchRouter.HandleFunc("/{id}/submissions", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}/submissions", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchSubmissions(w, r)
-	}).Methods("GET")
-
-	matchRouter.HandleFunc("/history/{userid}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.MatchHistory(w, r)
 	}).Methods("GET")
 
 	// --------------------

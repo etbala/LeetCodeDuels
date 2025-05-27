@@ -56,67 +56,67 @@ func (s *SubmissionStatus) UnmarshalJSON(data []byte) error {
 type LanguageType string // LeetCode supported languages (possible submission languages)
 
 const (
-	c          LanguageType = "c"
-	cpp        LanguageType = "cpp"
-	csharp     LanguageType = "csharp"
-	java       LanguageType = "java"
-	python     LanguageType = "python"
-	python3    LanguageType = "python3"
-	javascript LanguageType = "javascript"
-	typescript LanguageType = "typescript"
-	php        LanguageType = "php"
-	swift      LanguageType = "swift"
-	kotlin     LanguageType = "kotlin"
-	dart       LanguageType = "dart"
-	golang     LanguageType = "go"
-	ruby       LanguageType = "ruby"
-	scala      LanguageType = "scala"
-	rust       LanguageType = "rust"
-	racket     LanguageType = "racket"
-	erlang     LanguageType = "erlang"
-	elixir     LanguageType = "elixir"
+	C          LanguageType = "c"
+	Cpp        LanguageType = "cpp"
+	Csharp     LanguageType = "csharp"
+	Java       LanguageType = "java"
+	Python     LanguageType = "python"
+	Python3    LanguageType = "python3"
+	Javascript LanguageType = "javascript"
+	Typescript LanguageType = "typescript"
+	Php        LanguageType = "php"
+	Swift      LanguageType = "swift"
+	Kotlin     LanguageType = "kotlin"
+	Dart       LanguageType = "dart"
+	Golang     LanguageType = "go"
+	Ruby       LanguageType = "ruby"
+	Scala      LanguageType = "scala"
+	Rust       LanguageType = "rust"
+	Racket     LanguageType = "racket"
+	Erlang     LanguageType = "erlang"
+	Elixir     LanguageType = "elixir"
 )
 
 func ParseLang(lang string) (LanguageType, error) {
 	switch lang {
 	case "c":
-		return c, nil
+		return C, nil
 	case "cpp":
-		return cpp, nil
+		return Cpp, nil
 	case "csharp":
-		return csharp, nil
+		return Csharp, nil
 	case "java":
-		return java, nil
+		return Java, nil
 	case "python":
-		return python, nil
+		return Python, nil
 	case "python3":
-		return python3, nil
+		return Python3, nil
 	case "javascript":
-		return javascript, nil
+		return Javascript, nil
 	case "typescript":
-		return typescript, nil
+		return Typescript, nil
 	case "php":
-		return php, nil
+		return Php, nil
 	case "swift":
-		return swift, nil
+		return Swift, nil
 	case "kotlin":
-		return kotlin, nil
+		return Kotlin, nil
 	case "dart":
-		return dart, nil
+		return Dart, nil
 	case "go":
-		return golang, nil
+		return Golang, nil
 	case "ruby":
-		return ruby, nil
+		return Ruby, nil
 	case "scala":
-		return scala, nil
+		return Scala, nil
 	case "rust":
-		return rust, nil
+		return Rust, nil
 	case "racket":
-		return racket, nil
+		return Racket, nil
 	case "erlang":
-		return erlang, nil
+		return Erlang, nil
 	case "elixir":
-		return elixir, nil
+		return Elixir, nil
 	default:
 		return "", errors.New("invalid LanguageType value")
 	}

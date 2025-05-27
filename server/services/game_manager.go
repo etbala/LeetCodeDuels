@@ -34,7 +34,7 @@ func InitGameManager(redisURL string) error {
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		return fmt.Errorf("redis ping failed: %w", err)
 	}
-	InviteManager = &inviteManager{
+	GameManager = &gameManager{
 		client: client,
 		ctx:    context.Background(),
 	}
@@ -205,6 +205,6 @@ func (gm *gameManager) CancelGame(sessionID string) error {
 	return nil
 }
 
-func (i *gameManager) Close() error {
-	return i.client.Close()
+func (gm *gameManager) Close() error {
+	return gm.client.Close()
 }
