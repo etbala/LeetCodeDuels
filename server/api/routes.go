@@ -56,11 +56,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.RenameLCUser(w, r)
 	}).Methods("POST")
 
-	accountRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
+	accountRouter.HandleFunc("/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetProfile(w, r)
 	}).Methods("GET")
 
-	accountRouter.HandleFunc("/{id}/in-game", func(w http.ResponseWriter, r *http.Request) {
+	accountRouter.HandleFunc("/{id:[0-9]+}/in-game", func(w http.ResponseWriter, r *http.Request) {
 		handlers.UserInGame(w, r)
 	}).Methods("GET")
 

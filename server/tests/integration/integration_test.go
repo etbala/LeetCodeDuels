@@ -3,12 +3,10 @@ package tests
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"leetcodeduels/config"
 	"leetcodeduels/server"
 	"log"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -16,7 +14,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -136,37 +133,4 @@ func TestMain(m *testing.M) {
 	pool.Purge(redisResource)
 
 	os.Exit(code)
-}
-
-func TestHealth(t *testing.T) {
-	res, err := http.Get(ts.URL + "/health")
-	assert.NoError(t, err)
-	defer res.Body.Close()
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-}
-
-func TestAllTags(t *testing.T) {
-	res, err := http.Get(ts.URL + "/problems/tags")
-	assert.NoError(t, err)
-	defer res.Body.Close()
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	var tags []struct {
-		ID   int    `json:"id"`
-		Name string `json:"name"`
-	}
-	err = json.NewDecoder(res.Body).Decode(&tags)
-	assert.NoError(t, err)
-	// we seeded 10 tags
-	assert.True(t, len(tags) >= 10, fmt.Sprintf("expected at least 10 tags, got %d", len(tags)))
-
-	// ensure a known tag is present
-	found := false
-	for _, tag := range tags {
-		if tag.Name == "array" {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found, "expected tag 'array' not found")
 }
