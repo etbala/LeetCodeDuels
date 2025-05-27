@@ -51,11 +51,11 @@ func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) er
 
 // GetUserProfile retrieves the full user record, or nil if not found.
 func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
-	query := `SELECT github_id, username, access_token, created_at, updated_at, rating
+	query := `SELECT github_id, username, lc_username, access_token, created_at, updated_at, rating
 			FROM github_oauth_users WHERE github_id = $1`
 	row := ds.db.QueryRow(query, githubID)
 	var u models.User
-	if err := row.Scan(&u.ID, &u.Username, &u.AccessToken, &u.CreatedAt, &u.UpdatedAt, &u.Rating); err != nil {
+	if err := row.Scan(&u.ID, &u.Username, &u.LeetCodeUsername, &u.AccessToken, &u.CreatedAt, &u.UpdatedAt, &u.Rating); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
