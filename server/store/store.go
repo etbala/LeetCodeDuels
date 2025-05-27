@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -327,7 +328,7 @@ func (ds *dataStore) StoreMatch(match *models.Session) error {
 }
 
 // TODO: Investigate if triple query or single query with ARRAY_AGG is better
-func (ds *dataStore) GetMatch(matchID string) (*models.Session, error) {
+func (ds *dataStore) GetMatch(matchID uuid.UUID) (*models.Session, error) {
 	const matchQ = `
 	SELECT 
 	  m.id, 
@@ -356,7 +357,7 @@ func (ds *dataStore) GetMatch(matchID string) (*models.Session, error) {
 		startTime time.Time
 		endTime   time.Time
 	)
-	err := ds.db.QueryRow(matchQ, matchID).
+	err := ds.db.QueryRow(matchQ, matchID.String()).
 		Scan(&id, &probID, &probName, &probSlug, &probDiff, &isRated, &statusStr, &winnerID, &startTime, &endTime)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -379,7 +380,7 @@ func (ds *dataStore) GetMatch(matchID string) (*models.Session, error) {
 	FROM match_players
 	WHERE match_id = $1`
 
-	rows, err := ds.db.Query(playersQ, matchID)
+	rows, err := ds.db.Query(playersQ, matchID.String())
 	if err != nil {
 		return nil, fmt.Errorf("GetMatch: querying players: %w", err)
 	}
@@ -490,14 +491,14 @@ func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	return sessions, nil
 }
 
-func (ds *dataStore) GetMatchSubmissions(matchID string) ([]models.PlayerSubmission, error) {
+func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubmission, error) {
 	query := `
 	SELECT submission_id, player_id, passed_test_cases, total_test_cases, 
 		status, runtime, memory, lang, submitted_at
 	FROM submissions
 	WHERE match_id = $1`
 
-	rows, err := ds.db.Query(query, matchID)
+	rows, err := ds.db.Query(query, matchID.String())
 	if err != nil {
 		return nil, fmt.Errorf("GetMatchSubmissions: %w", err)
 	}
@@ -513,9 +514,9 @@ func (ds *dataStore) GetMatchSubmissions(matchID string) ([]models.PlayerSubmiss
 		var runtime int
 		var memory int
 		var lang string
-		var time time.Time
+		var submittedAt time.Time
 
-		err = rows.Scan(&id, &playerID, &passedTestCases, &totalTestCases, &status, &runtime, &memory, &lang, &time)
+		err = rows.Scan(&id, &playerID, &passedTestCases, &totalTestCases, &status, &runtime, &memory, &lang, &submittedAt)
 		if err != nil {
 			return nil, fmt.Errorf("GetMatchSubmissions scan: %w", err)
 		}
@@ -539,7 +540,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID string) ([]models.PlayerSubmiss
 			Runtime:         runtime,
 			Memory:          memory,
 			Lang:            parsedLang,
-			Time:            time,
+			Time:            submittedAt,
 		}
 		submissions = append(submissions, submission)
 	}

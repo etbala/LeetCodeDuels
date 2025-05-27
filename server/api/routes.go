@@ -81,16 +81,16 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	matchRouter := r.PathPrefix("/game").Subrouter()
 	matchRouter.Use(authMiddleware)
 
-	matchRouter.HandleFunc("/history/{userid}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/history/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchHistory(w, r)
 	}).Methods("GET")
 
 	// Get match details
-	matchRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchesGet(w, r)
 	}).Methods("GET")
 
-	matchRouter.HandleFunc("/{id}/submissions", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}/submissions", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchSubmissions(w, r)
 	}).Methods("GET")
 

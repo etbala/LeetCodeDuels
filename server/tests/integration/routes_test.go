@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"leetcodeduels/auth"
 	"leetcodeduels/handlers"
 	"leetcodeduels/models"
@@ -35,6 +36,11 @@ func TestGetProfile(t *testing.T) {
 	defer res.Body.Close()
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
 	var user models.User
 	err = json.NewDecoder(res.Body).Decode(&user)
 	assert.NoError(t, err)
@@ -56,6 +62,11 @@ func TestMyProfile(t *testing.T) {
 	assert.NoError(t, err)
 	defer res.Body.Close()
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
 
 	var user models.User
 	err = json.NewDecoder(res.Body).Decode(&user)
@@ -120,6 +131,11 @@ func TestRenameUser(t *testing.T) {
 	defer res2.Body.Close()
 	assert.Equal(t, http.StatusOK, res2.StatusCode)
 
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
 	var user models.User
 	err = json.NewDecoder(res2.Body).Decode(&user)
 	assert.NoError(t, err)
@@ -160,19 +176,134 @@ func TestLCRenameUser(t *testing.T) {
 }
 
 func TestUserNotInGame(t *testing.T) {
+	token, err := auth.GenerateJWT(12345) // Alice
+	assert.NoError(t, err)
 
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d/in-game", ts.URL, 12345), nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := ts.Client().Do(req)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
+	var inGame bool
+	err = json.NewDecoder(res.Body).Decode(&inGame)
+	assert.NoError(t, err)
+	assert.Equal(t, false, inGame)
 }
 
 func TestMatchHistory(t *testing.T) {
+	token, err := auth.GenerateJWT(12345) // Alice
+	assert.NoError(t, err)
 
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/history/%d", ts.URL, 12345), nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := ts.Client().Do(req)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
+	var matches []models.Session
+	err = json.NewDecoder(res.Body).Decode(&matches)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(matches))
+
+	assert.Equal(t, "00000000-0000-0000-0000-000000000000", matches[0].ID)
+	assert.Equal(t, models.MatchWon, matches[0].Status)
+	assert.Equal(t, false, matches[0].IsRated)
+	assert.Equal(t, 1, matches[0].Problem.ID)
+	assert.Equal(t, 2, len(matches[0].Players))
+	assert.Equal(t, int64(12345), matches[0].Winner)
+
+	assert.Equal(t, "00000000-0000-0000-0000-000000000001", matches[1].ID)
+	assert.Equal(t, models.MatchWon, matches[1].Status)
+	assert.Equal(t, false, matches[1].IsRated)
+	assert.Equal(t, 2, matches[1].Problem.ID)
+	assert.Equal(t, 2, len(matches[1].Players))
+	assert.Equal(t, int64(87902), matches[1].Winner)
+
+	assert.Equal(t, "00000000-0000-0000-0000-000000000002", matches[2].ID)
+	assert.Equal(t, models.MatchWon, matches[2].Status)
+	assert.Equal(t, false, matches[2].IsRated)
+	assert.Equal(t, 4, matches[2].Problem.ID)
+	assert.Equal(t, 2, len(matches[2].Players))
+	assert.Equal(t, int64(12345), matches[2].Winner)
 }
 
 func TestGetMatch(t *testing.T) {
+	token, err := auth.GenerateJWT(12345) // Alice
+	assert.NoError(t, err)
 
+	matchID := "00000000-0000-0000-0000-000000000000"
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/%s", ts.URL, matchID), nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := ts.Client().Do(req)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
+	var match models.Session
+	err = json.NewDecoder(res.Body).Decode(&match)
+	assert.NoError(t, err)
+	assert.Equal(t, matchID, match.ID)
+	assert.Equal(t, models.MatchWon, match.Status)
+	assert.Equal(t, false, match.IsRated)
+	assert.Equal(t, 1, match.Problem.ID)
+	assert.Equal(t, "Two Sum", match.Problem.Name)
+	assert.Equal(t, "two-sum", match.Problem.Slug)
+	assert.Equal(t, models.Easy, match.Problem.Difficulty)
+	assert.Equal(t, 2, len(match.Players))
+	assert.Equal(t, 1, len(match.Submissions))
+	assert.Equal(t, int64(12345), match.Winner)
 }
 
 func TestGetMatchSubmissions(t *testing.T) {
+	token, err := auth.GenerateJWT(12345) // Alice
+	assert.NoError(t, err)
 
+	matchID := "00000000-0000-0000-0000-000000000000"
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/%s/submissions", ts.URL, matchID), nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := ts.Client().Do(req)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
+	}
+
+	var submissions []models.PlayerSubmission
+	err = json.NewDecoder(res.Body).Decode(&submissions)
+	assert.Equal(t, 1, len(submissions))
+	assert.Equal(t, 0, submissions[0].ID)
+	assert.Equal(t, int64(12345), submissions[0].PlayerID)
+	assert.Equal(t, models.Accepted, submissions[0].Status)
+	assert.Equal(t, models.Cpp, submissions[0].Lang)
 }
 
 func TestAllTags(t *testing.T) {
