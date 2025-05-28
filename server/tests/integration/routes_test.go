@@ -9,10 +9,8 @@ import (
 	"leetcodeduels/handlers"
 	"leetcodeduels/models"
 	"net/http"
-	"strings"
 	"testing"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -330,24 +328,4 @@ func TestAllTags(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "expected tag 'array' not found")
-}
-
-func TestWSUpgrader(t *testing.T) {
-	token, err := auth.GenerateJWT(12345) // Alice
-	assert.NoError(t, err)
-
-	// http://127.0.0.1:12345 -> ws://127.0.0.1:12345/ws
-	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
-
-	header := http.Header{}
-	header.Set("Authorization", "Bearer "+token)
-
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
-	assert.NoError(t, err, "should upgrade to WebSocket without error")
-	defer conn.Close()
-	assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
-
-	// perform a simple ping-pong to verify channel works
-	err = conn.WriteMessage(websocket.TextMessage, []byte("ping"))
-	assert.NoError(t, err)
 }

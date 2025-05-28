@@ -9,11 +9,32 @@ import (
 
 	"leetcodeduels/auth"
 	"leetcodeduels/models"
+	"leetcodeduels/services"
 	"leetcodeduels/ws"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWSUpgrader(t *testing.T) {
+	token, err := auth.GenerateJWT(12345) // Alice
+	require.NoError(t, err)
+
+	// http://127.0.0.1:12345 -> ws://127.0.0.1:12345/ws
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
+
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
+	require.NoError(t, err, "should upgrade to WebSocket without error")
+	defer conn.Close()
+	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+
+	// perform a simple ping-pong to verify channel works
+	err = conn.WriteMessage(websocket.TextMessage, []byte("ping"))
+	require.NoError(t, err)
+}
 
 func wsURL() string {
 	return "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
@@ -46,8 +67,6 @@ func TestInvitationAcceptFlow(t *testing.T) {
 
 	invitee := dialWS(t, 67890)
 	defer invitee.Close()
-
-	time.Sleep(100 * time.Millisecond)
 
 	invite := ws.SendInvitationPayload{
 		InviteeID:    67890,
@@ -87,6 +106,10 @@ func TestInvitationAcceptFlow(t *testing.T) {
 	require.Equal(t, p1.SessionID, p2.SessionID)
 	require.Equal(t, int64(67890), p1.OpponentID)
 	require.Equal(t, int64(12345), p2.OpponentID)
+
+	details, err := services.InviteManager.InviteDetails(12345)
+	require.NoError(t, err, "should be able to check invite details")
+	require.Nil(t, details, "invite must be gone after accept")
 }
 
 func TestDeclineInvitation(t *testing.T) {
@@ -120,6 +143,10 @@ func TestDeclineInvitation(t *testing.T) {
 
 	m := readMessage(t, inviter)
 	require.Equal(t, ws.ServerMsgInvitationDeclined, m.Type)
+
+	details, err := services.InviteManager.InviteDetails(12345)
+	require.NoError(t, err, "looking up invite details should not error")
+	require.Nil(t, details, "invite should have been deleted after decline")
 }
 
 func TestCancelInvitation(t *testing.T) {
@@ -127,8 +154,6 @@ func TestCancelInvitation(t *testing.T) {
 	defer inviter.Close()
 	invitee := dialWS(t, 67890)
 	defer invitee.Close()
-
-	time.Sleep(100 * time.Millisecond)
 
 	invite := ws.SendInvitationPayload{
 		InviteeID:    67890,
@@ -155,6 +180,10 @@ func TestCancelInvitation(t *testing.T) {
 	var p ws.InvitationCanceledPayload
 	require.NoError(t, json.Unmarshal(m.Payload, &p))
 	require.Equal(t, int64(12345), p.InviterID)
+
+	details, err := services.InviteManager.InviteDetails(12345)
+	require.NoError(t, err)
+	require.Nil(t, details, "invite must be gone after cancel")
 }
 
 func TestUnknown(t *testing.T) {

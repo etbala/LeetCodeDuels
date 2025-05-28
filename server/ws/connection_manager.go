@@ -228,7 +228,8 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 		return h.handleSubmission(c.userID, p)
 
 	default:
-		return fmt.Errorf("unknown message type %q", env.Type)
+		c.sendError("unknown_type", "message type not recognized")
+		return nil
 	}
 }
 
@@ -252,7 +253,10 @@ func (c *connManager) handleSendInvitation(
 ) error {
 	if len(c.userClients[p.InviteeID]) == 0 {
 		b, _ := json.Marshal(Message{Type: ServerMsgUserOffline})
-		ConnManager.SendToUser(userID, b)
+		err := ConnManager.SendToUser(userID, b)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -353,6 +357,15 @@ func (c *connManager) handleDeclineInvitation(userID int64, p DeclineInvitationP
 		return nil
 	}
 
+	success, err := services.InviteManager.RemoveInvite(p.InviterID)
+	if err != nil {
+		return err
+	}
+	if success == false {
+		// no invite to decline
+		return nil
+	}
+
 	b, _ := json.Marshal(Message{Type: ServerMsgInvitationDeclined})
 	err = ConnManager.SendToUser(p.InviterID, b)
 	if err != nil {
@@ -368,7 +381,11 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 		return err
 	}
 	if invite == nil {
-		// No invite to cancel
+		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
+		err = ConnManager.SendToUser(invite.InviteeID, b)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -378,12 +395,20 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 	}
 	if success == false {
 		// this shouldn’t really happen, but guard anyway
+		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
+		err = ConnManager.SendToUser(invite.InviteeID, b)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
 	payload := InvitationCanceledPayload{InviterID: userID}
 	b, _ := json.Marshal(Message{Type: ServerMsgInvitationCanceled, Payload: MarshalPayload(payload)})
 	err = ConnManager.SendToUser(invite.InviteeID, b)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
