@@ -31,33 +31,29 @@ func main() {
 		panic(err)
 	}
 
-	// Start server in a goroutine
+	// Start server in goroutine
 	go func() {
-		log.Printf("Starting server on port %s\n", cfg.PORT)
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %s", err)
+		addr := ":" + cfg.PORT
+		log.Printf("Listening on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe error: %v", err)
 		}
 	}()
 
-	// Graceful Shutdown
-	waitForShutdown(srv)
-}
-
-func waitForShutdown(srv *http.Server) {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	<-stop
-
-	// Shutdown the server with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+	// Wait for interrupt signal to gracefully shut down
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
 	log.Println("Shutting down server...")
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+	// Give outstanding requests up to 5s to complete, then clean up everything
+	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = server.Cleanup(srv)
+	if err != nil {
+		log.Fatalf("Server cleanup failed: %v", err)
 	}
 
-	log.Println("Server exiting")
+	log.Println("Server gracefully stopped")
 }

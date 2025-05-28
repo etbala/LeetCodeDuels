@@ -1,9 +1,7 @@
-package handlers
+package ws
 
 import (
-	"fmt"
 	"leetcodeduels/auth"
-	"leetcodeduels/ws"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -17,11 +15,13 @@ func WSConnect(w http.ResponseWriter, r *http.Request) {
 	tokenString, err := auth.ExtractTokenString(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	claims, err := auth.ValidateJWT(tokenString)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -31,18 +31,9 @@ func WSConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := claims.UserID
-	connID := fmt.Sprintf("%p", conn)
-	oldConnID, err := ws.ConnManager.AddConnection(userID, connID)
-	if err != nil {
-		conn.Close()
-		return
-	}
 
-	if oldConnID != "" {
-		ws.PublishDisconnect(userID, oldConnID)
-	}
-
-	sendCh := make(chan []byte, 256)
-	go ws.ReadLoop(userID, connID, conn, sendCh)
-	go ws.WriteLoop(userID, connID, conn, sendCh)
+	client := NewClient(userID, r.Context(), conn, ConnManager)
+	ConnManager.register <- client
+	go client.writePump()
+	go client.readPump()
 }

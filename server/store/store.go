@@ -291,10 +291,10 @@ func (ds *dataStore) GetRandomProblemDuel(
 		args = append(args, pq.Array(tags))
 		tagSubquery = `
 		AND EXISTS (
-			SELECT 1 
-			FROM problem_tags pt 
-			WHERE pt1.problem_id = p.id 
-			  AND pt.tag_id = ANY($2)
+		SELECT 1 
+		FROM problem_tags pt 
+		WHERE pt.problem_id = p.id 
+			AND pt.tag_id = ANY($2)
 		)`
 	}
 
