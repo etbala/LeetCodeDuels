@@ -8,16 +8,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// const (
-// 	maxMessageSize = 1000
-// 	pingPeriod     = 10000 // nanoseconds
-// 	readTimeout    = 100
-// 	writeTimeout   = 100
-// 	pongWait       = 60
-// )
-
 const (
-	maxMessageSize = 1024
+	maxMessageSize = 2048
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	writeWait      = 10 * time.Second

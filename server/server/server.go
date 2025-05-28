@@ -7,6 +7,7 @@ import (
 	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
+	"leetcodeduels/ws"
 	"net/http"
 	"time"
 
@@ -30,6 +31,11 @@ func New(cfg *config.Config) (*http.Server, error) {
 	}
 
 	err = services.InitGameManager(cfg.RDB_URL)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ws.InitConnManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +68,7 @@ func Cleanup(srv *http.Server) error {
 	auth.StateStore.Close()
 	services.InviteManager.Close()
 	services.GameManager.Close()
+	ws.ConnManager.Close()
 
 	return nil
 }

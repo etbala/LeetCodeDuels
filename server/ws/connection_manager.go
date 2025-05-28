@@ -42,38 +42,59 @@ type connManager struct {
 	broadcast chan []byte
 	// local direct queue
 	direct chan directMessage
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func userChannel(userID int64) string {
 	return fmt.Sprintf("%s%d", userChannelPrefix, userID)
 }
 
-func NewConnManager(rdb *redis.Client) *connManager {
-	ps := rdb.Subscribe(context.Background(), RedisBroadcastChannel)
-	cm := &connManager{
-		redisClient: rdb,
-		pubsub:      ps,
+func newConnManager(redisURL string) (*connManager, error) {
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid redis URL: %w", err)
+	}
+	client := redis.NewClient(opts)
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("redis ping failed: %w", err)
+	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	ps := client.Subscribe(context.Background(), RedisBroadcastChannel)
+	cm := &connManager{
+		redisClient: client,
+		pubsub:      ps,
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		clients:     make(map[*Client]bool),
 		userClients: make(map[int64]map[*Client]bool),
-
-		broadcast: make(chan []byte, 256),
-		direct:    make(chan directMessage, 256),
+		broadcast:   make(chan []byte, 256),
+		direct:      make(chan directMessage, 256),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	go cm.run()
 	go cm.redisListener()
-	return cm
+	return cm, nil
 }
 
-func InitConnManager(rdb *redis.Client) {
-	ConnManager = NewConnManager(rdb)
+func InitConnManager(redisURL string) error {
+	var err error
+	ConnManager, err = newConnManager(redisURL)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (cm *connManager) run() {
 	for {
 		select {
+		case <-cm.ctx.Done():
+			return
+
 		case c := <-cm.register:
 			cm.clients[c] = true
 
@@ -102,7 +123,7 @@ func (cm *connManager) run() {
 					// last conn for this user → unsubscribe
 					err := cm.pubsub.Unsubscribe(context.Background(), userChannel(c.userID))
 					if err != nil {
-						log.Printf("redis subscribe error user %d: %v", c.userID, err)
+						log.Printf("redis unsubscribe error user %d: %v", c.userID, err)
 					}
 					delete(cm.userClients, c.userID)
 				}
@@ -134,21 +155,24 @@ func (cm *connManager) run() {
 	}
 }
 
-func (h *connManager) redisListener() {
-	ch := h.pubsub.Channel()
-	for msg := range ch {
-		switch msg.Channel {
-		case RedisBroadcastChannel:
-			h.broadcast <- []byte(msg.Payload)
-
-		default:
-			if strings.HasPrefix(msg.Channel, userChannelPrefix) {
-				// strip prefix and parse int64
-				idStr := strings.TrimPrefix(msg.Channel, userChannelPrefix)
-				if uid, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-					h.direct <- directMessage{
-						userID:  uid,
-						payload: []byte(msg.Payload),
+func (cm *connManager) redisListener() {
+	ch := cm.pubsub.Channel()
+	for {
+		select {
+		case <-cm.ctx.Done():
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			switch msg.Channel {
+			case RedisBroadcastChannel:
+				cm.broadcast <- []byte(msg.Payload)
+			default:
+				if strings.HasPrefix(msg.Channel, userChannelPrefix) {
+					idStr := strings.TrimPrefix(msg.Channel, userChannelPrefix)
+					if uid, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+						cm.direct <- directMessage{userID: uid, payload: []byte(msg.Payload)}
 					}
 				}
 			}
@@ -208,10 +232,29 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	}
 }
 
+func (cm *connManager) Close() error {
+	// stop run() and redisListener()
+	cm.cancel()
+
+	for c := range cm.clients {
+		cm.unregister <- c
+	}
+
+	if err := cm.pubsub.Close(); err != nil {
+		log.Printf("error closing pubsub: %v", err)
+	}
+
+	return cm.redisClient.Close()
+}
+
 func (c *connManager) handleSendInvitation(
 	userID int64, p SendInvitationPayload,
 ) error {
-	// TODO: Verify Invitee is currently online (and can recieve invite)
+	if len(c.userClients[p.InviteeID]) == 0 {
+		b, _ := json.Marshal(Message{Type: ServerMsgUserOffline})
+		ConnManager.SendToUser(userID, b)
+		return nil
+	}
 
 	success, err := services.InviteManager.CreateInvite(userID, p.InviteeID, p.MatchDetails)
 	if err != nil {
@@ -277,7 +320,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 
 	problemURL := fmt.Sprintf("https://leetcode.com/problems/%s", problem.Slug)
 
-	// notify inviter
+	// notify accepter
 	startPayload := StartGamePayload{
 		SessionID:  sessionID,
 		ProblemURL: problemURL,
@@ -289,7 +332,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 		return err
 	}
 
-	// notify accepter
+	// notify inviter
 	startPayload.OpponentID = userID
 	b, _ = json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startPayload)})
 	err = ConnManager.SendToUser(p.InviterID, b)
