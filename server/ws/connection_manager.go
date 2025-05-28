@@ -2,128 +2,456 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"leetcodeduels/models"
+	"leetcodeduels/services"
+	"leetcodeduels/store"
+	"log"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 )
 
+const (
+	RedisBroadcastChannel = "pubsubChan"
+	userChannelPrefix     = "user:"
+)
+
 var ConnManager *connManager
 
-type connManager struct {
-	client *redis.Client
-	ctx    context.Context
+type directMessage struct {
+	userID  int64
+	payload []byte
 }
 
-// redisURL should be in the format "redis://<user>:<pass>@<host>:<port>/<db>"
-func InitConnManager(redisURL string) error {
-	opts, err := redis.ParseURL(redisURL)
+type connManager struct {
+	redisClient *redis.Client
+	pubsub      *redis.PubSub
+
+	register   chan *Client
+	unregister chan *Client
+
+	// all connected clients on this node
+	clients map[*Client]bool
+	// connections grouped by userID
+	userClients map[int64]map[*Client]bool
+
+	// cluster-wide broadcast
+	broadcast chan []byte
+	// local direct queue
+	direct chan directMessage
+}
+
+func userChannel(userID int64) string {
+	return fmt.Sprintf("%s%d", userChannelPrefix, userID)
+}
+
+func NewConnManager(rdb *redis.Client) *connManager {
+	ps := rdb.Subscribe(context.Background(), RedisBroadcastChannel)
+	cm := &connManager{
+		redisClient: rdb,
+		pubsub:      ps,
+
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		clients:     make(map[*Client]bool),
+		userClients: make(map[int64]map[*Client]bool),
+
+		broadcast: make(chan []byte, 256),
+		direct:    make(chan directMessage, 256),
+	}
+	go cm.run()
+	go cm.redisListener()
+	return cm
+}
+
+func InitConnManager(rdb *redis.Client) {
+	ConnManager = NewConnManager(rdb)
+}
+
+func (cm *connManager) run() {
+	for {
+		select {
+		case c := <-cm.register:
+			cm.clients[c] = true
+
+			// per-user registration
+			uc, exists := cm.userClients[c.userID]
+			if !exists {
+				uc = make(map[*Client]bool)
+				cm.userClients[c.userID] = uc
+				// first conn for this user → subscribe
+				err := cm.pubsub.Subscribe(context.Background(), userChannel(c.userID))
+				if err != nil {
+					log.Printf("redis subscribe error user %d: %v", c.userID, err)
+				}
+			}
+			uc[c] = true
+
+		case c := <-cm.unregister:
+			if _, ok := cm.clients[c]; !ok {
+				continue
+			}
+			delete(cm.clients, c)
+
+			if uc, exists := cm.userClients[c.userID]; exists {
+				delete(uc, c)
+				if len(uc) == 0 {
+					// last conn for this user → unsubscribe
+					err := cm.pubsub.Unsubscribe(context.Background(), userChannel(c.userID))
+					if err != nil {
+						log.Printf("redis subscribe error user %d: %v", c.userID, err)
+					}
+					delete(cm.userClients, c.userID)
+				}
+			}
+			close(c.send)
+
+		case msg := <-cm.broadcast:
+			for c := range cm.clients {
+				select {
+				case c.send <- msg:
+				default:
+					close(c.send)
+					delete(cm.clients, c)
+				}
+			}
+
+		case dm := <-cm.direct:
+			if conns, ok := cm.userClients[dm.userID]; ok {
+				for c := range conns {
+					select {
+					case c.send <- dm.payload:
+					default:
+						close(c.send)
+						delete(conns, c)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (h *connManager) redisListener() {
+	ch := h.pubsub.Channel()
+	for msg := range ch {
+		switch msg.Channel {
+		case RedisBroadcastChannel:
+			h.broadcast <- []byte(msg.Payload)
+
+		default:
+			if strings.HasPrefix(msg.Channel, userChannelPrefix) {
+				// strip prefix and parse int64
+				idStr := strings.TrimPrefix(msg.Channel, userChannelPrefix)
+				if uid, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+					h.direct <- directMessage{
+						userID:  uid,
+						payload: []byte(msg.Payload),
+					}
+				}
+			}
+		}
+	}
+}
+
+func (h *connManager) SendToUser(userID int64, payload []byte) error {
+	return h.redisClient.Publish(context.Background(), userChannel(userID), payload).Err()
+}
+
+func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
+	switch env.Type {
+	case ClientMsgSendInvitation:
+		var p SendInvitationPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
+		}
+		return h.handleSendInvitation(c.userID, p)
+
+	case ClientMsgAcceptInvitation:
+		var p AcceptInvitationPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
+		}
+		return h.handleAcceptInvitation(c.userID, p)
+
+	case ClientMsgCancelInvitation:
+		return h.handleCancelInvitation(c.userID)
+
+	case ClientMsgDeclineInvitation:
+		var p DeclineInvitationPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
+		}
+		return h.handleDeclineInvitation(c.userID, p)
+
+	case ClientMsgEnterQueue:
+		var p EnterQueuePayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
+		}
+		return h.handleEnterQueue(c.userID, p)
+
+	case ClientMsgLeaveQueue:
+		return h.handleLeaveQueue(c.userID)
+
+	case ClientMsgSubmission:
+		var p SubmissionPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
+		}
+		return h.handleSubmission(c.userID, p)
+
+	default:
+		return fmt.Errorf("unknown message type %q", env.Type)
+	}
+}
+
+func (c *connManager) handleSendInvitation(
+	userID int64, p SendInvitationPayload,
+) error {
+	// TODO: Verify Invitee is currently online (and can recieve invite)
+
+	success, err := services.InviteManager.CreateInvite(userID, p.InviteeID, p.MatchDetails)
 	if err != nil {
-		return fmt.Errorf("invalid redis URL: %w", err)
+		return err
 	}
-	client := redis.NewClient(opts)
-	if err := client.Ping(context.Background()).Err(); err != nil {
-		return fmt.Errorf("redis ping failed: %w", err)
+	if success == false {
+		// Invite already exists from this user
+		// TODO: Either replace the existing invite or ignore this invite
+		return nil
 	}
-	ConnManager = &connManager{
-		client: client,
-		ctx:    context.Background(),
+
+	request := InvitationRequestPayload{InviterID: userID, MatchDetails: p.MatchDetails}
+	payload, _ := json.Marshal(request)
+
+	msg := Message{Type: ServerMsgInvitationRequest, Payload: payload}
+	b, _ := json.Marshal(msg)
+	err = ConnManager.SendToUser(p.InviteeID, b)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 
-// AddConnection atomically registers a new connection for this user.
-// It returns the oldConnID (if any) for termination
-func (c *connManager) AddConnection(userID int64, connID string) (oldConnID string, err error) {
-	key := fmt.Sprintf("connection:%d", userID)
-	oldConnID, err = c.client.GetSet(c.ctx, key, connID).Result()
-	if err == redis.Nil {
-		// no previous connection
-		oldConnID = ""
-		err = nil
-	} else if err != nil {
-		return "", err
-	}
-	// mark this user online
-	if err := c.client.SAdd(c.ctx, "online_users", strconv.FormatInt(userID, 10)).Err(); err != nil {
-		return oldConnID, err
-	}
-	return oldConnID, nil
-}
-
-// RemoveConnection removes the given connID for the user—**but only if it
-// matches the current active connID**.  Returns (stillOnline, error).
-// If this was the active connection, the user goes fully offline.
-func (c *connManager) RemoveConnection(userID int64, connID string) (stillOnline bool, err error) {
-	key := fmt.Sprintf("connection:%d", userID)
-
-	current, err := c.client.Get(c.ctx, key).Result()
-	if err == redis.Nil {
-		// no active connection recorded
-		return false, nil
-	}
+func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPayload) error {
+	invite, err := services.InviteManager.InviteDetails(p.InviterID)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if current != connID {
-		// this socket wasn't the active one—ignore
-		return true, nil
+	if invite == nil {
+		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
+		ConnManager.SendToUser(userID, b)
+		return nil
 	}
 
-	// it is the active one, so delete and mark offline
-	if err := c.client.Del(c.ctx, key).Err(); err != nil {
-		return false, err
-	}
-	if err := c.client.SRem(c.ctx, "online_users", strconv.FormatInt(userID, 10)).Err(); err != nil {
-		return false, err
-	}
-	return false, nil
-}
-
-// Used to send msg to connection whose location (process/device) is not necessarily known
-func (c *connManager) SendToConn(connID string, msg []byte) error {
-	channel := fmt.Sprintf("ws:instance:%s", connID)
-	return c.client.Publish(c.ctx, channel, msg).Err()
-}
-
-// GetConnection fetches the single active connID for a user (or "" if offline).
-func (c *connManager) GetConnection(userID int64) (string, error) {
-	key := fmt.Sprintf("connection:%d", userID)
-	connID, err := c.client.Get(c.ctx, key).Result()
-	if err == redis.Nil {
-		return "", nil
-	}
-	return connID, err
-}
-
-// IsOnline checks if a user has any active connections.
-func (c *connManager) IsOnline(userID int64) (bool, error) {
-	return c.client.SIsMember(c.ctx, "online_users", strconv.FormatInt(userID, 10)).Result()
-}
-
-// AllOnlineUsers returns the list of userIDs currently online.
-func (c *connManager) AllOnlineUsers() ([]int64, error) {
-	strs, err := c.client.SMembers(c.ctx, "online_users").Result()
+	// remove the invite
+	removed, err := services.InviteManager.RemoveInvite(p.InviterID)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	ids := make([]int64, 0, len(strs))
-	for _, s := range strs {
-		id, err := strconv.ParseInt(s, 10, 64)
+	if !removed {
+		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
+		ConnManager.SendToUser(userID, b)
+		return nil
+	}
+
+	problem, err := store.DataStore.GetRandomProblemDuel(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
+	if err != nil {
+		return err
+	}
+	if problem == nil {
+		return fmt.Errorf("no problem found matching preferences")
+	}
+
+	// start the session
+	sessionID, err := services.GameManager.StartGame(
+		[]int64{p.InviterID, userID},
+		*problem,
+	)
+	if err != nil {
+		return err
+	}
+
+	problemURL := fmt.Sprintf("https://leetcode.com/problems/%s", problem.Slug)
+
+	// notify inviter
+	startPayload := StartGamePayload{
+		SessionID:  sessionID,
+		ProblemURL: problemURL,
+		OpponentID: p.InviterID,
+	}
+	b, _ := json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startPayload)})
+	err = ConnManager.SendToUser(userID, b)
+	if err != nil {
+		return err
+	}
+
+	// notify accepter
+	startPayload.OpponentID = userID
+	b, _ = json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startPayload)})
+	err = ConnManager.SendToUser(p.InviterID, b)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *connManager) handleDeclineInvitation(userID int64, p DeclineInvitationPayload) error {
+	invite, err := services.InviteManager.InviteDetails(p.InviterID)
+	if err != nil {
+		return err
+	}
+	if invite == nil {
+		// no invite to decline
+		return nil
+	}
+
+	b, _ := json.Marshal(Message{Type: ServerMsgInvitationDeclined})
+	err = ConnManager.SendToUser(p.InviterID, b)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *connManager) handleCancelInvitation(userID int64) error {
+	invite, err := services.InviteManager.InviteDetails(userID)
+	if err != nil {
+		return err
+	}
+	if invite == nil {
+		// No invite to cancel
+		return nil
+	}
+
+	success, err := services.InviteManager.RemoveInvite(userID)
+	if err != nil {
+		return err
+	}
+	if success == false {
+		// this shouldn’t really happen, but guard anyway
+		return nil
+	}
+
+	payload := InvitationCanceledPayload{InviterID: userID}
+	b, _ := json.Marshal(Message{Type: ServerMsgInvitationCanceled, Payload: MarshalPayload(payload)})
+	err = ConnManager.SendToUser(invite.InviteeID, b)
+
+	return nil
+}
+
+func (c *connManager) handleEnterQueue(userID int64, p EnterQueuePayload) error {
+	return fmt.Errorf("unimplemented")
+}
+
+func (c *connManager) handleLeaveQueue(userID int64) error {
+	return fmt.Errorf("unimplemented")
+}
+
+func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error {
+	sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
+	if err != nil {
+		return err
+	}
+	if sessionID == "" {
+		// User is not in-game
+		return err
+	}
+
+	session, err := services.GameManager.GetGame(sessionID)
+	if err != nil {
+		return err
+	}
+	if session == nil {
+		// this shouldn’t really happen, but guard anyway
+		return err
+	}
+
+	submissionID := len(session.Submissions)
+	submissionStatus, _ := models.ParseSubmissionStatus(p.Status)
+	submissionLang, _ := models.ParseLang(p.Language)
+	submission := models.PlayerSubmission{
+		ID:              submissionID,
+		PlayerID:        userID,
+		PassedTestCases: p.PassedTestCases,
+		TotalTestCases:  p.TotalTestCases,
+		Status:          submissionStatus,
+		Runtime:         p.Runtime,
+		Memory:          p.Memory,
+		Lang:            submissionLang,
+		Time:            p.Time,
+	}
+
+	// TODO: Verify submission information is correct against LeetCode's API
+
+	err = services.GameManager.AddSubmission(sessionID, submission)
+	if err != nil {
+		return err
+	}
+
+	opponentID, err := services.GameManager.GetOpponent(sessionID, userID)
+	if err != nil {
+		return err
+	}
+
+	if submissionStatus == models.Accepted {
+		session, err = services.GameManager.CompleteGame(sessionID, userID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid userID in online_users: %w", err)
+			return err
 		}
-		ids = append(ids, id)
+
+		duration := submission.Time.Sub(session.StartTime)
+		durationSecs := int64(duration.Seconds())
+
+		reply := GameOverPayload{
+			WinnerID:  userID,
+			SessionID: sessionID,
+			Duration:  durationSecs,
+		}
+		payload, _ := json.Marshal(reply)
+		msg := Message{Type: ServerMsgGameOver, Payload: payload}
+		b, _ := json.Marshal(msg)
+
+		err = ConnManager.SendToUser(userID, b)
+		if err != nil {
+			return err
+		}
+		err = ConnManager.SendToUser(opponentID, b)
+		if err != nil {
+			return err
+		}
+
+		err = store.DataStore.StoreMatch(session)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	return ids, nil
-}
 
-// OnlineCount returns the number of users currently online.
-func (c *connManager) OnlineCount() (int64, error) {
-	return c.client.SCard(c.ctx, "online_users").Result()
-}
+	reply := OpponentSubmissionPayload{
+		ID:              submissionID,
+		PlayerID:        userID,
+		PassedTestCases: p.PassedTestCases,
+		TotalTestCases:  p.TotalTestCases,
+		Status:          p.Status,
+		Runtime:         p.Runtime,
+		Memory:          p.Memory,
+		Language:        p.Language,
+		Time:            p.Time,
+	}
 
-// Close shuts down the Redis client.
-func (c *connManager) Close() error {
-	return c.client.Close()
+	payload, _ := json.Marshal(reply)
+	msg := Message{Type: ServerMsgOpponentSubmission, Payload: payload}
+	b, _ := json.Marshal(msg)
+	err = ConnManager.SendToUser(opponentID, b)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

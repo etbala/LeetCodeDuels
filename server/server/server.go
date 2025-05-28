@@ -7,7 +7,6 @@ import (
 	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
-	"leetcodeduels/ws"
 	"net/http"
 	"time"
 
@@ -25,11 +24,6 @@ func New(cfg *config.Config) (*http.Server, error) {
 		return nil, err
 	}
 
-	err = ws.InitConnManager(cfg.RDB_URL)
-	if err != nil {
-		return nil, err
-	}
-
 	err = services.InitInviteManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
@@ -39,8 +33,6 @@ func New(cfg *config.Config) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	ws.InitPubSub()
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"https://leetcode.com", "http://127.0.0.1"},
@@ -67,11 +59,6 @@ func Cleanup(srv *http.Server) error {
 		return err
 	}
 
-	if err := ws.CleanupPubSub(ctx); err != nil {
-		return err
-	}
-
-	ws.ConnManager.Close()
 	auth.StateStore.Close()
 	services.InviteManager.Close()
 	services.GameManager.Close()

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"leetcodeduels/handlers"
+	"leetcodeduels/ws"
 
 	"github.com/gorilla/mux"
 )
@@ -113,7 +114,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	wsRouter.Use(authMiddleware)
 
 	wsRouter.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
-		handlers.WSConnect(w, r)
+		ws.WSConnect(w, r)
 	}).Methods("GET")
 
 	return r

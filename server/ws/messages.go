@@ -54,7 +54,7 @@ type DeclineInvitationPayload struct {
 	InviterID int64 `json:"inviterID"`
 }
 
-type EnterQueue struct {
+type EnterQueuePayload struct {
 	Difficulties []string `json:"difficulties"`
 	Tags         []int    `json:"tags"`
 }
