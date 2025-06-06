@@ -208,7 +208,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
-		return h.handleDeclineInvitation(c.userID, p)
+		return h.handleDeclineInvitation(p)
 
 	case ClientMsgEnterQueue:
 		var p EnterQueuePayload
@@ -347,7 +347,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 	return nil
 }
 
-func (c *connManager) handleDeclineInvitation(userID int64, p DeclineInvitationPayload) error {
+func (c *connManager) handleDeclineInvitation(p DeclineInvitationPayload) error {
 	invite, err := services.InviteManager.InviteDetails(p.InviterID)
 	if err != nil {
 		return err
@@ -382,7 +382,7 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 	}
 	if invite == nil {
 		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
-		err = ConnManager.SendToUser(invite.InviteeID, b)
+		err = ConnManager.SendToUser(userID, b)
 		if err != nil {
 			return err
 		}
