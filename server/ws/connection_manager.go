@@ -234,12 +234,12 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 }
 
 func (cm *connManager) Close() error {
-	// stop run() and redisListener()
-	cm.cancel()
-
 	for c := range cm.clients {
 		cm.unregister <- c
 	}
+
+	// stop run() and redisListener()
+	cm.cancel()
 
 	if err := cm.pubsub.Close(); err != nil {
 		log.Printf("error closing pubsub: %v", err)

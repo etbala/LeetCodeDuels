@@ -129,7 +129,10 @@ func (l *LanguageType) UnmarshalJSON(data []byte) error {
 	}
 
 	switch langStr {
-	case "Go", "cpp": // Add other supported languages
+	case "c", "cpp", "csharp", "java", "python", "python3",
+		"javascript", "typescript", "php", "swift", "kotlin",
+		"dart", "go", "ruby", "scala", "rust", "racket",
+		"erlang", "elixir":
 		*l = LanguageType(langStr)
 		return nil
 	default:

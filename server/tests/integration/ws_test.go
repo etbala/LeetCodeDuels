@@ -16,17 +16,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func wsURL() string {
+	return "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
+}
+
 func TestWSUpgrader(t *testing.T) {
 	token, err := auth.GenerateJWT(12345) // Alice
 	require.NoError(t, err)
 
-	// http://127.0.0.1:12345 -> ws://127.0.0.1:12345/ws
-	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
-
 	header := http.Header{}
 	header.Set("Authorization", "Bearer "+token)
 
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(), header)
 	require.NoError(t, err, "should upgrade to WebSocket without error")
 	defer conn.Close()
 	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
@@ -34,10 +35,6 @@ func TestWSUpgrader(t *testing.T) {
 	// perform a simple ping-pong to verify channel works
 	err = conn.WriteMessage(websocket.TextMessage, []byte("ping"))
 	require.NoError(t, err)
-}
-
-func wsURL() string {
-	return "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
 }
 
 func dialWS(t *testing.T, userID int64) *websocket.Conn {
@@ -50,6 +47,8 @@ func dialWS(t *testing.T, userID int64) *websocket.Conn {
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(), header)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+
+	time.Sleep(10 * time.Millisecond)
 	return conn
 }
 
@@ -184,6 +183,119 @@ func TestCancelInvitation(t *testing.T) {
 	details, err := services.InviteManager.InviteDetails(12345)
 	require.NoError(t, err)
 	require.Nil(t, details, "invite must be gone after cancel")
+}
+
+func TestSubmissionFlow(t *testing.T) {
+	inviterID := int64(12345)
+	inviteeID := int64(67890)
+
+	inviter := dialWS(t, inviterID)
+	defer inviter.Close()
+	invitee := dialWS(t, inviteeID)
+	defer invitee.Close()
+
+	invite := ws.SendInvitationPayload{
+		InviteeID:    inviteeID,
+		MatchDetails: models.MatchDetails{Tags: []int{1}, Difficulties: []models.Difficulty{models.Easy}},
+	}
+	err := inviter.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgSendInvitation,
+		Payload: ws.MarshalPayload(invite),
+	})
+	require.NoError(t, err)
+
+	reqMsg := readMessage(t, invitee)
+	require.Equal(t, ws.ServerMsgInvitationRequest, reqMsg.Type)
+	var reqPayload ws.InvitationRequestPayload
+	require.NoError(t, json.Unmarshal(reqMsg.Payload, &reqPayload))
+
+	accept := ws.AcceptInvitationPayload{InviterID: inviterID}
+	err = invitee.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgAcceptInvitation,
+		Payload: ws.MarshalPayload(accept),
+	})
+	require.NoError(t, err)
+
+	m1 := readMessage(t, inviter)
+	m2 := readMessage(t, invitee)
+
+	require.Equal(t, ws.ServerMsgStartGame, m1.Type)
+	require.Equal(t, ws.ServerMsgStartGame, m2.Type)
+
+	var p1, p2 ws.StartGamePayload
+	require.NoError(t, json.Unmarshal(m1.Payload, &p1))
+	require.NoError(t, json.Unmarshal(m2.Payload, &p2))
+
+	require.NotEmpty(t, p1.SessionID)
+	require.Equal(t, p1.SessionID, p2.SessionID)
+
+	submission1 := ws.SubmissionPayload{
+		Status:          "Compile Error",
+		PassedTestCases: 3,
+		TotalTestCases:  82,
+		Runtime:         30,
+		Memory:          5000,
+		Language:        "c",
+		Time:            time.Now(),
+	}
+	err = invitee.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgSubmission,
+		Payload: ws.MarshalPayload(submission1),
+	})
+	require.NoError(t, err)
+
+	opponentSubMsg := readMessage(t, inviter)
+	require.Equal(t, ws.ServerMsgOpponentSubmission, opponentSubMsg.Type)
+
+	var oppSub ws.OpponentSubmissionPayload
+	require.NoError(t, json.Unmarshal(opponentSubMsg.Payload, &oppSub))
+
+	game, err := services.GameManager.GetGame(p1.SessionID)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(game.Submissions))
+	require.Equal(t, inviteeID, game.Submissions[0].PlayerID)
+
+	require.Equal(t, int64(inviteeID), oppSub.PlayerID)
+	require.Equal(t, submission1.Status, oppSub.Status)
+	require.Equal(t, submission1.PassedTestCases, oppSub.PassedTestCases)
+	require.Equal(t, submission1.TotalTestCases, oppSub.TotalTestCases)
+	require.Equal(t, submission1.Runtime, oppSub.Runtime)
+	require.Equal(t, submission1.Memory, oppSub.Memory)
+	require.Equal(t, submission1.Language, oppSub.Language)
+
+	submission2 := ws.SubmissionPayload{
+		Status:          "Accepted",
+		PassedTestCases: 82,
+		TotalTestCases:  82,
+		Runtime:         70,
+		Memory:          10000,
+		Language:        "java",
+		Time:            time.Now(),
+	}
+	err = inviter.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgSubmission,
+		Payload: ws.MarshalPayload(submission2),
+	})
+	require.NoError(t, err)
+
+	endMsg1 := readMessage(t, inviter)
+	endMsg2 := readMessage(t, invitee)
+	require.Equal(t, ws.ServerMsgGameOver, endMsg1.Type)
+	require.Equal(t, ws.ServerMsgGameOver, endMsg2.Type)
+
+	var endPayload1, endPayload2 ws.GameOverPayload
+	require.NoError(t, json.Unmarshal(endMsg1.Payload, &endPayload1))
+	require.NoError(t, json.Unmarshal(endMsg2.Payload, &endPayload2))
+
+	require.Equal(t, endPayload1.WinnerID, int64(inviterID))
+	require.Equal(t, endPayload1.WinnerID, endPayload2.WinnerID)
+	require.Equal(t, endPayload1.SessionID, endPayload2.SessionID)
+	require.Equal(t, endPayload1.Duration, endPayload2.Duration)
+
+	game, err = services.GameManager.GetGame(endPayload1.SessionID)
+	require.NoError(t, err)
+	require.Equal(t, int64(inviterID), game.Winner)
+	require.Equal(t, models.MatchWon, game.Status)
 }
 
 func TestUnknown(t *testing.T) {

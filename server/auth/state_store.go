@@ -37,7 +37,7 @@ func GenerateState() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // Stores state associated with provided context for 5 minutes
@@ -48,11 +48,11 @@ func (ss *stateStore) StoreState(ctx context.Context, state string) error {
 
 // Checks if state is valid for provided context. Deletes the state if it was valid.
 func (ss *stateStore) ValidateState(ctx context.Context, state string) (bool, error) {
-	existed, err := ss.client.Exists(ctx, state).Result()
+	n, err := ss.client.Del(ctx, state).Result()
 	if err != nil {
 		return false, err
 	}
-	return existed != 0, nil
+	return n > 0, nil
 }
 
 func (ss *stateStore) Close() error {
