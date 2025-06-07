@@ -28,12 +28,10 @@ func AuthGitHubInitiate(w http.ResponseWriter, r *http.Request) {
 
 	cfg, _ := config.LoadConfig()
 
-	redirectURI := url.QueryEscape(cfg.GITHUB_REDIRECT_URI)
 	escapedState := url.QueryEscape(state)
 	authURL := fmt.Sprintf(
 		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&state=%s",
 		cfg.GITHUB_CLIENT_ID,
-		redirectURI,
 		escapedState,
 	)
 

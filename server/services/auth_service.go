@@ -20,7 +20,7 @@ func ExchangeCodeForUser(code string) (*models.User, error) {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	token, err := exchangeCode(cfg.GITHUB_CLIENT_ID, cfg.GITHUB_CLIENT_SECRET, code, cfg.GITHUB_REDIRECT_URI)
+	token, err := exchangeCode(cfg.GITHUB_CLIENT_ID, cfg.GITHUB_CLIENT_SECRET, code)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +59,11 @@ func ExchangeCodeForUser(code string) (*models.User, error) {
 }
 
 // exchangeCode calls GitHub’s /login/oauth/access_token to get a bearer token.
-func exchangeCode(clientID, clientSecret, code, redirectURI string) (string, error) {
+func exchangeCode(clientID, clientSecret, code string) (string, error) {
 	form := url.Values{
 		"client_id":     {clientID},
 		"client_secret": {clientSecret},
 		"code":          {code},
-		"redirect_uri":  {redirectURI},
 	}
 	req, _ := http.NewRequest("POST", "https://github.com/login/oauth/access_token", strings.NewReader(form.Encode()))
 	req.Header.Set("Accept", "application/json")
