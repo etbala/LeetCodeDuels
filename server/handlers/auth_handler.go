@@ -30,7 +30,7 @@ func AuthGitHubInitiate(w http.ResponseWriter, r *http.Request) {
 
 	escapedState := url.QueryEscape(state)
 	authURL := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&state=%s",
+		"https://github.com/login/oauth/authorize?client_id=%s&state=%s",
 		cfg.GITHUB_CLIENT_ID,
 		escapedState,
 	)
