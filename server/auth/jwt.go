@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"leetcodeduels/config"
-	"leetcodeduels/store"
 	"net/http"
 	"strings"
 	"time"
@@ -27,14 +26,6 @@ const UserContextKey contextKey = "user"
 func GenerateJWT(userID int64) (string, error) {
 	cfg, _ := config.LoadConfig()
 	secretKey := cfg.JWT_SECRET
-
-	profile, err := store.DataStore.GetUserProfile(userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to verify user exists: %s", err.Error())
-	}
-	if profile == nil {
-		return "", fmt.Errorf("user does not exist: cannot generate jwt")
-	}
 
 	// Create the JWT claims, including the user ID and username.
 	claims := Claims{
