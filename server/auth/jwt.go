@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"leetcodeduels/config"
+	"leetcodeduels/store"
 	"net/http"
 	"strings"
 	"time"
@@ -13,7 +14,7 @@ import (
 )
 
 type Claims struct {
-	UserID int64 `json:"sub"`
+	UserID int64 `json:"userid"`
 	jwt.RegisteredClaims
 }
 
@@ -27,6 +28,14 @@ func GenerateJWT(userID int64) (string, error) {
 	cfg, _ := config.LoadConfig()
 	secretKey := cfg.JWT_SECRET
 
+	profile, err := store.DataStore.GetUserProfile(userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to verify user exists: %s", err.Error())
+	}
+	if profile == nil {
+		return "", fmt.Errorf("user does not exist: cannot generate jwt")
+	}
+
 	// Create the JWT claims, including the user ID and username.
 	claims := Claims{
 		UserID: userID,
@@ -36,10 +45,7 @@ func GenerateJWT(userID int64) (string, error) {
 		},
 	}
 
-	// Create the token with the specified claims and signing method.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Sign the token using the secret key.
 	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
@@ -54,12 +60,9 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 	cfg, _ := config.LoadConfig()
 	secretKey := cfg.JWT_SECRET
 
-	// Initialize a new instance of Claims.
 	claims := &Claims{}
 
-	// Parse the token, validating the signature and claims.
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the signing method is HMAC and using SHA256.
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -70,7 +73,6 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	// Check if the token is valid.
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
