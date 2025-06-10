@@ -11,7 +11,7 @@ import { AuthGuard } from './core/auth.guard';
 
 export const appRoutes: Route[] = [
   { path: 'login', component: LoginPageComponent },
-  { path: '', component: DashboardPageComponent },
+  { path: '', component: DashboardPageComponent, canActivate: [AuthGuard] },
   { path: 'link-lc',  component: LinkLcPageComponent, canActivate: [AuthGuard] },
   { path: 'settings', component: SettingsPageComponent, canActivate: [AuthGuard] },
   { path: 'queue', component: QueuePageComponent, canActivate: [AuthGuard] },
@@ -20,4 +20,3 @@ export const appRoutes: Route[] = [
   { path: 'result', component: ResultPageComponent, canActivate: [AuthGuard] },
   { path: '**', redirectTo: '' },
 ];
-  
