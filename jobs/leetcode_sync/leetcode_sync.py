@@ -48,8 +48,7 @@ def get_leetcode_problems():
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database."""
     try:
-        # conn = psycopg2.connect(os.environ.get('DB_URL'))
-        conn = psycopg2.connect("postgresql://lcduels_owner:4G1VQtyAHCcT@ep-patient-sun-a57j3woq-pooler.us-east-2.aws.neon.tech/lcduels?sslmode=require&channel_binding=require")
+        conn = psycopg2.connect(os.environ.get('DB_URL'))
         return conn
     except Exception as e:
         print(f"Error connecting to the database: {e}")
