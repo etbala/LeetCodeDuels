@@ -1,0 +1,32 @@
+name: LeetCode Problems Sync
+
+on:
+  # Runs automatically every day at 5:00 AM UTC.
+  schedule:
+    - cron: '0 5 * * *'
+  
+  # Allows running this workflow manually 
+  workflow_dispatch:
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r jobs/leetcode_sync/requirements.txt
+
+      - name: Run Script
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: python jobs/leetcode_sync/leetcode_sync.py
