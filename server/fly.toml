@@ -8,13 +8,30 @@ primary_region = 'ord'
 [env]
   PORT = '8080'
 
-[http_service]
+[[services]]
+  protocol = "tcp"
   internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+  processes = ["app"]
+  min_machines_running = 1 # Set to 1 to keep it alive for WebSocket connections
+  auto_stop_machines = false
+  auto_start_machines = false
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.checks]]
+    type = "http"
+    port = 8080
+    path = "/health"
+    interval = "30s"
+    timeout = "2s"
+    grace_period = "5s"
 
 [[vm]]
   memory = '512mb'
