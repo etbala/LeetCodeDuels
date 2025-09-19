@@ -57,11 +57,16 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.RenameLCUser(w, r)
 	}).Methods("POST")
 
-	accountRouter.HandleFunc("/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	accountRouter.HandleFunc("/id/{username}", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.GetUserID(w, r) TODO: Implement
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	}).Methods("GET")
+
+	accountRouter.HandleFunc("/profile/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetProfile(w, r)
 	}).Methods("GET")
 
-	accountRouter.HandleFunc("/{id:[0-9]+}/in-game", func(w http.ResponseWriter, r *http.Request) {
+	accountRouter.HandleFunc("/in-game/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.UserInGame(w, r)
 	}).Methods("GET")
 
@@ -87,11 +92,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	}).Methods("GET")
 
 	// Get match details
-	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/details/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchesGet(w, r)
 	}).Methods("GET")
 
-	matchRouter.HandleFunc("/{id:[0-9a-f\\-]+}/submissions", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/submissions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchSubmissions(w, r)
 	}).Methods("GET")
 
