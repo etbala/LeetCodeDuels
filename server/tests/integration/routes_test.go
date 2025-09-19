@@ -25,7 +25,7 @@ func TestGetProfile(t *testing.T) {
 	token, err := auth.GenerateJWT(12345) // Alice
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d", ts.URL, 12345), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/profile/%d", ts.URL, 12345), nil)
 	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -92,7 +92,7 @@ func TestDeleteProfile(t *testing.T) {
 	token, err = auth.GenerateJWT(12345) // Alice
 	assert.NoError(t, err)
 
-	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d", ts.URL, 61539), nil)
+	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/profile/%d", ts.URL, 61539), nil)
 	assert.NoError(t, err)
 	req2.Header.Set("Authorization", "Bearer "+token)
 
@@ -120,7 +120,7 @@ func TestRenameUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	// Now check profile was renamed
-	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d", ts.URL, 41529), nil)
+	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/profile/%d", ts.URL, 41529), nil)
 	assert.NoError(t, err)
 	req2.Header.Set("Authorization", "Bearer "+token)
 
@@ -158,7 +158,7 @@ func TestLCRenameUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 	// Now check profile was renamed
-	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d", ts.URL, 53468), nil)
+	req2, err := http.NewRequest("GET", fmt.Sprintf("%s/user/profile/%d", ts.URL, 53468), nil)
 	assert.NoError(t, err)
 	req2.Header.Set("Authorization", "Bearer "+token)
 
@@ -177,7 +177,7 @@ func TestUserNotInGame(t *testing.T) {
 	token, err := auth.GenerateJWT(12345) // Alice
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%d/in-game", ts.URL, 12345), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/in-game/%d", ts.URL, 12345), nil)
 	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -247,7 +247,7 @@ func TestGetMatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	matchID := "00000000-0000-0000-0000-000000000000"
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/%s", ts.URL, matchID), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/details/%s", ts.URL, matchID), nil)
 	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -281,7 +281,7 @@ func TestGetMatchSubmissions(t *testing.T) {
 	assert.NoError(t, err)
 
 	matchID := "00000000-0000-0000-0000-000000000000"
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/%s/submissions", ts.URL, matchID), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/game/submissions/%s", ts.URL, matchID), nil)
 	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -297,6 +297,7 @@ func TestGetMatchSubmissions(t *testing.T) {
 
 	var submissions []models.PlayerSubmission
 	err = json.NewDecoder(res.Body).Decode(&submissions)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(submissions))
 	assert.Equal(t, 0, submissions[0].ID)
 	assert.Equal(t, int64(12345), submissions[0].PlayerID)
