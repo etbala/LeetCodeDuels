@@ -32,12 +32,12 @@ INSERT INTO github_oauth_users (
 ;
 
 -- problems
-INSERT INTO problems (id, name, slug, difficulty) VALUES
-  (1, 'Two Sum', 'two-sum', 'Easy'),
-  (2, 'Add Two Numbers', 'add-two-numbers', 'Medium'),
-  (4, 'Median of Two Sorted Arrays', 'median-of-two-sorted-arrays', 'Hard'),
-  (5, 'Longest Palindromic Substring', 'longest-palindromic-substring', 'Medium'),
-  (7, 'Reverse Integer', 'reverse-integer', 'Medium')
+INSERT INTO problems (id, problem_num, name, slug, difficulty) VALUES
+  (1, 1, 'Two Sum', 'two-sum', 'Easy'),
+  (2, 2, 'Add Two Numbers', 'add-two-numbers', 'Medium'),
+  (4, 4, 'Median of Two Sorted Arrays', 'median-of-two-sorted-arrays', 'Hard'),
+  (5, 5, 'Longest Palindromic Substring', 'longest-palindromic-substring', 'Medium'),
+  (7, 7, 'Reverse Integer', 'reverse-integer', 'Medium')
 ;
 
 -- tags
