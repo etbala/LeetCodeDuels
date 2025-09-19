@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	_ "github.com/google/uuid"
 )
 
 const (
@@ -41,10 +40,8 @@ type connManager struct {
 	register   chan *Client
 	unregister chan *Client
 
-	// all connected clients on this node
-	clients map[*Client]bool
-	// connections grouped by userID
-	userClients map[int64]map[*Client]bool
+	clients     map[*Client]bool           // all connected clients on this node
+	userClients map[int64]map[*Client]bool // connections grouped by userID
 
 	// local direct queue for delivering messages to local clients
 	direct chan directMessage
@@ -73,25 +70,22 @@ func newConnManager(redisURL string) (*connManager, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// -- CHANGED: Generate a unique ID for this server --
 	serverUUID := uuid.New().String()
 	log.Printf("Starting server with ID: %s", serverUUID)
 
-	// -- CHANGED: Subscribe to this server's dedicated channel --
 	ps := client.Subscribe(context.Background(), serverChannel(serverUUID))
 
 	cm := &connManager{
-		serverID:    serverUUID, // <-- Store the server ID
+		serverID:    serverUUID,
 		redisClient: client,
 		pubsub:      ps,
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		clients:     make(map[*Client]bool),
 		userClients: make(map[int64]map[*Client]bool),
-		// broadcast removed
-		direct: make(chan directMessage, 256),
-		ctx:    ctx,
-		cancel: cancel,
+		direct:      make(chan directMessage, 256),
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	go cm.run()
 	go cm.redisListener()
@@ -122,7 +116,6 @@ func (cm *connManager) run() {
 			}
 			uc[c] = true
 
-			// -- CHANGED: Set user's location in Redis with TTL --
 			err := cm.redisClient.Set(
 				context.Background(),
 				userLocationKey(c.userID),
@@ -144,17 +137,13 @@ func (cm *connManager) run() {
 				delete(uc, c)
 				if len(uc) == 0 {
 					delete(cm.userClients, c.userID)
-					// -- CHANGED: Delete user location from Redis on clean disconnect --
 					cm.redisClient.Del(context.Background(), userLocationKey(c.userID))
 					log.Printf("User %d unregistered from server %s", c.userID, cm.serverID)
 				}
 			}
 			close(c.send)
 
-		// -- REMOVED: General broadcast case is no longer needed --
-
 		case dm := <-cm.direct:
-			// Logic for local delivery remains the same
 			if conns, ok := cm.userClients[dm.userID]; ok {
 				for c := range conns {
 					select {
@@ -186,7 +175,6 @@ func (cm *connManager) redisListener() {
 				continue
 			}
 
-			// Forward the message payload to the local delivery channel
 			cm.direct <- directMessage{
 				userID:  pubSubMsg.UserID,
 				payload: pubSubMsg.Payload,
@@ -200,19 +188,17 @@ func (cm *connManager) SendToUser(userID int64, payload []byte) error {
 	if err == redis.Nil {
 		// User is not connected to any server instance.
 		log.Printf("attempted to send message to offline user %d", userID)
-		return nil // Not an error, just user is offline.
+		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("could not get user location for user %d: %w", userID, err)
 	}
 
-	// Optimization: If the user is on this server, send directly.
 	if serverID == cm.serverID {
 		cm.direct <- directMessage{userID: userID, payload: payload}
 		return nil
 	}
 
-	// User is on another server. Publish to that server's channel.
 	pubSubMsg := redisPubSubMessage{
 		UserID:  userID,
 		Payload: payload,
@@ -231,7 +217,7 @@ func (cm *connManager) refreshUserTTL(userID int64) error {
 
 func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	switch env.Type {
-	// -- ADDED: Handle for the new heartbeat message --
+
 	case ClientMsgHeartbeat:
 		return h.refreshUserTTL(c.userID)
 
@@ -242,7 +228,6 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 		}
 		return h.handleSendInvitation(c.userID, p)
 
-	// ... other message cases remain unchanged ...
 	case ClientMsgAcceptInvitation:
 		var p AcceptInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
@@ -407,7 +392,7 @@ func (c *connManager) handleDeclineInvitation(p DeclineInvitationPayload) error 
 	if err != nil {
 		return err
 	}
-	if success == false {
+	if !success {
 		// no invite to decline
 		return nil
 	}
@@ -439,7 +424,7 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 	if err != nil {
 		return err
 	}
-	if success == false {
+	if !success {
 		// this shouldn’t really happen, but guard anyway
 		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
 		err = ConnManager.SendToUser(invite.InviteeID, b)
