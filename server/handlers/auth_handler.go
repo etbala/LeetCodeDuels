@@ -39,30 +39,35 @@ func AuthGitHubInitiate(w http.ResponseWriter, r *http.Request) {
 }
 
 func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
-	state := r.URL.Query().Get("state")
+	fmt.Fprintf(w, "<html><body><h1>Success!</h1><p>You can close this window now.</p></body></html>")
+}
 
-	valid, err := auth.StateStore.ValidateState(r.Context(), state)
-	if err != nil {
-		http.Error(w, "could not validate state", http.StatusInternalServerError)
-		return
-	}
-	if !valid {
-		http.Error(w, "invalid state", http.StatusUnauthorized)
-		return
+func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Code string `json:"code"`
 	}
 
-	user, err := services.ExchangeCodeForUser(code)
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		return
+	}
+
+	user, err := services.ExchangeCodeForUser(payload.Code)
 	if err != nil {
 		log.Printf("GitHub token exchange error: %v", err)
-		http.Error(w, "invalid code", http.StatusBadRequest)
+		http.Error(w, "Invalid code", http.StatusBadRequest)
 		return
 	}
 
 	token, err := auth.GenerateJWT(user.ID)
 	if err != nil {
 		log.Printf("JWT generation error: %v", err)
-		http.Error(w, "could not generate token", http.StatusInternalServerError)
+		http.Error(w, "Could not generate token", http.StatusInternalServerError)
 		return
 	}
 

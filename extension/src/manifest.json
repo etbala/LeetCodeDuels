@@ -13,8 +13,12 @@
     "host_permissions": [
         "https://leetcode.com/*",
         "https://github.com/*",
-        "http://localhost:8080/*"
+        "http://localhost:8080/*",
+        "https://lc-duels-development.fly.dev/*"
     ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://github.com http://localhost:8080;"
+    },
     "background": {
         "service_worker": "scripts/background.js"
     },

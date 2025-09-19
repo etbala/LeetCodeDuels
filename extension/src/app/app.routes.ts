@@ -7,16 +7,16 @@ import { ChallengePageComponent } from './pages/lobby/challenge-page/challenge-p
 import { InGamePageComponent } from './pages/game/in-game-page/in-game-page.component';
 import { ResultPageComponent } from './pages/game/result-page/result-page.component';
 import { SettingsPageComponent } from './pages/settings-page/settings-page.component';
-import { AuthGuard } from './core/auth.guard';
+import { authGuard } from './services/auth.guard';
 
 export const appRoutes: Route[] = [
   { path: 'login', component: LoginPageComponent },
-  { path: '', component: DashboardPageComponent, canActivate: [AuthGuard] },
-  { path: 'link-lc',  component: LinkLcPageComponent, canActivate: [AuthGuard] },
-  { path: 'settings', component: SettingsPageComponent, canActivate: [AuthGuard] },
-  { path: 'queue', component: QueuePageComponent, canActivate: [AuthGuard] },
-  { path: 'challenge', component: ChallengePageComponent, canActivate: [AuthGuard] },
-  { path: 'game', component: InGamePageComponent, canActivate: [AuthGuard] },
-  { path: 'result', component: ResultPageComponent, canActivate: [AuthGuard] },
+  { path: '', component: DashboardPageComponent, canActivate: [authGuard] },
+  { path: 'link-lc',  component: LinkLcPageComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsPageComponent, canActivate: [authGuard] },
+  { path: 'queue', component: QueuePageComponent, canActivate: [authGuard] },
+  { path: 'challenge', component: ChallengePageComponent, canActivate: [authGuard] },
+  { path: 'game', component: InGamePageComponent, canActivate: [authGuard] },
+  { path: 'result', component: ResultPageComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];
