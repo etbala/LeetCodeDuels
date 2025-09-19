@@ -8,15 +8,17 @@ import (
 	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"log"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
+	_ "github.com/google/uuid"
 )
 
 const (
-	RedisBroadcastChannel = "pubsubChan"
-	userChannelPrefix     = "user:"
+	userLocationPrefix  = "user_location:"
+	serverChannelPrefix = "server:"
+	userLocationTTL     = 60 * time.Second
 )
 
 var ConnManager *connManager
@@ -26,7 +28,13 @@ type directMessage struct {
 	payload []byte
 }
 
+type redisPubSubMessage struct {
+	UserID  int64           `json:"user_id"`
+	Payload json.RawMessage `json:"payload"`
+}
+
 type connManager struct {
+	serverID    string
 	redisClient *redis.Client
 	pubsub      *redis.PubSub
 
@@ -38,17 +46,19 @@ type connManager struct {
 	// connections grouped by userID
 	userClients map[int64]map[*Client]bool
 
-	// cluster-wide broadcast
-	broadcast chan []byte
-	// local direct queue
+	// local direct queue for delivering messages to local clients
 	direct chan directMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func userChannel(userID int64) string {
-	return fmt.Sprintf("%s%d", userChannelPrefix, userID)
+func userLocationKey(userID int64) string {
+	return fmt.Sprintf("%s%d", userLocationPrefix, userID)
+}
+
+func serverChannel(serverID string) string {
+	return fmt.Sprintf("%s%s", serverChannelPrefix, serverID)
 }
 
 func newConnManager(redisURL string) (*connManager, error) {
@@ -62,18 +72,26 @@ func newConnManager(redisURL string) (*connManager, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ps := client.Subscribe(context.Background(), RedisBroadcastChannel)
+
+	// -- CHANGED: Generate a unique ID for this server --
+	serverUUID := uuid.New().String()
+	log.Printf("Starting server with ID: %s", serverUUID)
+
+	// -- CHANGED: Subscribe to this server's dedicated channel --
+	ps := client.Subscribe(context.Background(), serverChannel(serverUUID))
+
 	cm := &connManager{
+		serverID:    serverUUID, // <-- Store the server ID
 		redisClient: client,
 		pubsub:      ps,
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		clients:     make(map[*Client]bool),
 		userClients: make(map[int64]map[*Client]bool),
-		broadcast:   make(chan []byte, 256),
-		direct:      make(chan directMessage, 256),
-		ctx:         ctx,
-		cancel:      cancel,
+		// broadcast removed
+		direct: make(chan directMessage, 256),
+		ctx:    ctx,
+		cancel: cancel,
 	}
 	go cm.run()
 	go cm.redisListener()
@@ -97,19 +115,24 @@ func (cm *connManager) run() {
 
 		case c := <-cm.register:
 			cm.clients[c] = true
-
-			// per-user registration
 			uc, exists := cm.userClients[c.userID]
 			if !exists {
 				uc = make(map[*Client]bool)
 				cm.userClients[c.userID] = uc
-				// first conn for this user → subscribe
-				err := cm.pubsub.Subscribe(context.Background(), userChannel(c.userID))
-				if err != nil {
-					log.Printf("redis subscribe error user %d: %v", c.userID, err)
-				}
 			}
 			uc[c] = true
+
+			// -- CHANGED: Set user's location in Redis with TTL --
+			err := cm.redisClient.Set(
+				context.Background(),
+				userLocationKey(c.userID),
+				cm.serverID,
+				userLocationTTL,
+			).Err()
+			if err != nil {
+				log.Printf("failed to set user location for user %d: %v", c.userID, err)
+			}
+			log.Printf("User %d registered on server %s", c.userID, cm.serverID)
 
 		case c := <-cm.unregister:
 			if _, ok := cm.clients[c]; !ok {
@@ -120,27 +143,18 @@ func (cm *connManager) run() {
 			if uc, exists := cm.userClients[c.userID]; exists {
 				delete(uc, c)
 				if len(uc) == 0 {
-					// last conn for this user → unsubscribe
-					err := cm.pubsub.Unsubscribe(context.Background(), userChannel(c.userID))
-					if err != nil {
-						log.Printf("redis unsubscribe error user %d: %v", c.userID, err)
-					}
 					delete(cm.userClients, c.userID)
+					// -- CHANGED: Delete user location from Redis on clean disconnect --
+					cm.redisClient.Del(context.Background(), userLocationKey(c.userID))
+					log.Printf("User %d unregistered from server %s", c.userID, cm.serverID)
 				}
 			}
 			close(c.send)
 
-		case msg := <-cm.broadcast:
-			for c := range cm.clients {
-				select {
-				case c.send <- msg:
-				default:
-					close(c.send)
-					delete(cm.clients, c)
-				}
-			}
+		// -- REMOVED: General broadcast case is no longer needed --
 
 		case dm := <-cm.direct:
+			// Logic for local delivery remains the same
 			if conns, ok := cm.userClients[dm.userID]; ok {
 				for c := range conns {
 					select {
@@ -165,27 +179,62 @@ func (cm *connManager) redisListener() {
 			if !ok {
 				return
 			}
-			switch msg.Channel {
-			case RedisBroadcastChannel:
-				cm.broadcast <- []byte(msg.Payload)
-			default:
-				if strings.HasPrefix(msg.Channel, userChannelPrefix) {
-					idStr := strings.TrimPrefix(msg.Channel, userChannelPrefix)
-					if uid, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-						cm.direct <- directMessage{userID: uid, payload: []byte(msg.Payload)}
-					}
-				}
+
+			var pubSubMsg redisPubSubMessage
+			if err := json.Unmarshal([]byte(msg.Payload), &pubSubMsg); err != nil {
+				log.Printf("could not unmarshal redis pubsub message: %v", err)
+				continue
+			}
+
+			// Forward the message payload to the local delivery channel
+			cm.direct <- directMessage{
+				userID:  pubSubMsg.UserID,
+				payload: pubSubMsg.Payload,
 			}
 		}
 	}
 }
 
-func (h *connManager) SendToUser(userID int64, payload []byte) error {
-	return h.redisClient.Publish(context.Background(), userChannel(userID), payload).Err()
+func (cm *connManager) SendToUser(userID int64, payload []byte) error {
+	serverID, err := cm.redisClient.Get(context.Background(), userLocationKey(userID)).Result()
+	if err == redis.Nil {
+		// User is not connected to any server instance.
+		log.Printf("attempted to send message to offline user %d", userID)
+		return nil // Not an error, just user is offline.
+	}
+	if err != nil {
+		return fmt.Errorf("could not get user location for user %d: %w", userID, err)
+	}
+
+	// Optimization: If the user is on this server, send directly.
+	if serverID == cm.serverID {
+		cm.direct <- directMessage{userID: userID, payload: payload}
+		return nil
+	}
+
+	// User is on another server. Publish to that server's channel.
+	pubSubMsg := redisPubSubMessage{
+		UserID:  userID,
+		Payload: payload,
+	}
+	b, err := json.Marshal(pubSubMsg)
+	if err != nil {
+		return fmt.Errorf("could not marshal pubsub message: %w", err)
+	}
+
+	return cm.redisClient.Publish(context.Background(), serverChannel(serverID), b).Err()
+}
+
+func (cm *connManager) refreshUserTTL(userID int64) error {
+	return cm.redisClient.Expire(context.Background(), userLocationKey(userID), userLocationTTL).Err()
 }
 
 func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	switch env.Type {
+	// -- ADDED: Handle for the new heartbeat message --
+	case ClientMsgHeartbeat:
+		return h.refreshUserTTL(c.userID)
+
 	case ClientMsgSendInvitation:
 		var p SendInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
@@ -193,6 +242,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 		}
 		return h.handleSendInvitation(c.userID, p)
 
+	// ... other message cases remain unchanged ...
 	case ClientMsgAcceptInvitation:
 		var p AcceptInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
@@ -235,6 +285,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 
 func (cm *connManager) Close() error {
 	for c := range cm.clients {
+		cm.redisClient.Del(context.Background(), userLocationKey(c.userID))
 		cm.unregister <- c
 	}
 
@@ -251,12 +302,10 @@ func (cm *connManager) Close() error {
 func (c *connManager) handleSendInvitation(
 	userID int64, p SendInvitationPayload,
 ) error {
-	if len(c.userClients[p.InviteeID]) == 0 {
+	isOnline := c.redisClient.Exists(context.Background(), userLocationKey(p.InviteeID)).Val() == 1
+	if !isOnline {
 		b, _ := json.Marshal(Message{Type: ServerMsgUserOffline})
-		err := ConnManager.SendToUser(userID, b)
-		if err != nil {
-			return err
-		}
+		c.direct <- directMessage{userID: userID, payload: b}
 		return nil
 	}
 
@@ -264,7 +313,7 @@ func (c *connManager) handleSendInvitation(
 	if err != nil {
 		return err
 	}
-	if success == false {
+	if !success {
 		// Invite already exists from this user
 		// TODO: Either replace the existing invite or ignore this invite
 		return nil
@@ -275,12 +324,9 @@ func (c *connManager) handleSendInvitation(
 
 	msg := Message{Type: ServerMsgInvitationRequest, Payload: payload}
 	b, _ := json.Marshal(msg)
-	err = ConnManager.SendToUser(p.InviteeID, b)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	// SendToUser will now correctly route the message across servers.
+	return ConnManager.SendToUser(p.InviteeID, b)
 }
 
 func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPayload) error {

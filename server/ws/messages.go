@@ -15,6 +15,7 @@ const (
 	ClientMsgEnterQueue        = "enter_queue"
 	ClientMsgLeaveQueue        = "leave_queue" // No Payload
 	ClientMsgSubmission        = "submission"
+	ClientMsgHeartbeat         = "heartbeat" // No Payload
 )
 
 // Messages Server Sends
