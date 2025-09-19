@@ -16,9 +16,9 @@ import (
 
 func main() {
 	// Load environment variables from .env file (at root of server dir)
-	err := godotenv.Load("../../.env")
+	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Println("Info: .env file not found, relying on system environment variables.")
 	}
 
 	cfg, err := config.LoadConfig()
