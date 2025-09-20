@@ -1,109 +1,249 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, lastValueFrom } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
-// This tells TypeScript that the 'chrome' object exists, as it's injected by the browser extension environment.
-declare var chrome: any;
+interface User {
+  id: string;
+  username: string;
+  lc_username: string;
+  avatar_url: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  // Use a BehaviorSubject to hold and stream the authentication state.
-  private authState = new BehaviorSubject<boolean>(false);
-  
-  // Expose the auth state as a public observable for components to subscribe to.
-  public isAuthenticated$ = this.authState.asObservable();
-
-  // Your backend and GitHub App configuration
+  private readonly API_URL = 'http://localhost:8080';
   private readonly GITHUB_CLIENT_ID = 'Ov23liQ4ERGhUYdeT8yb';
-  private readonly API_BASE_URL = 'http://localhost:8080';
+  private readonly STORAGE_KEY = 'auth_token';
+  private readonly USER_KEY = 'user_data';
+  
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
+  
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  
+  private authWindow: Window | null = null;
 
   constructor(private http: HttpClient) {
-    // When the service is initialized, check if the user is already logged in.
-    this.checkInitialAuthState();
+    this.initializeAuth();
   }
 
-  /**
-   * Checks for an existing token in extension storage to set the initial auth state.
-   */
-  private async checkInitialAuthState(): Promise<void> {
-    const token = await this.getToken();
-    if (token) {
-      // You might want to add a step here to verify the token with your backend.
-      this.authState.next(true);
+  private async initializeAuth(): Promise<void> {
+    try {
+      const token = await this.getStoredToken();
+      const user = await this.getStoredUser();
+      
+      if (token && user) {
+        this.currentUserSubject.next(user);
+        this.isAuthenticatedSubject.next(true);
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      this.clearAuth();
     }
   }
 
-  /**
-   * The main login function that orchestrates the entire OAuth flow.
-   */
+  // Initiates GitHub OAuth login flow
   async login(): Promise<void> {
-    try {
-      // 1. Construct the GitHub authorization URL
-      const redirectUri = `${this.API_BASE_URL}/auth/github/callback`;
-      const authUrl = `https://github.com/login/oauth/authorize?client_id=${this.GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user`;
-
-      // 2. Launch the web auth flow using the extension's identity API
-      const redirectUrl = await new Promise<string>((resolve, reject) => {
-        chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (responseUrl?: string) => {
-          if (chrome.runtime.lastError || !responseUrl) {
-            reject(new Error(chrome.runtime.lastError?.message || 'The user cancelled the web auth flow.'));
-          } else {
-            resolve(responseUrl);
+    return new Promise((resolve, reject) => {
+      const state = this.generateState();
+      sessionStorage.setItem('oauth_state', state);
+      
+      const params = new URLSearchParams({
+        client_id: this.GITHUB_CLIENT_ID,
+        redirect_uri: `${this.API_URL}/auth/github/callback`,
+        scope: 'user:email',
+        state: state
+      });
+      
+      const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+      
+      this.authWindow = window.open(
+        authUrl,
+        'github-auth',
+        'width=600,height=700,left=100,top=100'
+      );
+      
+      if (!this.authWindow) {
+        reject(new Error('Failed to open authentication window. Please check popup blocker settings.'));
+        return;
+      }
+      
+      // Listen for OAuth callback message
+      const messageListener = async (event: MessageEvent) => {
+        if (!event.origin.startsWith(this.API_URL.replace(/\/+$/, ''))) {
+          return;
+        }
+        
+        // Check if it's our OAuth callback
+        if (event.data?.type === 'github-oauth-callback') {
+          window.removeEventListener('message', messageListener);
+          
+          if (this.authWindow && !this.authWindow.closed) {
+            this.authWindow.close();
           }
+          
+          if (event.data.error) {
+            reject(new Error(`Authentication failed: ${event.data.error}`));
+            return;
+          }
+          
+          if (event.data.code) {
+            try {
+              await this.exchangeCodeForToken(event.data.code);
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          } else {
+            reject(new Error('No authorization code received'));
+          }
+        }
+      };
+      
+      window.addEventListener('message', messageListener);
+      
+      // Clean up if window is closed without completing auth
+      const windowChecker = setInterval(() => {
+        if (this.authWindow && this.authWindow.closed) {
+          clearInterval(windowChecker);
+          window.removeEventListener('message', messageListener);
+          reject(new Error('Authentication window was closed'));
+        }
+      }, 1000);
+      
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(windowChecker);
+        window.removeEventListener('message', messageListener);
+        if (this.authWindow && !this.authWindow.closed) {
+          this.authWindow.close();
+        }
+        reject(new Error('Authentication timeout'));
+      }, 5 * 60 * 1000);
+    });
+  }
+
+  // Exchange authorization code for JWT token
+  private async exchangeCodeForToken(code: string): Promise<void> {
+    try {
+      const response = await this.http.post<AuthResponse>(
+        `${this.API_URL}/auth/github/exchange`,
+        { code }
+      ).toPromise();
+      
+      if (!response || !response.token) {
+        throw new Error('Invalid response from server');
+      }
+      
+      await this.setStoredToken(response.token);
+      await this.setStoredUser(response.user);
+      
+      this.currentUserSubject.next(response.user);
+      this.isAuthenticatedSubject.next(true);
+    } catch (error) {
+      console.error('Token exchange failed:', error);
+      throw error;
+    }
+  }
+
+  // Logout user and clear stored data
+  async logout(): Promise<void> {
+    await this.clearAuth();
+    this.currentUserSubject.next(null);
+    this.isAuthenticatedSubject.next(false);
+  }
+
+  // Get stored authentication token
+  async getToken(): Promise<string | null> {
+    return this.getStoredToken();
+  }
+
+  // Check if user is currently authenticated
+  async isAuthenticated(): Promise<boolean> {
+    const token = await this.getStoredToken();
+    return !!token;
+  }
+
+  // Get current user
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  private async getStoredToken(): Promise<string | null> {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return new Promise((resolve) => {
+        chrome.storage.local.get([this.STORAGE_KEY], (result) => {
+          resolve(result[this.STORAGE_KEY] || null);
         });
       });
-      
-      // 3. Extract the authorization code from the URL
-      const code = new URL(redirectUrl).searchParams.get('code');
-      if (!code) {
-        throw new Error('Authorization code not found in redirect URL.');
-      }
-
-      // 4. Exchange the code for a JWT from your backend using HttpClient
-      const tokenResponse$ = this.http.post<{ token: string }>(`${this.API_BASE_URL}/auth/github/exchange`, { code });
-      const tokenResponse = await lastValueFrom(tokenResponse$);
-      
-      // 5. Save the token and update the auth state
-      await this.saveToken(tokenResponse.token);
-      this.authState.next(true);
-      console.log('Login successful!');
-
-    } catch (error) {
-      console.error('Login failed:', error);
-      this.authState.next(false); // Ensure state is false on failure
     }
+    // Fallback to localStorage for development
+    return localStorage.getItem(this.STORAGE_KEY);
   }
 
-  /**
-   * Logs the user out by removing the token and updating the state.
-   */
-  async logout(): Promise<void> {
-    await new Promise<void>((resolve) => {
-      chrome.storage.local.remove('authToken', () => resolve());
-    });
-    this.authState.next(false);
-  }
-
-  /**
-   * Retrieves the auth token from the browser extension's local storage.
-   */
-  public getToken(): Promise<string | null> {
-    return new Promise((resolve) => {
-      chrome.storage.local.get('authToken', (result: { [key: string]: any }) => {
-        // FIX IS HERE: Use bracket notation for properties from an index signature.
-        resolve(result['authToken'] || null);
+  private async setStoredToken(token: string): Promise<void> {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return new Promise((resolve) => {
+        chrome.storage.local.set({ [this.STORAGE_KEY]: token }, () => {
+          resolve();
+        });
       });
-    });
+    }
+    // Fallback to localStorage for development
+    localStorage.setItem(this.STORAGE_KEY, token);
   }
 
-  /**
-   * Saves the auth token to the browser extension's local storage.
-   */
-  private saveToken(token: string): Promise<void> {
-    return new Promise((resolve) => {
-      chrome.storage.local.set({ authToken: token }, () => resolve());
-    });
+  private async getStoredUser(): Promise<User | null> {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return new Promise((resolve) => {
+        chrome.storage.local.get([this.USER_KEY], (result) => {
+          const userData = result[this.USER_KEY];
+          resolve(userData ? JSON.parse(userData) : null);
+        });
+      });
+    }
+    // Fallback to localStorage for development
+    const userData = localStorage.getItem(this.USER_KEY);
+    return userData ? JSON.parse(userData) : null;
+  }
+
+  private async setStoredUser(user: User): Promise<void> {
+    const userString = JSON.stringify(user);
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return new Promise((resolve) => {
+        chrome.storage.local.set({ [this.USER_KEY]: userString }, () => {
+          resolve();
+        });
+      });
+    }
+    // Fallback to localStorage for development
+    localStorage.setItem(this.USER_KEY, userString);
+  }
+
+  private async clearAuth(): Promise<void> {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return new Promise((resolve) => {
+        chrome.storage.local.remove([this.STORAGE_KEY, this.USER_KEY], () => {
+          resolve();
+        });
+      });
+    }
+    // Fallback to localStorage for development
+    localStorage.removeItem(this.STORAGE_KEY);
+    localStorage.removeItem(this.USER_KEY);
+  }
+
+  private generateState(): string {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
 }

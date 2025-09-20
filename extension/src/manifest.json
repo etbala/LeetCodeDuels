@@ -13,11 +13,11 @@
     "host_permissions": [
         "https://leetcode.com/*",
         "https://github.com/*",
-        "http://localhost:8080/*",
-        "https://lc-duels-development.fly.dev/*"
+        "https://lc-duels-development.fly.dev/*",
+        "http://localhost:8080/*"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://github.com http://localhost:8080;"
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://lc-duels-development.fly.dev https://github.com https://api.github.com"
     },
     "background": {
         "service_worker": "scripts/background.js"
@@ -36,6 +36,10 @@
         {
             "resources": ["scripts/network-monitor.js"],
             "matches": ["https://leetcode.com/*"]
+        },
+        {
+            "resources": ["index.html"],
+            "matches": ["<all_urls>"]
         }
     ]
 }

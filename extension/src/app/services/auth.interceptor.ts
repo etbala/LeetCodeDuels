@@ -1,37 +1,46 @@
-import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpEvent } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { from, Observable, switchMap } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
+import { Observable, from, throwError } from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
+import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
-/**
- * This interceptor function automatically attaches the JWT bearer token
- * to outgoing HTTP requests to your API.
- */
-export const authInterceptor: HttpInterceptorFn = (
-  req: HttpRequest<unknown>,
-  next: HttpHandlerFn
-): Observable<HttpEvent<unknown>> => {
-  
-  const authService = inject(AuthService);
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
-  // The getToken() method in our AuthService returns a Promise.
-  // We convert it to an Observable to use it in the RxJS pipe.
-  return from(authService.getToken()).pipe(
-    switchMap(token => {
-      // If no token exists, pass the original request along without changes.
-      if (!token) {
-        return next(req);
-      }
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    if (req.url.includes('/auth/')) {
+      return next.handle(req);
+    }
 
-      // If a token exists, clone the request and add the Authorization header.
-      const authReq = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`
+    return from(this.authService.getToken()).pipe(
+      switchMap(token => {
+        let authReq = req;
+        
+        if (token) {
+          authReq = req.clone({
+            setHeaders: {
+              Authorization: `Bearer ${token}`
+            }
+          });
         }
-      });
-      
-      // Pass the cloned, authorized request to the next handler.
-      return next(authReq);
-    })
-  );
-};
+        
+        return next.handle(authReq).pipe(
+          catchError((error: HttpErrorResponse) => {
+            if (error.status === 401) {
+              // Token expired or invalid, logout and redirect
+              this.authService.logout().then(() => {
+                this.router.navigate(['/login']);
+              });
+            }
+            return throwError(() => error);
+          })
+        );
+      })
+    );
+  }
+}

@@ -1,29 +1,36 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
-import { map, Observable } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { CanActivate, Router, UrlTree, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { Observable, from } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
-/**
- * This guard function checks if a user is authenticated before allowing access to a route.
- */
-export const authGuard: CanActivateFn = (route, state): Observable<boolean | UrlTree> => {
-  
-  // Inject the AuthService and Router
-  const authService = inject(AuthService);
-  const router = inject(Router);
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
-  // Use the isAuthenticated$ observable from the AuthService
-  return authService.isAuthenticated$.pipe(
-    map(isAuthenticated => {
-      if (isAuthenticated) {
-        // If the user is authenticated, allow access.
-        return true;
-      } else {
-        // If the user is not authenticated, redirect them to the login page.
-        // Returning a UrlTree tells the router to navigate somewhere else.
-        console.log('Access denied. Redirecting to login...');
-        return router.createUrlTree(['/login']);
-      }
-    })
-  );
-};
+  canActivate(
+    route: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot
+  ): Observable<boolean | UrlTree> {
+    return from(this.authService.isAuthenticated()).pipe(
+      map(isAuthenticated => {
+        if (isAuthenticated) {
+          return true;
+        }
+        
+        // Store the attempted URL for redirecting after login
+        sessionStorage.setItem('redirectUrl', state.url);
+        
+        // Redirect to login page
+        return this.router.createUrlTree(['/login'], {
+          queryParams: { returnUrl: state.url }
+        });
+      })
+    );
+  }
+}
