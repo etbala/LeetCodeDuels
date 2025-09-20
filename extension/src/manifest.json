@@ -17,7 +17,7 @@
         "http://localhost:8080/*"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://lc-duels-development.fly.dev https://github.com https://api.github.com"
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:8080 https://lc-duels-development.fly.dev https://github.com https://api.github.com"
     },
     "background": {
         "service_worker": "scripts/background.js"
