@@ -1,0 +1,52 @@
+.github-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    background-color: #24292e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.github-login-btn:hover:not(:disabled) {
+    background-color: #1a1e22;
+}
+
+.github-login-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.github-icon {
+    flex-shrink: 0;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ffffff30;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 6px;
+    color: #c00;
+    font-size: 0.875rem;
+}

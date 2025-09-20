@@ -30,6 +30,10 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.AuthGitHubCallback(w, r)
 	}).Methods("GET")
 
+	authRouter.HandleFunc("/github/exchange", func(w http.ResponseWriter, r *http.Request) {
+		handlers.AuthGitHubExchange(w, r)
+	}).Methods("POST")
+
 	// ----------------------
 	// User / Account Routes
 	// ----------------------

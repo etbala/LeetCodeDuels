@@ -1,40 +1,51 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { AuthService } from 'app/services/auth.service';
 import { CommonModule } from '@angular/common';
-import { take } from 'rxjs';
-import { AuthService } from 'core/auth.service';
 
 @Component({
   selector: 'app-login-page',
-  standalone: true,
   imports: [CommonModule],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.scss']
 })
 export class LoginPageComponent implements OnInit {
+  isLoading = false;
+  error: string | null = null;
+  returnUrl = '/';
+
   constructor(
-    private auth: AuthService,
-    private router: Router
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
-  ngOnInit(): void {
-    // If already logged in, go straight to dashboard
-    this.auth.isLoggedIn$
-      .pipe(take(1))
-      .subscribe(loggedIn => {
-        if (loggedIn) {
-          this.router.navigate(['dashboard']);
-        }
-      });
+  ngOnInit() {
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    
+    this.authService.isAuthenticated().then(isAuth => {
+      if (isAuth) {
+        this.router.navigate([this.returnUrl]);
+      }
+    });
   }
 
-  onLogin(): void {
-    this.auth.login().subscribe({
-      next: () => {
-        // After a successful login, route to dashboard
-        this.router.navigate(['dashboard']);
-      },
-      error: err => console.error('Login failed', err)
-    });
+  async loginWithGitHub() {
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      await this.authService.login();
+      this.router.navigate([this.returnUrl]);
+    } catch (error: unknown) {
+      console.error('Login failed:', error);
+      if (error instanceof Error) {
+        this.error = error.message;
+      } else {
+        this.error = 'An error occurred during authentication. Please try again.';
+      }
+    } finally {
+      this.isLoading = false;
+    }
   }
 }
