@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
+import { environment } from '../../environments/environment.prod';
 
 interface User {
   id: string;
@@ -18,8 +19,8 @@ interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:8080';
-  private readonly GITHUB_CLIENT_ID = 'Ov23liQ4ERGhUYdeT8yb';
+  private readonly API_URL = environment.apiUrl;
+  private readonly GITHUB_CLIENT_ID = environment.githubClientId;
   private readonly STORAGE_KEY = 'auth_token';
   private readonly USER_KEY = 'user_data';
   
