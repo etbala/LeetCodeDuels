@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 export class LoginPageComponent implements OnInit {
   isLoading = false;
   error: string | null = null;
-  returnUrl: string = '/';
+  returnUrl = '/';
 
   constructor(
     private authService: AuthService,
@@ -37,9 +37,13 @@ export class LoginPageComponent implements OnInit {
     try {
       await this.authService.login();
       this.router.navigate([this.returnUrl]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login failed:', error);
-      this.error = error.message || 'An error occurred during authentication. Please try again.';
+      if (error instanceof Error) {
+        this.error = error.message;
+      } else {
+        this.error = 'An error occurred during authentication. Please try again.';
+      }
     } finally {
       this.isLoading = false;
     }
