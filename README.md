@@ -29,9 +29,9 @@ npm install
 ng build
 ```
 
-Note: Build using `-c dev` if you are trying to run the server locally:
+Note: Build using `-c local` if you are trying to run the server locally:
 ```bash
-ng build -c dev
+ng build -c local
 ```
 
 ### 3. Load Extension in Browser
