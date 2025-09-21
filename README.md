@@ -63,3 +63,44 @@ go run ./cmd/server
 cd server
 go test ./... -v
 ```
+
+## High Level Architecture
+```mermaid
+graph TD
+    Frontend[Frontend]
+
+    subgraph Cluster [Horizontally Scaled Cluster]
+        direction LR
+        B1[Backend Instance]
+        B2[Backend Instance]
+    end
+
+    Postgres[PostgreSQL DB]
+    Redis[Redis]
+
+    Frontend -- "REST API" --> Cluster
+    Frontend -- "WebSocket" --> Cluster
+
+    Cluster -- "SQL Queries" --> Postgres
+
+    Cluster <--> |"Session & State Storage"| Redis
+    Cluster <--> |"Horizontal Communication (Pub/Sub)"| Redis
+```
+
+### Architecture Breakdown
+
+* **Frontend**: This is the client-side application that the user interacts with. It communicates with the backend using two methods:
+
+    * **REST API**: Used for standard actions like user login, registration, fetching user profiles, etc. Generally, if a REST endpoint is used, it will query the Postgres DB.
+
+    * **WebSockets**: Used for real-time, two-way communication required for gameplay, invitations, and live online status updates.
+
+* **Backend Cluster**: The core application logic resides in a horizontally scalable cluster of backend instances. Designing the server to be stateless allows us to run multiple instances behind a load balancer so the backend can automatically scale to meet demand.
+
+* **PostgreSQL DB**: Long-term storage. Handles account information, game history, and mirrors a simplified version of leetcode's problem database. Generally accessed via REST endpoints.
+
+* **Redis**:
+
+    * *Session & State Storage*: Stores ephemeral (temporary) data like active game sessions, pending user invites, and which users are currently online.
+
+    * *Horizontal Communication (Pub/Sub)*: Redis acts as a message bus that allows the different backend instances to communicate with each other. For example, if a user connected to Instance A sends a game invite to a user connected to Instance B, the message is published to a Redis channel, which instantly delivers it to the correct instance.
