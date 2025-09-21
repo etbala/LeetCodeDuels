@@ -91,9 +91,9 @@ graph TD
 
 * **Frontend**: This is the client-side application that the user interacts with. It communicates with the backend using two methods:
 
-    * **REST API**: Used for standard actions like user login, registration, fetching user profiles, etc. Generally, if a REST endpoint is used, it will query the Postgres DB.
+    * *REST API*: Used for standard actions like user login, registration, fetching user profiles, etc. Generally, if a REST endpoint is used, it will query the Postgres DB.
 
-    * **WebSockets**: Used for real-time, two-way communication required for gameplay, invitations, and live online status updates.
+    * *WebSockets*: Used for real-time, two-way communication required for gameplay, invitations, and live online status updates.
 
 * **Backend Cluster**: The core application logic resides in a horizontally scalable cluster of backend instances. Designing the server to be stateless allows us to run multiple instances behind a load balancer so the backend can automatically scale to meet demand.
 
