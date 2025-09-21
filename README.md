@@ -47,8 +47,8 @@ Load Unpacked Extension from Directory: `/extension/dist/browser`
 Go (v1.24+)
 
 ### 2. Set up .env
-Create a `.env` file based on the `.env.template`.
-> Ensure file is located at `LeetCodeDuels/server/.env`
+Create a `.env` file in the `/server` directory by copying the template file: [`/server/.env.template`](./server/.env.template).
+> Ensure final file is located at `LeetCodeDuels/server/.env`
 
 ### 3. Run Server
 ```bash
