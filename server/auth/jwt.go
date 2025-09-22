@@ -32,7 +32,7 @@ func GenerateJWT(userID int64) (string, error) {
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)), // 72 Hour Lifetime
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 5 * time.Hour)), // 5 Day Lifetime
 		},
 	}
 
