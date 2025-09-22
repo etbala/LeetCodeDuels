@@ -57,6 +57,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.RenameLCUser(w, r)
 	}).Methods("POST")
 
+	accountRouter.HandleFunc("/me/notifications", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.MyNotifications(w, r)
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	}).Methods("GET")
+
 	accountRouter.HandleFunc("/id/{username}", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.GetUserID(w, r) TODO: Implement
 		http.Error(w, "Not Implemented", http.StatusNotImplemented)
@@ -66,8 +71,18 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.GetProfile(w, r)
 	}).Methods("GET")
 
+	accountRouter.HandleFunc("/is-online/{id}", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.UserOnline(w, r)
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	}).Methods("GET")
+
 	accountRouter.HandleFunc("/in-game/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.UserInGame(w, r)
+	}).Methods("GET")
+
+	accountRouter.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.SearchUsers(w, r)
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
 	}).Methods("GET")
 
 	// ----------------------

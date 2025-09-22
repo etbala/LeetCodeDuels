@@ -81,6 +81,7 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(session.Submissions)
 }
 
+// todo: add pagination parameters
 func MatchHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userIDStr := vars["id"]
