@@ -4,40 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"leetcodeduels/auth"
-	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"log"
 	"net/http"
-	"net/url"
 )
-
-// Deprecated
-func AuthGitHubInitiate(w http.ResponseWriter, r *http.Request) {
-	state, err := auth.GenerateState()
-	if err != nil {
-		log.Printf("GenerateState error: %v", err)
-		http.Error(w, "could not generate state", http.StatusInternalServerError)
-		return
-	}
-
-	err = auth.StateStore.StoreState(r.Context(), state)
-	if err != nil {
-		log.Printf("StoreState error: %v", err)
-		http.Error(w, "could not save state", http.StatusInternalServerError)
-		return
-	}
-
-	cfg, _ := config.LoadConfig()
-
-	escapedState := url.QueryEscape(state)
-	authURL := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&state=%s",
-		cfg.GITHUB_CLIENT_ID,
-		escapedState,
-	)
-
-	http.Redirect(w, r, authURL, http.StatusFound)
-}
 
 // todo: nicer way of doing this?
 func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
