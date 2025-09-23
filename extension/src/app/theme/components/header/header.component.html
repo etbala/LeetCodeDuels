@@ -4,11 +4,17 @@
     </button>
 
     <div class="actions">
+        <button routerLink="/notifications" aria-label="Notifications">
+            <img src="assets/bell-regular-full.svg" alt="Notifications" class="notifications-icon" />
+        </button>
+        <button routerLink="/history" aria-label="History">
+            <img src="assets/clock-rotate-left-solid-full.svg" alt="History" class="history-icon" />
+        </button>
         <button routerLink="/settings" aria-label="Settings">
             <img src="assets/settings.svg" alt="Settings" class="settings-icon" />
         </button>
-        <button (click)="logout()" aria-label="logout">
-            <img src="assets/logout.svg" alt="logout" class="exit-icon" />
-        </button>
+        <!-- <button (click)="logout()" aria-label="logout"> -->
+        <!--     <img src="assets/logout.svg" alt="logout" class="exit-icon" /> -->
+        <!-- </button> -->
     </div>
 </header>
