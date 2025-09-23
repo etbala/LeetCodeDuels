@@ -62,6 +62,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		http.Error(w, "Not Implemented", http.StatusNotImplemented)
 	}).Methods("GET")
 
+	accountRouter.HandleFunc("/avatar/{id}", func(w http.ResponseWriter, r *http.Request) {
+		// handlers.GetAvatar(w, r)
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	}).Methods("GET")
+
 	accountRouter.HandleFunc("/id/{username}", func(w http.ResponseWriter, r *http.Request) {
 		// handlers.GetUserID(w, r) TODO: Implement
 		http.Error(w, "Not Implemented", http.StatusNotImplemented)
