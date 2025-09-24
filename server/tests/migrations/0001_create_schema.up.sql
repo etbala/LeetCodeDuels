@@ -1,3 +1,17 @@
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  access_token TEXT NOT NULL,
+  username TEXT NOT NULL,
+  discriminator VARCHAR(4) NOT NULL,
+  lc_username TEXT NOT NULL DEFAULT '',
+  avatar_url TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  rating SMALLINT DEFAULT 1000,
+  UNIQUE (username, discriminator)
+);
+
+-- TODO: Remove
 CREATE TABLE github_oauth_users (
     github_id    BIGINT PRIMARY KEY,
     username     TEXT NOT NULL,

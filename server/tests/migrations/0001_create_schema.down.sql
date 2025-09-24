@@ -5,3 +5,4 @@ DROP TABLE IF EXISTS problem_tags;
 DROP TABLE IF EXISTS tags;
 DROP TABLE IF EXISTS problems;
 DROP TABLE IF EXISTS github_oauth_users;
+DROP TABLE IF EXISTS users;
