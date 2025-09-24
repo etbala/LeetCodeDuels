@@ -30,12 +30,12 @@ func InitDataStore(connStr string) error {
 }
 
 // SaveOAuthUser inserts or updates a GitHub OAuth user.
-func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken string) error {
-	query := `INSERT INTO users (id, username, access_token, created_at, updated_at)
-			VALUES ($1, $2, $3, NOW(), NOW())
+func (ds *dataStore) SaveOAuthUser(githubID int64, accessToken string, username string, discriminator string, avatar_url string) error {
+	query := `INSERT INTO users (id, access_token, username, discriminator, avatar_url, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 			ON CONFLICT (id)
-			DO UPDATE SET access_token = $3, updated_at = NOW()`
-	if _, err := ds.db.Exec(query, githubID, username, accessToken); err != nil {
+			DO UPDATE SET access_token = $2, updated_at = NOW()`
+	if _, err := ds.db.Exec(query, githubID, accessToken, username, discriminator, avatar_url); err != nil {
 		return fmt.Errorf("SaveOAuthUser: %w", err)
 	}
 	return nil

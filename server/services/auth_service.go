@@ -25,7 +25,7 @@ func ExchangeCodeForUser(code string) (*models.User, error) {
 		return nil, err
 	}
 
-	ghID, login, err := fetchGitHubUser(token)
+	ghID, username, avatar_url, err := fetchGitHubUser(token)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +44,12 @@ func ExchangeCodeForUser(code string) (*models.User, error) {
 		user = *existing
 		user.AccessToken = token
 	} else {
-		// TODO: new user, need to go through onboarding process (choose username/enter leetcode username)
-		if err := store.DataStore.SaveOAuthUser(ghID, login, token); err != nil {
+		discriminator, err := GenerateUniqueDiscriminator(username)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := store.DataStore.SaveOAuthUser(ghID, token, username, discriminator, avatar_url); err != nil {
 			return nil, err
 		}
 		created, err := store.DataStore.GetUserProfile(ghID)
@@ -91,23 +95,24 @@ func exchangeCode(clientID, clientSecret, code string) (string, error) {
 }
 
 // fetchGitHubUser fetches GitHub's /user endpoint using the bearer token.
-func fetchGitHubUser(token string) (int64, string, error) {
+func fetchGitHubUser(token string) (int64, string, string, error) {
 	req, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return 0, "", fmt.Errorf("fetch github user: %w", err)
+		return 0, "", "", fmt.Errorf("fetch github user: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var gh struct {
-		ID    int64  `json:"id"`
-		Login string `json:"login"`
+		ID        int64  `json:"id"`
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&gh); err != nil {
-		return 0, "", fmt.Errorf("decode github user: %w", err)
+		return 0, "", "", fmt.Errorf("decode github user: %w", err)
 	}
-	return gh.ID, gh.Login, nil
+	return gh.ID, gh.Login, gh.AvatarURL, nil
 }

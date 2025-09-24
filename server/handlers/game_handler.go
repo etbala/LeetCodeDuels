@@ -16,6 +16,12 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
@@ -24,12 +30,6 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 	if session != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session)
-	}
-
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
 	}
 
 	session, err = store.DataStore.GetMatch(uuid)
@@ -50,6 +50,12 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
@@ -58,12 +64,6 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 	if session != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session.Submissions)
-		return
-	}
-
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 

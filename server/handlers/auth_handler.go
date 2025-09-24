@@ -161,13 +161,17 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"token": token,
-		"user": map[string]interface{}{
-			"id":          user.ID,
-			"username":    user.Username,
-			"lc_username": user.LeetCodeUsername,
+	var response = TokenExchangeResponse{
+		Token: token,
+		User: UserClientInformation{
+			ID:            user.ID,
+			Username:      user.Username,
+			Discriminator: user.Discriminator,
+			LCUsername:    user.LeetCodeUsername,
+			AvatarURL:     user.AvatarURL,
 		},
-	})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
