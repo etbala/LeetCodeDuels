@@ -31,9 +31,9 @@ func InitDataStore(connStr string) error {
 
 // SaveOAuthUser inserts or updates a GitHub OAuth user.
 func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken string) error {
-	query := `INSERT INTO github_oauth_users (github_id, username, access_token, created_at, updated_at)
+	query := `INSERT INTO users (id, username, access_token, created_at, updated_at)
 			VALUES ($1, $2, $3, NOW(), NOW())
-			ON CONFLICT (github_id)
+			ON CONFLICT (id)
 			DO UPDATE SET access_token = $3, updated_at = NOW()`
 	if _, err := ds.db.Exec(query, githubID, username, accessToken); err != nil {
 		return fmt.Errorf("SaveOAuthUser: %w", err)
@@ -43,7 +43,7 @@ func (ds *dataStore) SaveOAuthUser(githubID int64, username string, accessToken 
 
 // UpdateGithubAccessToken updates only the access token for a user.
 func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) error {
-	query := `UPDATE github_oauth_users SET access_token = $1, updated_at = NOW() WHERE github_id = $2`
+	query := `UPDATE users SET access_token = $1, updated_at = NOW() WHERE id = $2`
 	if _, err := ds.db.Exec(query, newToken, githubID); err != nil {
 		return fmt.Errorf("UpdateGithubAccessToken: %w", err)
 	}
@@ -52,8 +52,8 @@ func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) er
 
 // GetUserProfile retrieves the full user record, or nil if not found.
 func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
-	query := `SELECT github_id, username, lc_username, access_token, created_at, updated_at, rating
-			FROM github_oauth_users WHERE github_id = $1`
+	query := `SELECT id, username, lc_username, access_token, created_at, updated_at, rating
+			FROM users WHERE id = $1`
 	row := ds.db.QueryRow(query, githubID)
 	var u models.User
 	if err := row.Scan(&u.ID, &u.Username, &u.LeetCodeUsername, &u.AccessToken, &u.CreatedAt, &u.UpdatedAt, &u.Rating); err != nil {
@@ -68,7 +68,7 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 // GetUserRating fetches a user's current rating.
 func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	var rating int
-	query := `SELECT rating FROM github_oauth_users WHERE github_id = $1`
+	query := `SELECT rating FROM users WHERE id = $1`
 	err := ds.db.QueryRow(query, userID).Scan(&rating)
 	if err != nil {
 		return 0, fmt.Errorf("GetUserRating: %w", err)
@@ -76,9 +76,19 @@ func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	return rating, nil
 }
 
-func (ds *dataStore) UpdateUsername(userID int64, newUsername string) error {
-	query := `UPDATE github_oauth_users SET username = $1 WHERE github_id = $2`
-	_, err := ds.db.Exec(query, newUsername, userID)
+func (ds *dataStore) DiscriminatorExists(username string, discriminator string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND discriminator = $2)`
+	err := ds.db.QueryRow(query, username, discriminator).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("UsernameDiscriminatorExists: %w", err)
+	}
+	return exists, nil
+}
+
+func (ds *dataStore) UpdateUsernameDiscriminator(userID int64, username string, discriminator string) error {
+	query := `UPDATE users SET username = $1, discriminator = $2 WHERE id = $3`
+	_, err := ds.db.Exec(query, username, discriminator, userID)
 	if err != nil {
 		return fmt.Errorf("UpdateUsername: %w", err)
 	}
@@ -86,7 +96,7 @@ func (ds *dataStore) UpdateUsername(userID int64, newUsername string) error {
 }
 
 func (ds *dataStore) UpdateLCUsername(userID int64, newLCUsername string) error {
-	query := `UPDATE github_oauth_users SET lc_username = $1 WHERE github_id = $2`
+	query := `UPDATE users SET lc_username = $1 WHERE id = $2`
 	_, err := ds.db.Exec(query, newLCUsername, userID)
 	if err != nil {
 		return fmt.Errorf("UpdateLCUsername: %w", err)
@@ -95,7 +105,7 @@ func (ds *dataStore) UpdateLCUsername(userID int64, newLCUsername string) error 
 }
 
 func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
-	query := `UPDATE github_oauth_users SET rating = $1 WHERE github_id = $2`
+	query := `UPDATE users SET rating = $1 WHERE id = $2`
 	_, err := ds.db.Exec(query, newRating, userID)
 	if err != nil {
 		return fmt.Errorf("UpdateUserRating: %w", err)
@@ -104,7 +114,7 @@ func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
 }
 
 func (ds *dataStore) DeleteUser(userID int64) error {
-	query := `DELETE FROM github_oauth_users WHERE github_id = $1`
+	query := `DELETE FROM users WHERE id = $1`
 	_, err := ds.db.Exec(query, userID)
 	if err != nil {
 		return fmt.Errorf("DeleteUser: %w", err)

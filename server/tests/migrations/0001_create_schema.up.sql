@@ -11,18 +11,6 @@ CREATE TABLE users (
   UNIQUE (username, discriminator)
 );
 
--- TODO: Remove
-CREATE TABLE github_oauth_users (
-    github_id    BIGINT PRIMARY KEY,
-    username     TEXT NOT NULL,
-    lc_username  TEXT NOT NULL,
-    avatar_url   TEXT,
-    access_token TEXT NOT NULL,
-    created_at   TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at   TIMESTAMP WITH TIME ZONE NOT NULL,
-    rating       SMALLINT DEFAULT 1000
-);
-
 CREATE TABLE problems (
     id SERIAL PRIMARY KEY,
     problem_num INTEGER UNIQUE NOT NULL,
@@ -48,21 +36,21 @@ CREATE TABLE matches (
     problem_id  INT NOT NULL REFERENCES problems(id) ON DELETE SET NULL,
     is_rated    BOOLEAN NOT NULL DEFAULT false,
     status      TEXT CHECK (status IN ('Won', 'Canceled', 'Reverted')),
-    winner_id   BIGINT REFERENCES github_oauth_users(github_id) ON DELETE SET NULL,
+    winner_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,
     start_time  TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time    TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE TABLE match_players (
     match_id  UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    player_id BIGINT NOT NULL REFERENCES github_oauth_users(github_id) ON DELETE CASCADE,
+    player_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY (match_id, player_id)
 );
 
 CREATE TABLE submissions (
     match_id          UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     submission_id     INT NOT NULL,
-    player_id         BIGINT REFERENCES github_oauth_users(github_id) ON DELETE SET NULL,
+    player_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
     passed_test_cases INT NOT NULL,
     total_test_cases  INT NOT NULL,
     status            TEXT CHECK (status IN (
