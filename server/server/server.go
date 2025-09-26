@@ -20,11 +20,6 @@ func New(cfg *config.Config) (*http.Server, error) {
 		return nil, err
 	}
 
-	err = auth.InitStateStore(cfg.RDB_URL)
-	if err != nil {
-		return nil, err
-	}
-
 	err = services.InitInviteManager(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
@@ -65,7 +60,6 @@ func Cleanup(srv *http.Server) error {
 		return err
 	}
 
-	auth.StateStore.Close()
 	services.InviteManager.Close()
 	services.GameManager.Close()
 	ws.ConnManager.Close()
