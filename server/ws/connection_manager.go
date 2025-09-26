@@ -336,7 +336,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 		return nil
 	}
 
-	problem, err := store.DataStore.GetRandomProblemDuel(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
+	problem, err := store.DataStore.GetRandomProblemByTagsAndDifficulties(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/models"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,7 +28,7 @@ func InitDataStore(connStr string) error {
 	return nil
 }
 
-// SaveOAuthUser inserts or updates a GitHub OAuth user.
+// Insert or update an OAuth user based on their GitHub ID.
 func (ds *dataStore) SaveOAuthUser(githubID int64, accessToken string, username string, discriminator string, avatar_url string) error {
 	query := `INSERT INTO users (id, access_token, username, discriminator, avatar_url, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
@@ -41,7 +40,7 @@ func (ds *dataStore) SaveOAuthUser(githubID int64, accessToken string, username 
 	return nil
 }
 
-// UpdateGithubAccessToken updates only the access token for a user.
+// Update a user's GitHub access token.
 func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) error {
 	query := `UPDATE users SET access_token = $1, updated_at = NOW() WHERE id = $2`
 	if _, err := ds.db.Exec(query, newToken, githubID); err != nil {
@@ -50,7 +49,7 @@ func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) er
 	return nil
 }
 
-// GetUserProfile retrieves the full user record, or nil if not found.
+// Return the full user record by GitHub ID, or nil if not found.
 func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 	query := `SELECT id, access_token, 	username, discriminator, 
 			lc_username, avatar_url, created_at, updated_at, rating
@@ -65,6 +64,25 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("GetUserProfile: %w", err)
+	}
+	return &u, nil
+}
+
+// Retrieves the full user record by username + discriminator, or nil if not found.
+func (ds *dataStore) GetUserProfileByUsername(username string, discriminator string) (*models.User, error) {
+	query := `SELECT id, access_token, 	username, discriminator,
+			lc_username, avatar_url, created_at, updated_at, rating
+			FROM users WHERE username = $1 AND discriminator = $2`
+	row := ds.db.QueryRow(query, username, discriminator)
+	var u models.User
+	err := row.Scan(&u.ID, &u.AccessToken, &u.Username, &u.Discriminator,
+		&u.LeetCodeUsername, &u.AvatarURL, &u.CreatedAt,
+		&u.UpdatedAt, &u.Rating)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("GetUserProfile by username: %w", err)
 	}
 	return &u, nil
 }
@@ -91,6 +109,7 @@ func (ds *dataStore) DiscriminatorExists(username string, discriminator string) 
 	return exists, nil
 }
 
+// Sets a user's username and discriminator to new values.
 func (ds *dataStore) UpdateUsernameDiscriminator(userID int64, username string, discriminator string) error {
 	query := `UPDATE users SET username = $1, discriminator = $2 WHERE id = $3`
 	_, err := ds.db.Exec(query, username, discriminator, userID)
@@ -100,6 +119,7 @@ func (ds *dataStore) UpdateUsernameDiscriminator(userID int64, username string, 
 	return nil
 }
 
+// Sets a user's linked LeetCode username to a new value.
 func (ds *dataStore) UpdateLCUsername(userID int64, newLCUsername string) error {
 	query := `UPDATE users SET lc_username = $1 WHERE id = $2`
 	_, err := ds.db.Exec(query, newLCUsername, userID)
@@ -109,6 +129,7 @@ func (ds *dataStore) UpdateLCUsername(userID int64, newLCUsername string) error 
 	return nil
 }
 
+// Sets a user's rating to a new value.
 func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
 	query := `UPDATE users SET rating = $1 WHERE id = $2`
 	_, err := ds.db.Exec(query, newRating, userID)
@@ -118,6 +139,8 @@ func (ds *dataStore) UpdateUserRating(userID int64, newRating int) error {
 	return nil
 }
 
+// Deletes a user and all associated data (matches, submissions, etc).
+// TODO: Remove? We don't want to delete historical match data, what data do we have to delete?
 func (ds *dataStore) DeleteUser(userID int64) error {
 	query := `DELETE FROM users WHERE id = $1`
 	_, err := ds.db.Exec(query, userID)
@@ -127,7 +150,29 @@ func (ds *dataStore) DeleteUser(userID int64) error {
 	return nil
 }
 
-// GetAllProblems returns every problem in the table.
+// Returns a list of users whose usernames start with the given prefix, limited to 'limit' results.
+func (ds *dataStore) GetMatchingUsers(username string, limit int) ([]models.User, error) {
+	query := `SELECT id, username, discriminator, lc_username, avatar_url, rating, created_at
+			FROM users WHERE username ILIKE $1 ORDER BY rating DESC LIMIT $2`
+	rows, err := ds.db.Query(query, username+"%", limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatchingUsers: %w", err)
+	}
+	defer rows.Close()
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(&u.ID, &u.Username, &u.Discriminator,
+			&u.LeetCodeUsername, &u.AvatarURL, &u.Rating, &u.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("GetMatchingUsers scan: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+// Return all problems in database
 func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	query := `SELECT id, name, slug, difficulty FROM problems`
 	rows, err := ds.db.Query(query)
@@ -147,17 +192,7 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 	return out, nil
 }
 
-// GetRandomProblem picks one random problem.
-func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
-	query := `SELECT id, name, slug, difficulty FROM problems ORDER BY RANDOM() LIMIT 1`
-	var p models.Problem
-	if err := ds.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblem: %w", err)
-	}
-	return &p, nil
-}
-
-// GetProblemsByTag returns all problems having the given tag ID.
+// Return all problems that have a given tag.
 func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	query := `
 	SELECT p.id, p.name, p.slug, p.difficulty
@@ -181,21 +216,7 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	return out, nil
 }
 
-// GetRandomProblemByTag returns a single random problem for a tag.
-func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
-	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
-	FROM problems p
-	JOIN problem_tags pt ON p.id = pt.problem_id
-	WHERE pt.tag_id = $1
-	ORDER BY RANDOM() LIMIT 1`
-	var p models.Problem
-	if err := ds.db.QueryRow(query, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblemByTag: %w", err)
-	}
-	return &p, nil
-}
-
+// Returns all tags in the database.
 func (ds *dataStore) GetAllTags() ([]models.Tag, error) {
 	query := `SELECT id, name FROM tags`
 	rows, err := ds.db.Query(query)
@@ -217,10 +238,10 @@ func (ds *dataStore) GetAllTags() ([]models.Tag, error) {
 	return tags, nil
 }
 
-// GetTagsByProblem returns names of tags for a given problem ID.
-func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
+// Returns names of all tags of a given problem.
+func (ds *dataStore) GetTagsByProblem(problemID int) ([]models.Tag, error) {
 	query := `
-	SELECT t.name
+	SELECT t.name, t.id
 	FROM tags t
 	JOIN problem_tags pt ON t.id = pt.tag_id
 	WHERE pt.problem_id = $1`
@@ -230,10 +251,10 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	}
 	defer rows.Close()
 
-	var tags []string
+	var tags []models.Tag
 	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
+		var t models.Tag
+		if err := rows.Scan(&t.Name, &t.ID); err != nil {
 			return nil, fmt.Errorf("GetTagsByProblem scan: %w", err)
 		}
 		tags = append(tags, t)
@@ -241,66 +262,78 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]string, error) {
 	return tags, nil
 }
 
-// GetRandomProblemForDuel picks a random problem matching preferences of both players and a set of difficulties.
-func (ds *dataStore) GetRandomProblemMatchmaking(
-	player1Tags, player2Tags []int, difficulties []models.Difficulty,
-) (*models.Problem, error) {
-	// Build IN clauses dynamically
-	if len(difficulties) == 0 {
-		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
-	}
-
-	// placeholders
-	tagPlaceholders := func(ids []int, start int) []string {
-		ps := make([]string, len(ids))
-		for i := range ids {
-			ps[i] = fmt.Sprintf("$%d", start+i)
-		}
-		return ps
-	}
-
-	p1ph := tagPlaceholders(player1Tags, 1)
-	p2ph := tagPlaceholders(player2Tags, len(player1Tags)+1)
-	dp := tagPlaceholders(func() []int { return nil }(), len(player1Tags)+len(player2Tags)+1)
-	// difficulties start index = len(p1)+len(p2)+1
-	for i := range difficulties {
-		dp = append(dp, fmt.Sprintf("$%d", len(player1Tags)+len(player2Tags)+1+i))
-	}
-
-	query := fmt.Sprintf(`
-	SELECT p.id, p.name, p.slug, p.difficulty
-	FROM problems p
-	WHERE p.difficulty IN (%s)
-	AND EXISTS (SELECT 1 FROM problem_tags pt1 WHERE pt1.problem_id = p.id AND pt1.tag_id IN (%s))
-	AND EXISTS (SELECT 1 FROM problem_tags pt2 WHERE pt2.problem_id = p.id AND pt2.tag_id IN (%s))
-	ORDER BY RANDOM() LIMIT 1`,
-		strings.Join(dp, ","), strings.Join(p1ph, ","), strings.Join(p2ph, ","))
-
-	// build args
-	var args []interface{}
-	for _, id := range append(player1Tags, player2Tags...) {
-		args = append(args, id)
-	}
-	for _, d := range difficulties {
-		args = append(args, d)
-	}
-
+// Returns a single random problem from the database.
+func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
+	query := `SELECT id, name, slug, difficulty FROM problems ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
-	if err := ds.db.QueryRow(query, args...).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
-		return nil, fmt.Errorf("GetRandomProblemMatchmaking: %w", err)
+	if err := ds.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		return nil, fmt.Errorf("GetRandomProblem: %w", err)
 	}
 	return &p, nil
 }
 
-func (ds *dataStore) GetRandomProblemDuel(
+// Returns a single random problem that has the specified tag.
+func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
+	query := `
+	SELECT p.id, p.name, p.slug, p.difficulty
+	FROM problems p
+	JOIN problem_tags pt ON p.id = pt.problem_id
+	WHERE pt.tag_id = $1
+	ORDER BY RANDOM() LIMIT 1`
+	var p models.Problem
+	if err := ds.db.QueryRow(query, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		return nil, fmt.Errorf("GetRandomProblemByTag: %w", err)
+	}
+	return &p, nil
+}
+
+// Returns a single random problem that has ANY of the specified tags.
+func (ds *dataStore) GetRandomProblemByTags(tagIDs []int) (*models.Problem, error) {
+	if len(tagIDs) == 0 {
+		return ds.GetRandomProblem()
+	}
+	query := `
+	SELECT p.id, p.name, p.slug, p.difficulty
+	FROM problems p
+	JOIN problem_tags pt ON p.id = pt.problem_id
+	WHERE pt.tag_id = ANY($1)
+	ORDER BY RANDOM() LIMIT 1`
+	var p models.Problem
+	if err := ds.db.QueryRow(query, pq.Array(tagIDs)).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		return nil, fmt.Errorf("GetRandomProblemByTags: %w", err)
+	}
+	return &p, nil
+}
+
+// Returns a single random problem that matches any of the specified difficulties.
+func (ds *dataStore) GetRandomProblemByDifficulties(difficulties []models.Difficulty) (*models.Problem, error) {
+	if len(difficulties) == 0 {
+		return ds.GetRandomProblem() // no filter if no difficulties provided
+	}
+	query := `
+	SELECT p.id, p.name, p.slug, p.difficulty
+	FROM problems p
+	WHERE p.difficulty = ANY($1)
+	ORDER BY RANDOM() LIMIT 1`
+	var p models.Problem
+	if err := ds.db.QueryRow(query, pq.Array(difficulties)).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
+		return nil, fmt.Errorf("GetRandomProblemByDifficulties: %w", err)
+	}
+	return &p, nil
+}
+
+// Returns a single random problem that matches any of the specified
+// difficulties and has any of the specified tags.
+func (ds *dataStore) GetRandomProblemByTagsAndDifficulties(
 	tags []int, difficulties []models.Difficulty,
 ) (*models.Problem, error) {
 	if len(difficulties) == 0 {
-		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
+		return ds.GetRandomProblemByTags(tags)
 	}
 
-	// todo: think about handling when len(tags) == 0
-	// 		 maybe implement GetProblemByTags() and GetProblemByDifficulties()?
+	if len(tags) == 0 {
+		return ds.GetRandomProblemByDifficulties(difficulties)
+	}
 
 	args := []interface{}{pq.Array(difficulties)}
 
@@ -331,6 +364,7 @@ func (ds *dataStore) GetRandomProblemDuel(
 	return &p, nil
 }
 
+// Stores a new match record in the database.
 func (ds *dataStore) StoreMatch(match *models.Session) error {
 	query := `
 	INSERT INTO matches (id, problem_id, is_rated, status, winner_id, start_time, end_time)
@@ -345,8 +379,9 @@ func (ds *dataStore) StoreMatch(match *models.Session) error {
 	return nil
 }
 
-// TODO: Investigate if triple query or single query with ARRAY_AGG is better
+// Returns full match information for a specified session, or nil if not found.
 func (ds *dataStore) GetMatch(matchID uuid.UUID) (*models.Session, error) {
+	// TODO: Investigate if triple query or single query with ARRAY_AGG is better
 	const matchQ = `
 	SELECT 
 	  m.id, 
@@ -509,6 +544,7 @@ func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	return sessions, nil
 }
 
+// Returns all submissions for a given match.
 func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubmission, error) {
 	query := `
 	SELECT submission_id, player_id, passed_test_cases, total_test_cases, 
