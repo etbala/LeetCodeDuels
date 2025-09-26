@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"leetcodeduels/auth"
-	"leetcodeduels/handlers"
 	"leetcodeduels/models"
 	"net/http"
 	"testing"
@@ -107,7 +106,7 @@ func TestRenameUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	newName := "yash2"
-	msg := handlers.RenameRequest{NewUsername: newName}
+	msg := models.RenameRequest{NewUsername: newName}
 	payload, _ := json.Marshal(msg)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/user/me/rename", ts.URL), bytes.NewReader(payload))
 	assert.NoError(t, err)
@@ -145,7 +144,7 @@ func TestLCRenameUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	newLCName := "xavier2_lc"
-	msg := handlers.RenameRequest{NewUsername: newLCName}
+	msg := models.RenameRequest{NewUsername: newLCName}
 	payload, _ := json.Marshal(msg)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/user/me/lcrename", ts.URL), bytes.NewReader(payload))
 	assert.NoError(t, err)

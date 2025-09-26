@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"leetcodeduels/auth"
+	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"log"
 	"net/http"
@@ -161,9 +162,9 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response = TokenExchangeResponse{
+	var response = models.TokenExchangeResponse{
 		Token: token,
-		User: UserClientInformation{
+		User: models.UserClientInformation{
 			ID:            user.ID,
 			Username:      user.Username,
 			Discriminator: user.Discriminator,

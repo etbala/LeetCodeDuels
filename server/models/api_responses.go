@@ -1,5 +1,5 @@
-// All structs for responses (API outputs) live here
-package handlers
+// Response structs for API endpoints
+package models
 
 type TokenExchangeResponse struct {
 	Token string                `json:"token"`
@@ -12,4 +12,5 @@ type UserClientInformation struct {
 	Discriminator string `json:"discriminator"`
 	LCUsername    string `json:"lc_username"`
 	AvatarURL     string `json:"avatar_url"`
+	Rating        int    `json:"rating"`
 }

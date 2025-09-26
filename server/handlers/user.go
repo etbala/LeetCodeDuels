@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"leetcodeduels/auth"
+	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"net/http"
@@ -97,7 +98,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func RenameUser(w http.ResponseWriter, r *http.Request) {
-	var req RenameRequest
+	var req models.RenameRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -132,7 +133,7 @@ func RenameUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func RenameLCUser(w http.ResponseWriter, r *http.Request) {
-	var req RenameRequest
+	var req models.RenameRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
