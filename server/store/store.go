@@ -52,11 +52,15 @@ func (ds *dataStore) UpdateGithubAccessToken(githubID int64, newToken string) er
 
 // GetUserProfile retrieves the full user record, or nil if not found.
 func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
-	query := `SELECT id, username, lc_username, access_token, created_at, updated_at, rating
+	query := `SELECT id, access_token, 	username, discriminator, 
+			lc_username, avatar_url, created_at, updated_at, rating
 			FROM users WHERE id = $1`
 	row := ds.db.QueryRow(query, githubID)
 	var u models.User
-	if err := row.Scan(&u.ID, &u.Username, &u.LeetCodeUsername, &u.AccessToken, &u.CreatedAt, &u.UpdatedAt, &u.Rating); err != nil {
+	err := row.Scan(&u.ID, &u.AccessToken, &u.Username, &u.Discriminator,
+		&u.LeetCodeUsername, &u.AvatarURL, &u.CreatedAt,
+		&u.UpdatedAt, &u.Rating)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -76,12 +80,13 @@ func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	return rating, nil
 }
 
+// Checks if a given username + discriminator combo exists.
 func (ds *dataStore) DiscriminatorExists(username string, discriminator string) (bool, error) {
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND discriminator = $2)`
 	err := ds.db.QueryRow(query, username, discriminator).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("UsernameDiscriminatorExists: %w", err)
+		return false, fmt.Errorf("DiscriminatorExists: %w", err)
 	}
 	return exists, nil
 }
@@ -90,7 +95,7 @@ func (ds *dataStore) UpdateUsernameDiscriminator(userID int64, username string, 
 	query := `UPDATE users SET username = $1, discriminator = $2 WHERE id = $3`
 	_, err := ds.db.Exec(query, username, discriminator, userID)
 	if err != nil {
-		return fmt.Errorf("UpdateUsername: %w", err)
+		return fmt.Errorf("UpdateUsernameDiscriminator: %w", err)
 	}
 	return nil
 }
@@ -293,6 +298,9 @@ func (ds *dataStore) GetRandomProblemDuel(
 	if len(difficulties) == 0 {
 		difficulties = []models.Difficulty{models.Easy, models.Medium, models.Hard}
 	}
+
+	// todo: think about handling when len(tags) == 0
+	// 		 maybe implement GetProblemByTags() and GetProblemByDifficulties()?
 
 	args := []interface{}{pq.Array(difficulties)}
 
