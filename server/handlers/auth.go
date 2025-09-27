@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"leetcodeduels/auth"
 	"leetcodeduels/config"
 	"leetcodeduels/models"
 	"leetcodeduels/services"
@@ -160,7 +159,7 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GenerateJWT(user.ID)
+	token, err := services.GenerateJWT(user.ID)
 	if err != nil {
 		log.Printf("JWT generation error: %v", err)
 		http.Error(w, "Could not generate token", http.StatusInternalServerError)
@@ -169,7 +168,7 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 
 	var response = models.TokenExchangeResponse{
 		Token: token,
-		User: models.UserClientInformation{
+		User: models.UserInfoResponse{
 			ID:            user.ID,
 			Username:      user.Username,
 			Discriminator: user.Discriminator,

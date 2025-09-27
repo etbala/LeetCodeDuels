@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"leetcodeduels/models"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,6 +88,30 @@ func (ds *dataStore) GetUserProfileByUsername(username string, discriminator str
 	return &u, nil
 }
 
+// Returns a list of users whose usernames contain the given substring, limited to 'limit' results.
+func (ds *dataStore) SearchUsersByUsername(username string, limit int) ([]models.UserInfoResponse, error) {
+	query := `SELECT id, username, discriminator, lc_username, avatar_url, rating
+			FROM users WHERE username ILIKE $1 LIMIT $2`
+
+	// Only match usernames that start with given substring
+	rows, err := ds.db.Query(query, username+"%", limit)
+	if err != nil {
+		return nil, fmt.Errorf("SearchUsersByUsername: %w", err)
+	}
+	defer rows.Close()
+
+	var users []models.UserInfoResponse
+	for rows.Next() {
+		var u models.UserInfoResponse
+		if err := rows.Scan(&u.ID, &u.Username, &u.Discriminator,
+			&u.LCUsername, &u.AvatarURL, &u.Rating); err != nil {
+			return nil, fmt.Errorf("SearchUsersByUsername: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
 // GetUserRating fetches a user's current rating.
 func (ds *dataStore) GetUserRating(userID int64) (int, error) {
 	var rating int
@@ -107,6 +132,47 @@ func (ds *dataStore) DiscriminatorExists(username string, discriminator string) 
 		return false, fmt.Errorf("DiscriminatorExists: %w", err)
 	}
 	return exists, nil
+}
+
+// Updates a user's provided profile fields. Only non-empty fields are updated.
+func (ds *dataStore) UpdateUser(userID int64, username string, discriminator string, lc_username string) error {
+	var queryParts []string
+	var args []interface{}
+	argId := 1
+
+	if username != "" && discriminator != "" {
+		queryParts = append(queryParts, fmt.Sprintf("username = $%d", argId))
+		args = append(args, username)
+		argId++
+
+		queryParts = append(queryParts, fmt.Sprintf("discriminator = $%d", argId))
+		args = append(args, discriminator)
+		argId++
+	}
+
+	if lc_username != "" {
+		queryParts = append(queryParts, fmt.Sprintf("lc_username = $%d", argId))
+		args = append(args, lc_username)
+		argId++
+	}
+
+	if len(queryParts) == 0 {
+		return fmt.Errorf("UpdateUser: no fields to update")
+	}
+
+	queryParts = append(queryParts, "updated_at = NOW()")
+	args = append(args, userID)
+
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
+		strings.Join(queryParts, ", "),
+		argId)
+
+	_, err := ds.db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("UpdateUser: %w", err)
+	}
+
+	return nil
 }
 
 // Sets a user's username and discriminator to new values.

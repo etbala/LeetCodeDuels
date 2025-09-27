@@ -11,16 +11,17 @@ import (
 
 // SetupRoutes initializes and returns the main router with all route groups and middleware set up.
 func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
-	r := mux.NewRouter() // TODO: add /api/ before all routes?
+	r := mux.NewRouter()
+	api := r.PathPrefix("/api").Subrouter()
 
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}).Methods("GET")
 
 	// ----------------------
 	// Authentication Routes
 	// ----------------------
-	authRouter := r.PathPrefix("/auth").Subrouter()
+	authRouter := api.PathPrefix("/auth").Subrouter()
 
 	authRouter.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
 		handlers.AuthGitHubCallback(w, r)
@@ -33,127 +34,109 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// ----------------------
 	// User / Account Routes
 	// ----------------------
-	accountRouter := r.PathPrefix("/user").Subrouter()
+	accountRouter := api.PathPrefix("/v1/users").Subrouter()
 	accountRouter.Use(authMiddleware)
 
-	// TODO: Add Friend System (friend invites & notification for invites system)
-
-	// GET /user/me
-	// Returns the current authenticated user's profile information.
-	// Response: models.UserClientInformation
-	accountRouter.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
-		handlers.MyProfile(w, r)
-	}).Methods("GET")
-
-	// POST /user/me/delete
-	// Deletes the current authenticated user's account.
-	// Response: None (Status OK on success)
-	accountRouter.HandleFunc("/me/delete", func(w http.ResponseWriter, r *http.Request) {
-		handlers.DeleteUser(w, r)
-	}).Methods("POST")
-
-	// POST /user/me/rename
-	// Changes the current authenticated user's display name.
-	// Request: models.RenameRequest
-	// Response: models.UserClientInformation
-	accountRouter.HandleFunc("/me/rename", func(w http.ResponseWriter, r *http.Request) {
-		handlers.RenameUser(w, r)
-	}).Methods("POST")
-
-	// POST /user/me/lcrename
-	// Changes the current authenticated user's linked LeetCode username.
-	// Request: models.RenameRequest
-	// Response: models.UserClientInformation
-	accountRouter.HandleFunc("/me/lcrename", func(w http.ResponseWriter, r *http.Request) {
-		handlers.RenameLCUser(w, r)
-	}).Methods("POST")
-
-	// GET /user/me/notifications
-	// Returns a list of notifications for the current authenticated user.
-	// Response: []models.Notification (TODO)
-	accountRouter.HandleFunc("/me/notifications", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.MyNotifications(w, r)
-		http.Error(w, "Not Implemented", http.StatusNotImplemented)
-	}).Methods("GET")
-
-	// GET /user/search?username={username}&discriminator={discriminator}&limit={limit}
+	// GET /users?username={username}&discriminator={discriminator}&limit={limit}
 	// Returns a list of users with a matching username (and discriminator if provided).
 	// Query Parameters:
 	// - username: The username to search for (required)
 	// - discriminator: The 4-digit discriminator (optional, for exact matches)
 	// - limit: Maximum number of results to return (default 5, max 20)
-	// Response: []models.UserClientInformation
-	accountRouter.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.SearchUsers(w, r) TODO: Implement
-		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	// Response: []models.UserInfoResponse
+	accountRouter.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+		handlers.SearchUsers(w, r)
 	}).Methods("GET")
 
-	// GET /user/profile/{id}
+	// GET /users/me
+	// Returns the current authenticated user's profile information.
+	// Response: models.UserInfoResponse
+	accountRouter.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MyProfile(w, r)
+	}).Methods("GET")
+
+	// DELETE /users/me
+	// Deletes the current authenticated user's account.
+	accountRouter.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
+		handlers.DeleteUser(w, r)
+	}).Methods("DELETE")
+
+	// PATCH /users/me
+	// Changes the current authenticated user's display name.
+	// Request: models.UpdateUserRequest
+	accountRouter.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UpdateUser(w, r)
+	}).Methods("PATCH")
+
+	// GET /users/me/notifications
+	// Returns a list of notifications for the current authenticated user.
+	// Note: For now just returns list of pending duel invites.
+	// Response: []models.Notification
+	accountRouter.HandleFunc("/me/notifications", func(w http.ResponseWriter, r *http.Request) {
+		handlers.MyNotifications(w, r)
+	}).Methods("GET")
+
+	// GET /users/{id}
 	// Returns the public profile information for a user by their user ID.
-	// Response: models.UserClientInformation
-	accountRouter.HandleFunc("/profile/{id}", func(w http.ResponseWriter, r *http.Request) {
+	// Response: models.UserInfoResponse
+	accountRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetProfile(w, r)
 	}).Methods("GET")
 
-	// GET /user/is-online/{id}
-	// Returns whether a user is currently online.
-	// Response: boolean
-	accountRouter.HandleFunc("/is-online/{id}", func(w http.ResponseWriter, r *http.Request) {
-		// handlers.UserOnline(w, r)
-		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	// GET /users/{id}/status
+	// Returns whether a user is currently online, offline, or in a game.
+	// Response: models.UserStatus
+	accountRouter.HandleFunc("/{id}/status", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UserStatus(w, r)
 	}).Methods("GET")
 
-	// GET /user/in-game/{id}
-	// Returns whether a user is currently in a game.
-	// Response: handlers.UserInGameResponse (TODO)
-	accountRouter.HandleFunc("/in-game/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.UserInGame(w, r)
+	// GET /users/{id}/matches?page={page_num}&limit={limit}
+	// Returns a list of recent matches for a user by their user ID.
+	// Query Parameters:
+	// - page_num: The page number for pagination (default 1)
+	// - limit: Maximum number of results per page (default 10, max 50)
+	// Response: []models.Session
+	accountRouter.HandleFunc("/{id}/matches", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UserMatches(w, r)
 	}).Methods("GET")
 
 	// ----------------------
 	// Matchmaking Routes
 	// ----------------------
-	mmRouter := r.PathPrefix("/matchmake").Subrouter()
+	mmRouter := api.PathPrefix("/v1/queue").Subrouter()
 	mmRouter.Use(authMiddleware)
 
-	// GET /matchmake/count
+	// GET /queue/size
 	// Returns the current number of users in the matchmaking queue.
-	// Response: handlers.QueueSizeResponse (TODO)
-	mmRouter.HandleFunc("/count", func(w http.ResponseWriter, r *http.Request) {
+	// Response: models.QueueSizeResponse
+	mmRouter.HandleFunc("/size", func(w http.ResponseWriter, r *http.Request) {
 		handlers.QueueSize(w, r)
 	}).Methods("GET")
 
 	// ----------------------
 	// Game Session Routes
 	// ----------------------
-	matchRouter := r.PathPrefix("/game").Subrouter()
+	matchRouter := api.PathPrefix("/v1/matches").Subrouter()
 	matchRouter.Use(authMiddleware)
 
-	// GET /game/history/{id}
-	// Returns a list of past matches for the specified user ID.
-	// Response: []handlers.MatchSummary
-	matchRouter.HandleFunc("/history/{id}", func(w http.ResponseWriter, r *http.Request) {
-		handlers.MatchHistory(w, r)
-	}).Methods("GET")
-
-	// GET /game/details/{id}
+	// GET /matches/{id}
 	// Returns detailed information about a specific match by its ID.
 	// Response: models.Session
-	matchRouter.HandleFunc("/details/{id}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchesGet(w, r)
 	}).Methods("GET")
 
-	// GET /game/submissions/{id}
+	// GET /matches/{id}/submissions
 	// Returns a list of submissions for a specific match by its ID.
 	// Response: []models.PlayerSubmission
-	matchRouter.HandleFunc("/submissions/{id}", func(w http.ResponseWriter, r *http.Request) {
+	matchRouter.HandleFunc("/{id}/submissions", func(w http.ResponseWriter, r *http.Request) {
 		handlers.MatchSubmissions(w, r)
 	}).Methods("GET")
 
 	// --------------------
 	// Problems Routes
 	// --------------------
-	problemRouter := r.PathPrefix("/problems").Subrouter()
+	problemRouter := api.PathPrefix("/v1/problems").Subrouter()
 
 	// GET /problems/random?difficulties={difficulties}&tags={tags}
 	// Returns a random problem matching the specified criteria.

@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"leetcodeduels/auth"
+	"leetcodeduels/services"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -12,13 +12,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func WSConnect(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := auth.ExtractTokenString(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := auth.ValidateJWT(tokenString)
+	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

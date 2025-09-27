@@ -22,6 +22,7 @@ INSERT INTO users (
   (70763, 'quincy', '0001', 'quincy_lc', 'dummy-token', now(), now(), 1000),
   (82352, 'rachel', '0001', 'rachel_lc', 'dummy-token', now(), now(), 1000),
   (77356, 'samuel', '0001', 'samuel_lc', 'dummy-token', now(), now(), 1000),
+  (12346, 'samantha', '0001', 'samantha_lc', 'dummy-token', now(), now(), 1000),
   (32189, 'tom', '0001', 'tom_lc', 'dummy-token', now(), now(), 1000),
   (62307, 'uri', '0001', 'uri_lc', 'dummy-token', now(), now(), 1000),
   (52340, 'victor', '0001', 'victor_lc', 'dummy-token', now(), now(), 1000),

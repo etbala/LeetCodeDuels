@@ -183,6 +183,14 @@ func (cm *connManager) redisListener() {
 	}
 }
 
+func (cm *connManager) IsUserOnline(userID int64) (bool, error) {
+	exists, err := cm.redisClient.Exists(context.Background(), userLocationKey(userID)).Result()
+	if err != nil {
+		return false, fmt.Errorf("could not check user online status for user %d: %w", userID, err)
+	}
+	return exists == 1, nil
+}
+
 func (cm *connManager) SendToUser(userID int64, payload []byte) error {
 	serverID, err := cm.redisClient.Get(context.Background(), userLocationKey(userID)).Result()
 	if err == redis.Nil {

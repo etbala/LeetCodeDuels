@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"leetcodeduels/api"
-	"leetcodeduels/auth"
 	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
@@ -42,7 +41,7 @@ func New(cfg *config.Config) (*http.Server, error) {
 		AllowCredentials: true,
 	})
 
-	router := api.SetupRoutes(auth.Middleware)
+	router := api.SetupRoutes(services.Middleware)
 	handler := c.Handler(router)
 
 	srv := &http.Server{

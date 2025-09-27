@@ -1,6 +1,7 @@
 // Request structs for API endpoints
 package models
 
-type RenameRequest struct {
-	NewUsername string `json:"new_username"`
+type UpdateUserRequest struct {
+	Username         string `json:"username,omitempty"`
+	LeetCodeUsername string `json:"leet_code_username,omitempty"`
 }

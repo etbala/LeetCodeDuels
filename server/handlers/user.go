@@ -2,15 +2,71 @@ package handlers
 
 import (
 	"encoding/json"
-	"leetcodeduels/auth"
+	"fmt"
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
+	"leetcodeduels/ws"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 )
+
+func SearchUsers(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	username := query.Get("username")
+	discriminator := query.Get("discriminator")
+	limitStr := query.Get("limit")
+
+	if username == "" {
+		http.Error(w, "Username parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// If username and discriminator are both provided, only return exact match
+	if discriminator != "" {
+		user, err := store.DataStore.GetUserProfileByUsername(username, discriminator)
+		if err != nil {
+			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			return
+		}
+
+		var res []models.UserInfoResponse
+		if user != nil {
+			res = append(res, models.UserInfoResponse{
+				ID:            user.ID,
+				Username:      user.Username,
+				Discriminator: user.Discriminator,
+				LCUsername:    user.LeetCodeUsername,
+				AvatarURL:     user.AvatarURL,
+				Rating:        user.Rating,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	limit := 5
+	if limitStr != "" {
+		var err error
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit < 1 || limit > 20 {
+			http.Error(w, "Invalid limit parameter. Must be between 1 and 20 (inclusive).", http.StatusBadRequest)
+			return
+		}
+	}
+
+	users, err := store.DataStore.SearchUsersByUsername(username, limit)
+	if err != nil {
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
 
 func GetProfile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -35,12 +91,18 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(profile)
 }
 
-func UserInGame(w http.ResponseWriter, r *http.Request) {
+func UserStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userIDStr := vars["id"]
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	online, err := ws.ConnManager.IsUserOnline(userID)
+	if err != nil {
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -50,18 +112,17 @@ func UserInGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var res models.UserStatusResponse = models.UserStatusResponse{
+		Online: online,
+		InGame: inGame,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(inGame)
+	json.NewEncoder(w).Encode(res)
 }
 
 func MyProfile(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := auth.ExtractTokenString(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := auth.ValidateJWT(tokenString)
+	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -78,13 +139,7 @@ func MyProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := auth.ExtractTokenString(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := auth.ValidateJWT(tokenString)
+	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -97,64 +152,62 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RenameUser(w http.ResponseWriter, r *http.Request) {
-	var req models.RenameRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+// UpdateUser handles partial updates to the authenticated user's profile.
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req models.UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	tokenString, err := auth.ExtractTokenString(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if req.Username == "" && req.LeetCodeUsername == "" {
+		http.Error(w, "No update fields provided", http.StatusBadRequest)
 		return
 	}
 
-	claims, err := auth.ValidateJWT(tokenString)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	var discriminator string
+	if req.Username != "" {
+		discriminator, err = services.GenerateUniqueDiscriminator(req.Username)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 
-	discrinimator, err := services.GenerateUniqueDiscriminator(req.NewUsername)
+	err = store.DataStore.UpdateUser(claims.UserID, req.Username, discriminator, req.LeetCodeUsername)
 	if err != nil {
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
-		return
-	}
-
-	err = store.DataStore.UpdateUsernameDiscriminator(claims.UserID, req.NewUsername, discrinimator)
-	if err != nil {
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		http.Error(w, "Unknown Error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
-func RenameLCUser(w http.ResponseWriter, r *http.Request) {
-	var req models.RenameRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+func UserMatches(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userIDStr := vars["id"]
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
-	tokenString, err := auth.ExtractTokenString(r)
+	sessions, err := store.DataStore.GetPlayerMatches(userID)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	claims, err := auth.ValidateJWT(tokenString)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sessions)
+}
 
-	err = store.DataStore.UpdateLCUsername(claims.UserID, req.NewUsername)
-	if err != nil {
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
-		return
-	}
+func MyNotifications(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Not Implemented", http.StatusNotImplemented)
 }
