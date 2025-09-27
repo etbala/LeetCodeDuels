@@ -240,7 +240,7 @@ func (ds *dataStore) GetMatchingUsers(username string, limit int) ([]models.User
 
 // Return all problems in database
 func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
-	query := `SELECT id, name, slug, difficulty FROM problems`
+	query := `SELECT id, name, slug, difficulty FROM problems WHERE is_paid = false`
 	rows, err := ds.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllProblems: %w", err)
@@ -264,7 +264,8 @@ func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
-	WHERE pt.tag_id = $1`
+	WHERE pt.tag_id = $1
+		AND p.is_paid = false`
 	rows, err := ds.db.Query(query, tagID)
 	if err != nil {
 		return nil, fmt.Errorf("GetProblemsByTag: %w", err)
@@ -330,7 +331,7 @@ func (ds *dataStore) GetTagsByProblem(problemID int) ([]models.Tag, error) {
 
 // Returns a single random problem from the database.
 func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
-	query := `SELECT id, name, slug, difficulty FROM problems ORDER BY RANDOM() LIMIT 1`
+	query := `SELECT id, name, slug, difficulty FROM problems WHERE is_paid = false ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
 	if err := ds.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
 		return nil, fmt.Errorf("GetRandomProblem: %w", err)
@@ -345,6 +346,7 @@ func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = $1
+		AND p.is_paid = false
 	ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
 	if err := ds.db.QueryRow(query, tagID).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
@@ -363,6 +365,7 @@ func (ds *dataStore) GetRandomProblemByTags(tagIDs []int) (*models.Problem, erro
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = ANY($1)
+		AND p.is_paid = false
 	ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
 	if err := ds.db.QueryRow(query, pq.Array(tagIDs)).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
@@ -380,6 +383,7 @@ func (ds *dataStore) GetRandomProblemByDifficulties(difficulties []models.Diffic
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
 	WHERE p.difficulty = ANY($1)
+		AND p.is_paid = false
 	ORDER BY RANDOM() LIMIT 1`
 	var p models.Problem
 	if err := ds.db.QueryRow(query, pq.Array(difficulties)).Scan(&p.ID, &p.Name, &p.Slug, &p.Difficulty); err != nil {
@@ -411,6 +415,7 @@ func (ds *dataStore) GetRandomProblemByTagsAndDifficulties(
 		SELECT 1 
 		FROM problem_tags pt 
 		WHERE pt.problem_id = p.id 
+			AND p.is_paid = false
 			AND pt.tag_id = ANY($2)
 		)`
 	}
@@ -418,7 +423,8 @@ func (ds *dataStore) GetRandomProblemByTagsAndDifficulties(
 	query := fmt.Sprintf(`
 	SELECT p.id, p.name, p.slug, p.difficulty
 	FROM problems p
-	WHERE p.difficulty = ANY($1)
+	WHERE p.is_paid = false
+		AND p.difficulty = ANY($1)
 	%s
 	ORDER BY RANDOM() LIMIT 1`,
 		tagSubquery)
