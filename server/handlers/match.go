@@ -6,7 +6,6 @@ import (
 	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -16,6 +15,12 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
@@ -24,12 +29,6 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 	if session != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session)
-	}
-
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
 	}
 
 	session, err = store.DataStore.GetMatch(uuid)
@@ -50,6 +49,12 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
@@ -58,12 +63,6 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 	if session != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session.Submissions)
-		return
-	}
-
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
@@ -79,24 +78,4 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(session.Submissions)
-}
-
-// todo: add pagination parameters
-func MatchHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userIDStr := vars["id"]
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
-	sessions, err := store.DataStore.GetPlayerMatches(userID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
 }

@@ -1,4 +1,4 @@
-package auth
+package services
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-func ExtractTokenString(r *http.Request) (string, error) {
+func extractTokenString(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return "", errors.New("Missing Authorization Header")
@@ -85,11 +85,23 @@ func ExtractTokenString(r *http.Request) (string, error) {
 	return parts[1], nil
 }
 
+func GetClaimsFromRequest(r *http.Request) (*Claims, error) {
+	tokenString, err := extractTokenString(r)
+	if err != nil {
+		return nil, err
+	}
+	claims, err := ValidateJWT(tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return claims, nil
+}
+
 // Middleware validates the JWT and attaches user information to the request context.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		tokenString, err := ExtractTokenString(r)
+		tokenString, err := extractTokenString(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return

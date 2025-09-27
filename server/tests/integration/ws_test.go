@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"leetcodeduels/auth"
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/ws"
@@ -21,7 +20,7 @@ func wsURL() string {
 }
 
 func TestWSUpgrader(t *testing.T) {
-	token, err := auth.GenerateJWT(12345) // Alice
+	token, err := services.GenerateJWT(12345) // Alice
 	require.NoError(t, err)
 
 	header := http.Header{}
@@ -38,7 +37,7 @@ func TestWSUpgrader(t *testing.T) {
 }
 
 func dialWS(t *testing.T, userID int64) *websocket.Conn {
-	token, err := auth.GenerateJWT(userID)
+	token, err := services.GenerateJWT(userID)
 	require.NoError(t, err)
 
 	header := http.Header{}
