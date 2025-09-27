@@ -21,7 +21,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// ----------------------
 	// Authentication Routes
 	// ----------------------
-	authRouter := api.PathPrefix("/auth").Subrouter()
+	authRouter := r.PathPrefix("/auth").Subrouter()
 
 	authRouter.HandleFunc("/github/callback", func(w http.ResponseWriter, r *http.Request) {
 		handlers.AuthGitHubCallback(w, r)
