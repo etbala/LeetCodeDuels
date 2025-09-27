@@ -87,8 +87,17 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var res models.UserInfoResponse = models.UserInfoResponse{
+		ID:            profile.ID,
+		Username:      profile.Username,
+		Discriminator: profile.Discriminator,
+		LCUsername:    profile.LeetCodeUsername,
+		AvatarURL:     profile.AvatarURL,
+		Rating:        profile.Rating,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(profile)
+	json.NewEncoder(w).Encode(res)
 }
 
 func UserStatus(w http.ResponseWriter, r *http.Request) {

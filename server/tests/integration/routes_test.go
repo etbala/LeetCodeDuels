@@ -154,12 +154,13 @@ func TestGetProfile(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
 	}
 
-	var user models.User
+	var user models.UserInfoResponse
 	err = json.NewDecoder(res.Body).Decode(&user)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(12345), user.ID)
 	assert.Equal(t, "alice", user.Username)
-	assert.Equal(t, "alice_lc", user.LeetCodeUsername)
+	assert.Equal(t, "0001", user.Discriminator)
+	assert.Equal(t, "alice_lc", user.LCUsername)
 	assert.Equal(t, 1000, user.Rating)
 }
 
@@ -181,12 +182,13 @@ func TestMyProfile(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d\nbody: %s", res.StatusCode, string(body))
 	}
 
-	var user models.User
+	var user models.UserInfoResponse
 	err = json.NewDecoder(res.Body).Decode(&user)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(12345), user.ID)
 	assert.Equal(t, "alice", user.Username)
-	assert.Equal(t, "alice_lc", user.LeetCodeUsername)
+	assert.Equal(t, "0001", user.Discriminator)
+	assert.Equal(t, "alice_lc", user.LCUsername)
 	assert.Equal(t, 1000, user.Rating)
 }
 
@@ -218,7 +220,7 @@ func TestDeleteProfile(t *testing.T) {
 
 func TestUpdateUser(t *testing.T) {
 	// Helper function to perform the verification GET request
-	verifyUser := func(t *testing.T, userID int64, authToken string) models.User {
+	verifyUser := func(t *testing.T, userID int64, authToken string) models.UserInfoResponse {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/users/%d", ts.URL, userID), nil)
 		assert.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+authToken)
@@ -228,7 +230,7 @@ func TestUpdateUser(t *testing.T) {
 		defer res.Body.Close()
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 
-		var user models.User
+		var user models.UserInfoResponse
 		err = json.NewDecoder(res.Body).Decode(&user)
 		assert.NoError(t, err)
 		return user
@@ -257,7 +259,7 @@ func TestUpdateUser(t *testing.T) {
 		updatedUser := verifyUser(t, userID, token)
 		assert.Equal(t, newUsername, updatedUser.Username)
 		assert.NotEmpty(t, updatedUser.Discriminator)
-		assert.Equal(t, originalUser.LeetCodeUsername, updatedUser.LeetCodeUsername)
+		assert.Equal(t, originalUser.LCUsername, updatedUser.LCUsername)
 	})
 
 	t.Run("Update LeetCode username only", func(t *testing.T) {
@@ -281,7 +283,7 @@ func TestUpdateUser(t *testing.T) {
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 
 		updatedUser := verifyUser(t, userID, token)
-		assert.Equal(t, newLCUsername, updatedUser.LeetCodeUsername)
+		assert.Equal(t, newLCUsername, updatedUser.LCUsername)
 		assert.Equal(t, originalUser.Username, updatedUser.Username)
 	})
 
@@ -306,7 +308,7 @@ func TestUpdateUser(t *testing.T) {
 
 		updatedUser := verifyUser(t, userID, token)
 		assert.Equal(t, newUsername, updatedUser.Username)
-		assert.Equal(t, newLCUsername, updatedUser.LeetCodeUsername)
+		assert.Equal(t, newLCUsername, updatedUser.LCUsername)
 	})
 
 	t.Run("Fail with no update fields", func(t *testing.T) {
