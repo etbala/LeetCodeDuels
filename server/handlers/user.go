@@ -133,9 +133,23 @@ func MyProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
+	if profile == nil {
+		// Should not happen unless user was deleted before jwt expired
+		http.Error(w, "User Not Found", http.StatusNotFound)
+		return
+	}
+
+	var res models.UserInfoResponse = models.UserInfoResponse{
+		ID:            profile.ID,
+		Username:      profile.Username,
+		Discriminator: profile.Discriminator,
+		LCUsername:    profile.LeetCodeUsername,
+		AvatarURL:     profile.AvatarURL,
+		Rating:        profile.Rating,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(profile)
+	json.NewEncoder(w).Encode(res)
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
