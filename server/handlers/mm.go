@@ -1,7 +1,13 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/rs/zerolog/log"
+)
 
 func QueueSize(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not yet implemented", http.StatusNotImplemented)
+	l := log.Ctx(r.Context())
+	l.Warn().Msg("Unimplemented Endpoint Called")
+	http.Error(w, "Not Implemented", http.StatusNotImplemented)
 }

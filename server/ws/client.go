@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -24,7 +25,11 @@ type Client struct {
 }
 
 func NewClient(
-	userID int64, ctx context.Context, conn *websocket.Conn, hub *connManager,
+	userID int64,
+	ctx context.Context,
+	conn *websocket.Conn,
+	hub *connManager,
+	l *zerolog.Logger,
 ) *Client {
 	return &Client{
 		userID: userID,
