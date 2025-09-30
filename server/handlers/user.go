@@ -14,6 +14,30 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Sets headers and writes JSON response with status code
+func writeJSON(w http.ResponseWriter, statusCode int, data interface{}) error {
+	if data == nil {
+		w.WriteHeader(statusCode)
+		return nil
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	return json.NewEncoder(w).Encode(data)
+}
+
+// Writes an error response with message
+func writeError(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// Writes a success response (200 OK)
+func writeSuccess(w http.ResponseWriter, data interface{}) error {
+	return writeJSON(w, http.StatusOK, data)
+}
+
 func SearchUsers(w http.ResponseWriter, r *http.Request) {
 	l := log.Ctx(r.Context())
 
@@ -30,7 +54,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 
 	if username == "" {
 		l.Warn().Msg("SearchUsers called without username parameter")
-		http.Error(w, "Username parameter is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Username parameter is required")
 		return
 	}
 
@@ -39,7 +63,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 		user, err := store.DataStore.GetUserProfileByUsername(username, discriminator)
 		if err != nil {
 			l.Error().Err(err).Msg("SearchUsers Failed to get user profile by username")
-			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "Internal Error")
 			return
 		}
 
@@ -54,9 +78,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 				Rating:        user.Rating,
 			})
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		writeSuccess(w, res)
 		return
 	}
 
@@ -66,7 +88,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil || limit < 1 || limit > 20 {
 			l.Warn().Msg("SearchUsers called with invalid limit")
-			http.Error(w, "Invalid limit parameter. Must be between 1 and 20 (inclusive).", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "Invalid limit parameter. Must be between 1 and 20 (inclusive).")
 			return
 		}
 	}
@@ -74,13 +96,11 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := store.DataStore.SearchUsersByUsername(username, limit)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to search users by username")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+	writeSuccess(w, users)
 }
 
 func GetProfile(w http.ResponseWriter, r *http.Request) {
@@ -97,19 +117,19 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		l.Warn().Msg("Invalid user ID format in path parameter")
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid ID")
 		return
 	}
 
 	profile, err := store.DataStore.GetUserProfile(userID)
 	if err != nil {
 		l.Error().Err(err).Msg("Error fetching user profile")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	if profile == nil {
 		l.Info().Msg("User profile not found")
-		http.Error(w, "User Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "User Not Found")
 		return
 	}
 
@@ -122,9 +142,7 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 		Rating:        profile.Rating,
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	writeSuccess(w, res)
 }
 
 func UserStatus(w http.ResponseWriter, r *http.Request) {
@@ -141,21 +159,21 @@ func UserStatus(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		l.Warn().Msg("Invalid user ID format in path parameter")
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid ID")
 		return
 	}
 
 	online, err := ws.ConnManager.IsUserOnline(userID)
 	if err != nil {
 		l.Error().Err(err).Msg("Error checking if user is online")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
 	inGame, err := services.GameManager.IsPlayerInGame(userID)
 	if err != nil {
 		l.Error().Err(err).Msg("Error checking if user is in-game")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
@@ -164,9 +182,7 @@ func UserStatus(w http.ResponseWriter, r *http.Request) {
 		InGame: inGame,
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	writeSuccess(w, res)
 }
 
 func MyProfile(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +191,7 @@ func MyProfile(w http.ResponseWriter, r *http.Request) {
 	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		l.Warn().Msg("Attempted to call MyProfile without valid claims")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -187,13 +203,13 @@ func MyProfile(w http.ResponseWriter, r *http.Request) {
 	profile, err := store.DataStore.GetUserProfile(claims.UserID)
 	if err != nil {
 		l.Error().Err(err).Msg("Error getting user profile")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 	if profile == nil {
 		// Should not happen unless user was deleted before jwt expired
 		l.Warn().Msg("Attempted to view profile of user that does not exist")
-		http.Error(w, "User Not Found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "User Not Found")
 		return
 	}
 
@@ -206,8 +222,7 @@ func MyProfile(w http.ResponseWriter, r *http.Request) {
 		Rating:        profile.Rating,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	writeSuccess(w, res)
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +231,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		l.Warn().Msg("Attempted to call DeleteUser without valid claims")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -228,11 +243,11 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	err = store.DataStore.DeleteUser(claims.UserID)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to delete user from datastore")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	writeSuccess(w, nil)
 }
 
 // UpdateUser handles partial updates to the authenticated user's profile.
@@ -242,7 +257,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
 		l.Warn().Msg("Attempted to call UpdateUser without valid claims")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -254,13 +269,13 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var req models.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		l.Warn().Err(err).Msg("Failed to decode update user request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Username == "" && req.LeetCodeUsername == "" {
 		l.Warn().Msg("Request had no update fields")
-		http.Error(w, "No update fields provided", http.StatusNotModified)
+		writeError(w, http.StatusNotModified, "No update fields provided")
 		return
 	}
 
@@ -275,7 +290,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		discriminator, err = services.GenerateUniqueDiscriminator(req.Username)
 		if err != nil {
 			l.Error().Err(err).Msg("Failed to generate unique discriminator")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "Internal Server Error")
 			return
 		}
 	}
@@ -283,11 +298,11 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	err = store.DataStore.UpdateUser(claims.UserID, req.Username, discriminator, req.LeetCodeUsername)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to update user in datastore")
-		http.Error(w, "Unknown Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Unknown Error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	writeSuccess(w, nil)
 }
 
 func UserMatches(w http.ResponseWriter, r *http.Request) {
@@ -304,24 +319,22 @@ func UserMatches(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		l.Warn().Msg("Invalid user ID format in path parameter")
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid ID")
 		return
 	}
 
 	sessions, err := store.DataStore.GetPlayerMatches(userID)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to get match history")
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Internal Error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
+	writeSuccess(w, sessions)
 }
 
 func MyNotifications(w http.ResponseWriter, r *http.Request) {
 	l := log.Ctx(r.Context())
 	l.Warn().Msg("Unimplemented Endpoint Called")
-	http.Error(w, "Not Implemented", http.StatusNotImplemented)
+	writeError(w, http.StatusNotImplemented, "Not Implemented")
 }
