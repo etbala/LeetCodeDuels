@@ -311,7 +311,7 @@ func TestUpdateUser(t *testing.T) {
 		assert.Equal(t, newLCUsername, updatedUser.LCUsername)
 	})
 
-	t.Run("Fail with no update fields", func(t *testing.T) {
+	t.Run("Not modified status with no update fields", func(t *testing.T) {
 		userID := int64(41529) // Yash
 		token, err := services.GenerateJWT(userID)
 		assert.NoError(t, err)
@@ -326,7 +326,7 @@ func TestUpdateUser(t *testing.T) {
 		assert.NoError(t, err)
 		defer res.Body.Close()
 
-		assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+		assert.Equal(t, http.StatusNotModified, res.StatusCode)
 	})
 }
 
