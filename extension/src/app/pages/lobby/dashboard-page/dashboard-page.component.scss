@@ -1,0 +1,59 @@
+@use "sass:math";
+
+// Variables
+$border-radius: 5px;
+$input-bg: #2C2D31;
+$input-text: #fff;
+$button-bg: #5ACE73;
+$body-text: #B5B5B5;
+$example-text: #878787;
+$opacity: 0.5;
+$primary-padding: 0.5rem;
+$box-width: 180px;
+
+// Body
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: $body-text;
+  font-family: 'Inter', sans-serif;
+}
+
+// Opponent input
+#opponentUsername {
+  border-radius: $border-radius;
+  border: 1px solid $input-bg;
+  padding: $primary-padding;
+  background-color: $input-bg;
+  color: $input-text;
+  opacity: $opacity;
+  width: $box-width;
+}
+
+// Start Duel button
+button {
+  background: $button-bg;
+  color: $input-text;
+  border-radius: $border-radius;
+  padding: $primary-padding 1rem;
+  margin: 0.5rem auto;
+  display: block;
+  border: none;
+  cursor: pointer;
+  width: math.div($box-width, 1.5);
+}
+
+// Difficulty & Tags details
+details {
+  position: relative;
+  width: $box-width;
+  max-height: 100px;
+  overflow-y: auto;
+  background-color: $input-bg;
+  border-radius: $border-radius;
+  padding: $primary-padding;
+  opacity: $opacity;
+
+  input[type="checkbox"] { accent-color: $button-bg; }
+}

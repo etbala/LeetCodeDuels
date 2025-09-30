@@ -7,68 +7,61 @@
 </head>
 <body>
 
+<div>
+  <h3>Start A New Duel</h3>
   <div>
-    <h2>Start a New Duel</h2>
-    <!-- Input Box -->
-    <div>
-      <input
-        type="text"
-        id="opponentUsername"
-        placeholder="Opponent's Username"
-      >
-    </div>
-
-    <!-- Submit Button -->
-    <div>
-      <button type="submit">Start Duel</button>
-    </div>
-
-    <!-- Difficulty Dropdown -->
-    <div>
-      <label>Difficulty</label>
-      <details>
-        <summary>Select difficulty...</summary>
-        <div>
-          <label>
-            <input type="checkbox" name="difficulty" value="easy"> Easy
-          </label>
-        </div>
-        <div>
-          <label>
-            <input type="checkbox" name="difficulty" value="medium"> Medium
-          </label>
-        </div>
-        <div>
-          <label>
-            <input type="checkbox" name="difficulty" value="hard"> Hard
-          </label>
-        </div>
-      </details>
-    </div>
-
-    <!-- Tags Dropdown -->
-    <div>
-      <label>Tags</label>
-      <details>
-        <summary>Select tags...</summary>
-        <div>
-          <label>
-            <input type="checkbox" name="tags" value="work"> Work
-          </label>
-        </div>
-        <div>
-          <label>
-            <input type="checkbox" name="tags" value="personal"> Personal
-          </label>
-        </div>
-        <div>
-          <label>
-            <input type="checkbox" name="tags" value="learning"> Learning
-          </label>
-        </div>
-      </details>
-    </div>
+    <input
+      type="text"
+      id="opponentUsername"
+      placeholder="Opponent's Username"
+      [(ngModel)]="opponentUsername"
+    />
   </div>
+
+  <div>
+    <button type="button" (click)="startDuel()">Send Duel!</button>
+  </div>
+
+  <div>
+    <label>Difficulty</label>
+    <details>
+      <summary>
+        {{ selectedDifficulties.size ? selectedDifficultiesList : 'Select difficulty...' }}
+      </summary>
+      <div *ngFor="let d of difficulties">
+        <label>
+          <input
+            #cb
+            type="checkbox"
+            [checked]="selectedDifficulties.has(d)"
+            (change)="toggleDiff(d, cb.checked)"
+          />
+          {{ d }}
+        </label>
+      </div>
+    </details>
+  </div>
+
+  <div>
+    <label>Tags</label>
+    <details>
+      <summary>
+        {{ selectedTags.size ? selectedTagsNames : 'Select tags...' }}
+      </summary>
+      <div *ngFor="let t of tags">
+        <label>
+          <input
+            #cb
+            type="checkbox"
+            [checked]="selectedTags.has(t.id)"
+            (change)="toggleTag(t.id, cb.checked)"
+          />
+          {{ t.name }}
+        </label>
+      </div>
+    </details>
+  </div>
+</div>
 
 </body>
 </html>
