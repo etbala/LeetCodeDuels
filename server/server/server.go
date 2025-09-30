@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"leetcodeduels/api"
-	"leetcodeduels/auth"
 	"leetcodeduels/config"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
@@ -16,11 +15,6 @@ import (
 
 func New(cfg *config.Config) (*http.Server, error) {
 	err := store.InitDataStore(cfg.DB_URL)
-	if err != nil {
-		return nil, err
-	}
-
-	err = auth.InitStateStore(cfg.RDB_URL)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +41,7 @@ func New(cfg *config.Config) (*http.Server, error) {
 		AllowCredentials: true,
 	})
 
-	router := api.SetupRoutes(auth.Middleware)
+	router := api.SetupRoutes(services.Middleware)
 	handler := c.Handler(router)
 
 	srv := &http.Server{
@@ -65,7 +59,6 @@ func Cleanup(srv *http.Server) error {
 		return err
 	}
 
-	auth.StateStore.Close()
 	services.InviteManager.Close()
 	services.GameManager.Close()
 	ws.ConnManager.Close()

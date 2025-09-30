@@ -27,6 +27,8 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
@@ -53,5 +55,6 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.12.0
+	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.10.0
 )

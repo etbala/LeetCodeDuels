@@ -1,10 +1,12 @@
 package ws
 
 import (
-	"leetcodeduels/auth"
+	"leetcodeduels/services"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var upgrader = websocket.Upgrader{
@@ -12,27 +14,30 @@ var upgrader = websocket.Upgrader{
 }
 
 func WSConnect(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := auth.ExtractTokenString(r)
+	l := log.Ctx(r.Context())
+
+	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
+		l.Warn().Msg("Unauthorized attempt to open WebSocket connection")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	claims, err := auth.ValidateJWT(tokenString)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Int64("user_id", claims.UserID)
+	})
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		http.Error(w, "could not upgrade to ws", http.StatusBadRequest)
+		l.Error().Err(err).Msg("Failed to upgrade connection to WebSocket")
 		return
 	}
 
+	l.Info().Msg("WebSocket connection established")
+
 	userID := claims.UserID
 
-	client := NewClient(userID, r.Context(), conn, ConnManager)
+	client := NewClient(userID, r.Context(), conn, ConnManager, l)
 	ConnManager.register <- client
 	go client.writePump()
 	go client.readPump()

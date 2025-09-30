@@ -2,39 +2,50 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func MatchesGet(w http.ResponseWriter, r *http.Request) {
+	l := log.Ctx(r.Context())
+
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Str("match_id", matchID)
+	})
+	l.Info().Msg("Received request for MatchesGet")
+
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		l.Warn().Err(err).Msg("Invalid match ID format in path parameter")
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
+		l.Error().Err(err).Msg("Error checking for active game")
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	if session != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session)
-	}
-
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
 	session, err = store.DataStore.GetMatch(uuid)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
+		l.Error().Err(err).Msg("Failed to get match from datastore")
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	if session == nil {
@@ -47,12 +58,27 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
+	l := log.Ctx(r.Context())
+
 	vars := mux.Vars(r)
 	matchID := vars["id"]
 
+	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Str("match_id", matchID)
+	})
+	l.Info().Msg("Received request for MatchSubmissions")
+
+	uuid, err := uuid.Parse(matchID)
+	if err != nil {
+		l.Warn().Err(err).Msg("Invalid match ID format in path parameter")
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
 	session, err := services.GameManager.GetGame(matchID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
+		l.Error().Err(err).Msg("Error checking for active game")
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	if session != nil {
@@ -61,15 +87,10 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uuid, err := uuid.Parse(matchID)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
 	session, err = store.DataStore.GetMatch(uuid)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
+		l.Error().Err(err).Msg("Failed to get match from datastore")
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
 	if session == nil {
@@ -79,24 +100,4 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(session.Submissions)
-}
-
-// todo: add pagination parameters
-func MatchHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userIDStr := vars["id"]
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
-	sessions, err := store.DataStore.GetPlayerMatches(userID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Error: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
 }

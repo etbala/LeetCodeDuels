@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type Difficulty string
@@ -15,12 +16,12 @@ const (
 )
 
 func ParseDifficulty(difficulty string) (Difficulty, error) {
-	switch difficulty {
-	case "Easy":
+	switch strings.ToLower(difficulty) {
+	case "easy":
 		return Easy, nil
-	case "Medium":
+	case "medium":
 		return Medium, nil
-	case "Hard":
+	case "hard":
 		return Hard, nil
 	default:
 		return "", errors.New("invalid Difficulty value")
