@@ -124,89 +124,107 @@ func (cm *connManager) run() {
 			return
 
 		case c := <-cm.register:
-			cm.clients[c] = true
-			uc, exists := cm.userClients[c.userID]
-			if !exists {
-				uc = make(map[*Client]bool)
-				cm.userClients[c.userID] = uc
-			}
-			uc[c] = true
-
-			err := cm.redisClient.Set(
-				context.Background(),
-				userLocationKey(c.userID),
-				cm.serverID,
-				userLocationTTL,
-			).Err()
-			if err != nil {
-				cm.log.Error().
-					Err(err).
-					Int64("user_id", c.userID).
-					Msg("Failed to set user location in Redis")
-			}
-			cm.log.Info().Int64("user_id", c.userID).Msg("Client registered")
+			cm.handleClientRegister(c)
 
 		case c := <-cm.unregister:
-			if _, ok := cm.clients[c]; !ok {
-				cm.log.Warn().
-					Int64("user_id", c.userID).
-					Msg("Attempted to unregister non-existent client")
-				continue
-			}
-			delete(cm.clients, c)
-
-			if uc, exists := cm.userClients[c.userID]; exists {
-				delete(uc, c)
-				if len(uc) == 0 {
-					delete(cm.userClients, c.userID)
-					err := cm.redisClient.Del(context.Background(), userLocationKey(c.userID)).Err()
-					if err != nil {
-						cm.log.Error().
-							Err(err).
-							Int64("user_id", c.userID).
-							Msg("Failed to delete user location from Redis")
-					} else {
-						cm.log.Info().
-							Int64("user_id", c.userID).
-							Str("server_id", cm.serverID).
-							Msg("User completely disconnected from server")
-					}
-				}
-			}
-			close(c.send)
+			cm.handleClientUnregister(c)
 
 		case dm := <-cm.direct:
-			if conns, ok := cm.userClients[dm.userID]; ok {
-				delivered := 0
-				failed := 0
-
-				for c := range conns {
-					select {
-					case c.send <- dm.payload:
-						delivered++
-					default:
-						cm.log.Warn().
-							Int64("user_id", dm.userID).
-							Msg("Client send buffer full, closing connection")
-						close(c.send)
-						delete(conns, c)
-						failed++
-					}
-				}
-
-				cm.log.Debug().
-					Int64("user_id", dm.userID).
-					Int("delivered", delivered).
-					Int("failed", failed).
-					Int("payload_size", len(dm.payload)).
-					Msg("Direct message delivery completed")
-			} else {
-				cm.log.Warn().
-					Int64("user_id", dm.userID).
-					Msg("No local connections found for user")
-			}
+			cm.handleDirectMessage(dm)
 		}
 	}
+}
+
+func (cm *connManager) handleClientRegister(c *Client) {
+	cm.clients[c] = true
+	uc, exists := cm.userClients[c.userID]
+	if !exists {
+		uc = make(map[*Client]bool)
+		cm.userClients[c.userID] = uc
+	}
+	uc[c] = true
+
+	err := cm.redisClient.Set(
+		context.Background(),
+		userLocationKey(c.userID),
+		cm.serverID,
+		userLocationTTL,
+	).Err()
+	if err != nil {
+		cm.log.Error().
+			Err(err).
+			Int64("user_id", c.userID).
+			Msg("Failed to set user location in Redis")
+	}
+	cm.log.Info().Int64("user_id", c.userID).Msg("Client registered")
+}
+
+func (cm *connManager) handleClientUnregister(c *Client) {
+	if _, ok := cm.clients[c]; !ok {
+		cm.log.Warn().
+			Int64("user_id", c.userID).
+			Msg("Attempted to unregister non-existent client")
+		return
+	}
+	delete(cm.clients, c)
+
+	if uc, exists := cm.userClients[c.userID]; exists {
+		delete(uc, c)
+		if len(uc) == 0 {
+			cm.cleanupUserLocation(c.userID)
+		}
+	}
+	close(c.send)
+}
+
+func (cm *connManager) cleanupUserLocation(userID int64) {
+	delete(cm.userClients, userID)
+	err := cm.redisClient.Del(context.Background(), userLocationKey(userID)).Err()
+	if err != nil {
+		cm.log.Error().
+			Err(err).
+			Int64("user_id", userID).
+			Msg("Failed to delete user location from Redis")
+	} else {
+		cm.log.Info().
+			Int64("user_id", userID).
+			Str("server_id", cm.serverID).
+			Msg("User completely disconnected from server")
+	}
+}
+
+func (cm *connManager) handleDirectMessage(dm directMessage) {
+	conns, ok := cm.userClients[dm.userID]
+	if !ok {
+		cm.log.Warn().
+			Int64("user_id", dm.userID).
+			Msg("No local connections found for user")
+		return
+	}
+
+	delivered := 0
+	failed := 0
+
+	for c := range conns {
+		select {
+		case c.send <- dm.payload:
+			delivered++
+		default:
+			cm.log.Warn().
+				Int64("user_id", dm.userID).
+				Msg("Client send buffer full, closing connection")
+			close(c.send)
+			delete(conns, c)
+			failed++
+		}
+	}
+
+	cm.log.Debug().
+		Int64("user_id", dm.userID).
+		Int("delivered", delivered).
+		Int("failed", failed).
+		Int("payload_size", len(dm.payload)).
+		Msg("Direct message delivery completed")
 }
 
 func (cm *connManager) redisListener() {
@@ -502,7 +520,7 @@ func (c *connManager) handleDeclineInvitation(p DeclineInvitationPayload) error 
 		return err
 	}
 	if !success {
-		c.log.Debug().Int64("inviter_id", p.InviterID).Msg("No invite to decline")
+		c.log.Warn().Int64("inviter_id", p.InviterID).Msg("No invite to decline")
 		return nil
 	}
 

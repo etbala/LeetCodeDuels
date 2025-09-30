@@ -1,6 +1,9 @@
 package logging
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -38,6 +41,13 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
 	rw.wroteHeader = true
+}
+
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("response writer does not implement http.Hijacker")
 }
 
 func RequestLogger(next http.Handler) http.Handler {
