@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -25,6 +27,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	setLogLevel(cfg.LOG_LEVEL)
 
 	srv, err := server.New(cfg)
 	if err != nil {
@@ -56,4 +60,25 @@ func main() {
 	}
 
 	log.Println("Server gracefully stopped")
+}
+
+func setLogLevel(level string) {
+	switch strings.ToLower(level) {
+	case "trace":
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	case "info":
+		fallthrough
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 }
