@@ -7,11 +7,12 @@ import (
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
-	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -48,6 +49,8 @@ type connManager struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	log *zerolog.Logger
 }
 
 func userLocationKey(userID int64) string {
@@ -59,6 +62,8 @@ func serverChannel(serverID string) string {
 }
 
 func newConnManager(redisURL string) (*connManager, error) {
+	logger := log.With().Str("component", "conn_manager").Logger()
+
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
@@ -71,7 +76,7 @@ func newConnManager(redisURL string) (*connManager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	serverUUID := uuid.New().String()
-	log.Printf("Starting server with ID: %s", serverUUID)
+	log.Info().Str("server_id", serverUUID).Msg("Starting new connection manager")
 
 	ps := client.Subscribe(context.Background(), serverChannel(serverUUID))
 
@@ -86,9 +91,17 @@ func newConnManager(redisURL string) (*connManager, error) {
 		direct:      make(chan directMessage, 256),
 		ctx:         ctx,
 		cancel:      cancel,
+		log:         &logger,
 	}
+
 	go cm.run()
 	go cm.redisListener()
+
+	cm.log.Info().
+		Str("server_id", serverUUID).
+		Str("redis_channel", serverChannel(serverUUID)).
+		Msg("Connection manager initialized successfully")
+
 	return cm, nil
 }
 
@@ -96,8 +109,10 @@ func InitConnManager(redisURL string) error {
 	var err error
 	ConnManager, err = newConnManager(redisURL)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize connection manager")
 		return err
 	}
+	log.Info().Msg("Global connection manager initialized")
 	return nil
 }
 
@@ -105,6 +120,7 @@ func (cm *connManager) run() {
 	for {
 		select {
 		case <-cm.ctx.Done():
+			cm.log.Info().Msg("Connection manager context cancelled, stopping run loop")
 			return
 
 		case c := <-cm.register:
@@ -123,12 +139,18 @@ func (cm *connManager) run() {
 				userLocationTTL,
 			).Err()
 			if err != nil {
-				log.Printf("failed to set user location for user %d: %v", c.userID, err)
+				cm.log.Error().
+					Err(err).
+					Int64("user_id", c.userID).
+					Msg("Failed to set user location in Redis")
 			}
-			log.Printf("User %d registered on server %s", c.userID, cm.serverID)
+			cm.log.Info().Int64("user_id", c.userID).Msg("Client registered")
 
 		case c := <-cm.unregister:
 			if _, ok := cm.clients[c]; !ok {
+				cm.log.Warn().
+					Int64("user_id", c.userID).
+					Msg("Attempted to unregister non-existent client")
 				continue
 			}
 			delete(cm.clients, c)
@@ -137,22 +159,51 @@ func (cm *connManager) run() {
 				delete(uc, c)
 				if len(uc) == 0 {
 					delete(cm.userClients, c.userID)
-					cm.redisClient.Del(context.Background(), userLocationKey(c.userID))
-					log.Printf("User %d unregistered from server %s", c.userID, cm.serverID)
+					err := cm.redisClient.Del(context.Background(), userLocationKey(c.userID)).Err()
+					if err != nil {
+						cm.log.Error().
+							Err(err).
+							Int64("user_id", c.userID).
+							Msg("Failed to delete user location from Redis")
+					} else {
+						cm.log.Info().
+							Int64("user_id", c.userID).
+							Str("server_id", cm.serverID).
+							Msg("User completely disconnected from server")
+					}
 				}
 			}
 			close(c.send)
 
 		case dm := <-cm.direct:
 			if conns, ok := cm.userClients[dm.userID]; ok {
+				delivered := 0
+				failed := 0
+
 				for c := range conns {
 					select {
 					case c.send <- dm.payload:
+						delivered++
 					default:
+						cm.log.Warn().
+							Int64("user_id", dm.userID).
+							Msg("Client send buffer full, closing connection")
 						close(c.send)
 						delete(conns, c)
+						failed++
 					}
 				}
+
+				cm.log.Debug().
+					Int64("user_id", dm.userID).
+					Int("delivered", delivered).
+					Int("failed", failed).
+					Int("payload_size", len(dm.payload)).
+					Msg("Direct message delivery completed")
+			} else {
+				cm.log.Warn().
+					Int64("user_id", dm.userID).
+					Msg("No local connections found for user")
 			}
 		}
 	}
@@ -171,7 +222,7 @@ func (cm *connManager) redisListener() {
 
 			var pubSubMsg redisPubSubMessage
 			if err := json.Unmarshal([]byte(msg.Payload), &pubSubMsg); err != nil {
-				log.Printf("could not unmarshal redis pubsub message: %v", err)
+				cm.log.Error().Err(err).Str("raw_payload", msg.Payload).Msg("Could not unmarshal Redis pubsub message")
 				continue
 			}
 
@@ -186,6 +237,7 @@ func (cm *connManager) redisListener() {
 func (cm *connManager) IsUserOnline(userID int64) (bool, error) {
 	exists, err := cm.redisClient.Exists(context.Background(), userLocationKey(userID)).Result()
 	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to check user online status")
 		return false, fmt.Errorf("could not check user online status for user %d: %w", userID, err)
 	}
 	return exists == 1, nil
@@ -194,11 +246,11 @@ func (cm *connManager) IsUserOnline(userID int64) (bool, error) {
 func (cm *connManager) SendToUser(userID int64, payload []byte) error {
 	serverID, err := cm.redisClient.Get(context.Background(), userLocationKey(userID)).Result()
 	if err == redis.Nil {
-		// User is not connected to any server instance.
-		log.Printf("attempted to send message to offline user %d", userID)
+		cm.log.Warn().Int64("user_id", userID).Msg("User is offline, message not sent")
 		return nil
 	}
 	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user location")
 		return fmt.Errorf("could not get user location for user %d: %w", userID, err)
 	}
 
@@ -213,6 +265,7 @@ func (cm *connManager) SendToUser(userID int64, payload []byte) error {
 	}
 	b, err := json.Marshal(pubSubMsg)
 	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to marshal pubsub message")
 		return fmt.Errorf("could not marshal pubsub message: %w", err)
 	}
 
@@ -232,6 +285,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	case ClientMsgSendInvitation:
 		var p SendInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			h.log.Error().Err(err).Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Invalid payload")
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
 		return h.handleSendInvitation(c.userID, p)
@@ -239,6 +293,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	case ClientMsgAcceptInvitation:
 		var p AcceptInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			h.log.Error().Err(err).Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Invalid payload")
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
 		return h.handleAcceptInvitation(c.userID, p)
@@ -249,6 +304,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	case ClientMsgDeclineInvitation:
 		var p DeclineInvitationPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			h.log.Error().Err(err).Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Invalid payload")
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
 		return h.handleDeclineInvitation(p)
@@ -256,6 +312,7 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	case ClientMsgEnterQueue:
 		var p EnterQueuePayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			h.log.Error().Err(err).Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Invalid payload")
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
 		return h.handleEnterQueue(c.userID, p)
@@ -266,19 +323,26 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 	case ClientMsgSubmission:
 		var p SubmissionPayload
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			h.log.Error().Err(err).Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Invalid payload")
 			return fmt.Errorf("invalid payload for %s: %w", env.Type, err)
 		}
 		return h.handleSubmission(c.userID, p)
 
 	default:
+		h.log.Warn().Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Unknown message type received")
 		c.sendError("unknown_type", "message type not recognized")
 		return nil
 	}
 }
 
 func (cm *connManager) Close() error {
+	cm.log.Info().Int("client_count", len(cm.clients)).Msg("Closing connection manager")
+
 	for c := range cm.clients {
-		cm.redisClient.Del(context.Background(), userLocationKey(c.userID))
+		err := cm.redisClient.Del(context.Background(), userLocationKey(c.userID)).Err()
+		if err != nil {
+			cm.log.Error().Err(err).Int64("user_id", c.userID).Msg("Failed to delete user location during shutdown")
+		}
 		cm.unregister <- c
 	}
 
@@ -286,15 +350,26 @@ func (cm *connManager) Close() error {
 	cm.cancel()
 
 	if err := cm.pubsub.Close(); err != nil {
-		log.Printf("error closing pubsub: %v", err)
+		cm.log.Error().Err(err).Msg("Error closing Redis pubsub")
 	}
 
-	return cm.redisClient.Close()
+	err := cm.redisClient.Close()
+	if err != nil {
+		cm.log.Error().Err(err).Msg("Error closing Redis client")
+	}
+
+	cm.log.Info().Msg("Connection manager closed successfully")
+	return err
 }
 
 func (c *connManager) handleSendInvitation(
 	userID int64, p SendInvitationPayload,
 ) error {
+	c.log.Info().
+		Int64("inviter_id", userID).
+		Int64("invitee_id", p.InviteeID).
+		Msg("Processing invitation request")
+
 	isOnline := c.redisClient.Exists(context.Background(), userLocationKey(p.InviteeID)).Val() == 1
 	if !isOnline {
 		b, _ := json.Marshal(Message{Type: ServerMsgUserOffline})
@@ -304,11 +379,13 @@ func (c *connManager) handleSendInvitation(
 
 	success, err := services.InviteManager.CreateInvite(userID, p.InviteeID, p.MatchDetails)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", userID).Int64("invitee_id", p.InviteeID).Msg("Failed to create invite")
 		return err
 	}
 	if !success {
 		// Invite already exists from this user
 		// TODO: Either replace the existing invite or ignore this invite
+		c.log.Warn().Int64("inviter_id", userID).Int64("invitee_id", p.InviteeID).Msg("Invite already exists from this user")
 		return nil
 	}
 
@@ -323,8 +400,14 @@ func (c *connManager) handleSendInvitation(
 }
 
 func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPayload) error {
+	c.log.Info().
+		Int64("accepter_id", userID).
+		Int64("inviter_id", p.InviterID).
+		Msg("Processing invitation acceptance")
+
 	invite, err := services.InviteManager.InviteDetails(p.InviterID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("accepter_id", userID).Int64("inviter_id", p.InviterID).Msg("Failed to get invite details")
 		return err
 	}
 	if invite == nil {
@@ -336,6 +419,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 	// remove the invite
 	removed, err := services.InviteManager.RemoveInvite(p.InviterID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", p.InviterID).Msg("Failed to remove invite")
 		return err
 	}
 	if !removed {
@@ -346,9 +430,11 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 
 	problem, err := store.DataStore.GetRandomProblemByTagsAndDifficulties(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
 	if err != nil {
+		c.log.Error().Err(err).Msg("Failed to get random problem")
 		return err
 	}
 	if problem == nil {
+		c.log.Warn().Msg("No problem found matching preferences")
 		return fmt.Errorf("no problem found matching preferences")
 	}
 
@@ -358,8 +444,15 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 		*problem,
 	)
 	if err != nil {
+		c.log.Error().Err(err).Ints64("players", []int64{p.InviterID, userID}).Msg("Failed to start game")
 		return err
 	}
+
+	c.log.Info().
+		Str("session_id", sessionID).
+		Ints64("players", []int64{p.InviterID, userID}).
+		Str("problem_slug", problem.Slug).
+		Msg("Game started successfully")
 
 	problemURL := fmt.Sprintf("https://leetcode.com/problems/%s", problem.Slug)
 
@@ -372,6 +465,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 	b, _ := json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startPayload)})
 	err = ConnManager.SendToUser(userID, b)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", userID).Str("session_id", sessionID).Msg("Failed to notify accepter of game start")
 		return err
 	}
 
@@ -380,6 +474,7 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 	b, _ = json.Marshal(Message{Type: ServerMsgStartGame, Payload: MarshalPayload(startPayload)})
 	err = ConnManager.SendToUser(p.InviterID, b)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", p.InviterID).Str("session_id", sessionID).Msg("Failed to notify inviter of game start")
 		return err
 	}
 
@@ -387,27 +482,34 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 }
 
 func (c *connManager) handleDeclineInvitation(p DeclineInvitationPayload) error {
+	c.log.Info().
+		Int64("inviter_id", p.InviterID).
+		Msg("Processing invitation decline")
+
 	invite, err := services.InviteManager.InviteDetails(p.InviterID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", p.InviterID).Msg("Failed to get invite details")
 		return err
 	}
 	if invite == nil {
-		// no invite to decline
+		c.log.Warn().Int64("inviter_id", p.InviterID).Msg("No invite to decline")
 		return nil
 	}
 
 	success, err := services.InviteManager.RemoveInvite(p.InviterID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", p.InviterID).Msg("Failed to remove invite")
 		return err
 	}
 	if !success {
-		// no invite to decline
+		c.log.Debug().Int64("inviter_id", p.InviterID).Msg("No invite to decline")
 		return nil
 	}
 
 	b, _ := json.Marshal(Message{Type: ServerMsgInvitationDeclined})
 	err = ConnManager.SendToUser(p.InviterID, b)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", p.InviterID).Msg("Failed to notify inviter of decline")
 		return err
 	}
 
@@ -415,14 +517,22 @@ func (c *connManager) handleDeclineInvitation(p DeclineInvitationPayload) error 
 }
 
 func (c *connManager) handleCancelInvitation(userID int64) error {
+	c.log.Info().
+		Int64("inviter_id", userID).
+		Msg("Processing invitation cancellation")
+
 	invite, err := services.InviteManager.InviteDetails(userID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", userID).Msg("Failed to get invite details")
 		return err
 	}
 	if invite == nil {
+		c.log.Warn().Int64("inviter_id", userID).Msg("No invite to cancel")
+
 		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
 		err = ConnManager.SendToUser(userID, b)
 		if err != nil {
+			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to send invite does not exist message")
 			return err
 		}
 		return nil
@@ -430,13 +540,17 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 
 	success, err := services.InviteManager.RemoveInvite(userID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("inviter_id", userID).Msg("Failed to remove invite")
 		return err
 	}
 	if !success {
 		// this shouldn’t really happen, but guard anyway
+		c.log.Warn().Int64("inviter_id", userID).Msg("Could not cancel invite - already removed")
+
 		b, _ := json.Marshal(Message{Type: ServerMsgInviteDoesNotExist})
 		err = ConnManager.SendToUser(invite.InviteeID, b)
 		if err != nil {
+			c.log.Error().Err(err).Int64("invitee_id", invite.InviteeID).Msg("Failed to send invite does not exist message")
 			return err
 		}
 		return nil
@@ -446,6 +560,7 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 	b, _ := json.Marshal(Message{Type: ServerMsgInvitationCanceled, Payload: MarshalPayload(payload)})
 	err = ConnManager.SendToUser(invite.InviteeID, b)
 	if err != nil {
+		c.log.Error().Err(err).Int64("invitee_id", invite.InviteeID).Msg("Failed to notify invitee of cancellation")
 		return err
 	}
 
@@ -453,29 +568,40 @@ func (c *connManager) handleCancelInvitation(userID int64) error {
 }
 
 func (c *connManager) handleEnterQueue(userID int64, p EnterQueuePayload) error {
+	c.log.Warn().Int64("user_id", userID).Msg("Queue entry not implemented")
 	return fmt.Errorf("unimplemented")
 }
 
 func (c *connManager) handleLeaveQueue(userID int64) error {
+	c.log.Warn().Int64("user_id", userID).Msg("Queue leave not implemented")
 	return fmt.Errorf("unimplemented")
 }
 
 func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error {
+	c.log.Info().
+		Int64("user_id", userID).
+		Str("status", p.Status).
+		Msg("Processing submission")
+
 	sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get session ID")
 		return err
 	}
 	if sessionID == "" {
 		// User is not in-game
+		c.log.Warn().Int64("user_id", userID).Msg("User is not in-game")
 		return err
 	}
 
 	session, err := services.GameManager.GetGame(sessionID)
 	if err != nil {
+		c.log.Error().Err(err).Str("session_id", sessionID).Msg("Failed to get game session")
 		return err
 	}
 	if session == nil {
 		// this shouldn’t really happen, but guard anyway
+		c.log.Error().Str("session_id", sessionID).Msg("Game session not found")
 		return err
 	}
 
@@ -498,17 +624,20 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 
 	err = services.GameManager.AddSubmission(sessionID, submission)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to add submission")
 		return err
 	}
 
 	opponentID, err := services.GameManager.GetOpponent(sessionID, userID)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get opponent")
 		return err
 	}
 
 	if submissionStatus == models.Accepted {
 		session, err = services.GameManager.CompleteGame(sessionID, userID)
 		if err != nil {
+			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to complete game")
 			return err
 		}
 
@@ -526,15 +655,18 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 
 		err = ConnManager.SendToUser(userID, b)
 		if err != nil {
+			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to send game over message to user")
 			return err
 		}
 		err = ConnManager.SendToUser(opponentID, b)
 		if err != nil {
+			c.log.Error().Err(err).Int64("user_id", opponentID).Msg("Failed to send game over message to opponent")
 			return err
 		}
 
 		err = store.DataStore.StoreMatch(session)
 		if err != nil {
+			c.log.Error().Err(err).Msg("Failed to store match data")
 			return err
 		}
 		return nil
@@ -557,6 +689,7 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 	b, _ := json.Marshal(msg)
 	err = ConnManager.SendToUser(opponentID, b)
 	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", opponentID).Msg("Failed to send game over message to opponent")
 		return err
 	}
 
