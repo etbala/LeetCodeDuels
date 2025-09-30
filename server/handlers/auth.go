@@ -8,16 +8,25 @@ import (
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // todo: nicer way of doing this?
 func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
+	l := log.Ctx(r.Context())
+
 	code := r.URL.Query().Get("code")
 	errorParam := r.URL.Query().Get("error")
+
+	l.Info().
+		Str("code", code).
+		Str("error", errorParam).
+		Msg("Received AuthGitHubCallback")
 
 	var title, message, codeJS, errorJS string
 
@@ -26,6 +35,7 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		message = fmt.Sprintf("Error: %s", errorParam)
 		errorJS = errorParam
 		codeJS = ""
+		l.Warn().Str("error", errorParam).Msg("GitHub authentication failed with error")
 	} else if code != "" {
 		title = "Authentication Successful!"
 		message = "You can close this window now."
@@ -36,6 +46,7 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		message = "No authorization code received."
 		codeJS = ""
 		errorJS = "no_code"
+		l.Warn().Msg("GitHub auth callback received without an authorization code")
 	}
 
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
@@ -124,6 +135,9 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
+	l := log.Ctx(r.Context())
+	l.Info().Msg("Received request for GitHub code exchange")
+
 	origin := r.Header.Get("Origin")
 	if origin != "" {
 		// todo: in production, validate against known extension IDs
@@ -143,25 +157,31 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		l.Warn().Err(err).Msg("Failed to decode request body")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if payload.Code == "" {
+		l.Warn().Msg("Request is missing authorization code")
 		http.Error(w, "Missing authorization code", http.StatusBadRequest)
 		return
 	}
 
 	user, err := exchangeCodeForUser(payload.Code)
 	if err != nil {
-		log.Printf("GitHub token exchange error: %v", err)
+		l.Error().Err(err).Msg("GitHub code exchange failed")
 		http.Error(w, "Invalid code", http.StatusBadRequest)
 		return
 	}
 
+	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Int64("user_id", user.ID)
+	})
+
 	token, err := services.GenerateJWT(user.ID)
 	if err != nil {
-		log.Printf("JWT generation error: %v", err)
+		l.Error().Err(err).Msg("JWT generation failed")
 		http.Error(w, "Could not generate token", http.StatusInternalServerError)
 		return
 	}

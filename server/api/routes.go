@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"leetcodeduels/handlers"
+	"leetcodeduels/logging"
 	"leetcodeduels/ws"
 
 	"github.com/gorilla/mux"
@@ -12,6 +13,7 @@ import (
 // SetupRoutes initializes and returns the main router with all route groups and middleware set up.
 func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	r := mux.NewRouter()
+	r.Use(logging.RequestLogger)
 	api := r.PathPrefix("/api").Subrouter()
 
 	api.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
@@ -138,11 +140,11 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	// --------------------
 	problemRouter := api.PathPrefix("/v1/problems").Subrouter()
 
-	// GET /problems/random?difficulties={difficulties}&tags={tags}
+	// GET /problems/random?difficulty[]=Easy&difficulty[]=Medium&tag[]=1&tag[]=2
 	// Returns a random problem matching the specified criteria.
 	// Query Parameters:
-	// - difficulties: Comma-separated list of difficulties (Easy, Medium, Hard)
-	// - tags: Comma-separated list of tag IDs
+	// - difficulty[]: Difficulties (Easy, Medium, and/or Hard)
+	// - tag[]: Filtered Tag IDs (problem will have at least one of these tags)
 	// Response: models.Problem
 	problemRouter.HandleFunc("/random", func(w http.ResponseWriter, r *http.Request) {
 		handlers.RandomProblem(w, r)
