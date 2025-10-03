@@ -10,6 +10,15 @@ interface Tag {
   name: string;
 }
 
+interface SendInvitationPayload {
+  inviteeID: number;
+  matchDetails: {
+    isRated: boolean;
+    difficulties: string[];
+    tags: number[];
+  };
+}
+
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
@@ -53,11 +62,19 @@ export class DashboardPageComponent implements OnInit {
   }
 
   toggleDiff(d: string, checked: boolean) {
-    checked ? this.selectedDifficulties.add(d) : this.selectedDifficulties.delete(d);
+    if (checked) {
+      this.selectedDifficulties.add(d);
+    } else {
+      this.selectedDifficulties.delete(d);
+    }
   }
 
   toggleTag(id: number, checked: boolean) {
-    checked ? this.selectedTags.add(id) : this.selectedTags.delete(id);
+    if (checked) {
+      this.selectedTags.add(id);
+    } else {
+      this.selectedTags.delete(id);
+    }
   }
 
   private async getUserIdFromUsername(input: string): Promise<number | null> {
@@ -81,18 +98,18 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  private buildMatchPayload(inviteeID: number) {
+  private buildMatchPayload(inviteeID: number): SendInvitationPayload {
     return {
       inviteeID,
       matchDetails: {
         isRated: false,
-        difficulties: Array.from(this.selectedDifficulties).map(d => ({ name: d })),
-        tags: Array.from(this.selectedTags)
-      }
+        difficulties: Array.from(this.selectedDifficulties),
+        tags: Array.from(this.selectedTags),
+      },
     };
   }
 
-  private sendInvitation(payload: any) {
+  private sendInvitation(payload: SendInvitationPayload) {
     const ws = new WebSocket(`${this.API_URL.replace(/^http/, 'ws')}/ws`);
 
     ws.onopen = () => {
@@ -123,7 +140,6 @@ export class DashboardPageComponent implements OnInit {
       }
 
       const payload = this.buildMatchPayload(inviteeID);
-      console.log('Sending invitation payload:', payload);
       try {
         await this.sendInvitation(payload);
         this.router.navigate(['/queue']);
