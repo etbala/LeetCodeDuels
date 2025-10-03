@@ -11,15 +11,4 @@ import { AuthService } from '../../../services/auth.service';
   styleUrls: ['./header.component.scss'],
 })
 export class HeaderComponent {
-  constructor(
-    private auth: AuthService,
-    private router: Router
-  ) {}
-
-  logout(): void {
-    this.auth.logout().then(() => {
-      // After clearing the JWT, redirect to login
-      this.router.navigate(['/login']);
-    });
-  }
 }

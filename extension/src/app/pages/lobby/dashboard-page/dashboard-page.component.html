@@ -7,59 +7,58 @@
 </head>
 <body>
 
-<div>
-  <h3>Start A New Duel</h3>
-  <div>
+<h1 class="duel-header">Start A New Duel</h1>
+
+<div class="dashboard">
+  <div class="left-panel">
     <input
       type="text"
       id="opponentUsername"
       placeholder="Opponent's Username"
       [(ngModel)]="opponentUsername"
     />
-  </div>
 
-  <div>
     <button type="button" (click)="startDuel()">Send Duel!</button>
+    <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
   </div>
 
-  <div>
-    <label>Difficulty</label>
-    <details>
-      <summary>
-        {{ selectedDifficulties.size ? selectedDifficultiesList : 'Select difficulty...' }}
-      </summary>
-      <div *ngFor="let d of difficulties">
-        <label>
-          <input
-            #cb
-            type="checkbox"
-            [checked]="selectedDifficulties.has(d)"
-            (change)="toggleDiff(d, cb.checked)"
-          />
-          {{ d }}
-        </label>
-      </div>
-    </details>
-  </div>
+  <div class="right-panel">
+  <label class="box-label">Difficulty</label>
+  <details name="dropdown">
+    <summary>
+      {{ selectedDifficulties.size ? selectedDifficultiesList : 'Select difficulty...' }}
+    </summary>
+    <div class="dropdown-content">
+      <label class="dropdown-label" *ngFor="let d of difficulties">
+        <input
+          #cb
+          type="checkbox"
+          [checked]="selectedDifficulties.has(d)"
+          (change)="toggleDiff(d, cb.checked)"
+        />
+        {{ d }}
+      </label>
+    </div>
+  </details>
 
-  <div>
-    <label>Tags</label>
-    <details>
-      <summary>
-        {{ selectedTags.size ? selectedTagsNames : 'Select tags...' }}
-      </summary>
-      <div *ngFor="let t of tags">
-        <label>
-          <input
-            #cb
-            type="checkbox"
-            [checked]="selectedTags.has(t.id)"
-            (change)="toggleTag(t.id, cb.checked)"
-          />
-          {{ t.name }}
-        </label>
-      </div>
-    </details>
+
+  <label class="box-label">Tags</label>
+  <details name="dropdown">
+    <summary>
+      {{ selectedTags.size ? selectedTagsNames : 'Select tags...' }}
+    </summary>
+    <div class="dropdown-content">
+      <label class="dropdown-label" *ngFor="let t of tags">
+        <input
+          #cb
+          type="checkbox"
+          [checked]="selectedTags.has(t.id)"
+          (change)="toggleTag(t.id, cb.checked)"
+        />
+        {{ t.name }}
+      </label>
+    </div>
+  </details>
   </div>
 </div>
 
