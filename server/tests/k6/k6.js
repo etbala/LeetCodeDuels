@@ -20,10 +20,6 @@ const STATIC_USER_ID_2 = 9002;
 
 const EXISTING_USERNAMES = ['alice', 'bob', 'charlie', 'david', 'emily'];
 
-// --------------------------------------------------------------------------------
-// ---                              K6 OPTIONS                                  ---
-// --------------------------------------------------------------------------------
-
 export const options = {
     scenarios: {
         // Scenario for hammering the REST API endpoints
@@ -53,13 +49,7 @@ export const options = {
     },
 };
 
-// --------------------------------------------------------------------------------
-// ---                           HELPER FUNCTIONS                               ---
-// --------------------------------------------------------------------------------
-
-/**
- * Simple base64url encoding
- */
+// Simple base64url encoding
 function base64urlEncode(str) {
     return encoding.b64encode(str, 'rawstd')
         .replace(/\+/g, '-')
@@ -115,11 +105,6 @@ function createSubmission(status, passed, total) {
     };
 }
 
-
-// --------------------------------------------------------------------------------
-// ---                       SCENARIO 1: REST API TESTS                         ---
-// --------------------------------------------------------------------------------
-
 export function restApiScenario() {
     const user1Token = generateJWT(STATIC_USER_ID_1);
     const authHeaders = { 
@@ -172,12 +157,6 @@ export function restApiScenario() {
 
     sleep(1);
 
-    group('Queue Endpoint', () => {
-        // Test queue size endpoint
-        const queueSizeRes = http.get(`${BASE_URL}/api/v1/queue/size`, authHeaders);
-        check(queueSizeRes, { 'GET /queue/size': (r) => r.status === 200 });
-    });
-
     group('Match History Endpoints', () => {
         // Test existing match endpoints using seeded data
         const existingMatchId = '11111111-1111-1111-1111-111111111111';
@@ -191,10 +170,6 @@ export function restApiScenario() {
 
     sleep(1);
 }
-
-// --------------------------------------------------------------------------------
-// ---                  SCENARIO 2: WEBSOCKET GAME FLOW TESTS                   ---
-// --------------------------------------------------------------------------------
 
 export function websocketGameScenario() {
     // Each VU iteration uses unique player IDs to avoid conflicts

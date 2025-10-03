@@ -11,7 +11,6 @@ $TIMESTAMP = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 
 Write-Host "Starting LeetCodeDuels Stress Test Pipeline" -ForegroundColor Green
 
-# Get the correct paths relative to script location
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..\..\..") # Go up to project root
 $ServerDir = Join-Path $ProjectRoot "server/cmd/server"
@@ -42,7 +41,6 @@ function Cleanup {
 trap { Cleanup; exit 1 }
 
 try {
-    # Verify files exist
     if (!(Test-Path $K6TestFile)) {
         throw "K6 test file not found: $K6TestFile"
     }
@@ -59,7 +57,7 @@ try {
     Pop-Location
 
     Write-Host "Waiting for services to be healthy..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 30
+    Start-Sleep -Seconds 10
     
     # Check container health
     $maxHealthRetries = 30
@@ -89,7 +87,6 @@ try {
         Start-Sleep -Seconds 2
     } while ($true)
     
-    # Set environment variables
     $env:DB_URL = "postgresql://testuser@localhost:5433/leetcodeduels_test?sslmode=disable"
     $env:RDB_URL = "redis://localhost:6379"
     $env:JWT_SECRET = $JWTSecret
@@ -99,7 +96,6 @@ try {
     $migrationsDir = Join-Path $ProjectRoot "server\tests\migrations"
     
     if (Test-Path $migrationsDir) {
-        # Run schema creation
         $schemaFile = Join-Path $migrationsDir "0001_create_schema.up.sql"
         if (Test-Path $schemaFile) {
             Write-Host "Running schema migration..." -ForegroundColor Yellow
@@ -111,7 +107,6 @@ try {
             Write-Host "Schema created successfully!" -ForegroundColor Green
         }
         
-        # Run seed data
         $seedFile = Join-Path $migrationsDir "0002_seed_data.up.sql"
         if (Test-Path $seedFile) {
             Write-Host "Running seed data migration..." -ForegroundColor Yellow
