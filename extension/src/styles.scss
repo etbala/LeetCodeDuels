@@ -1,1 +1,13 @@
 /* You can add global styles to this file, and also import other style files */
+/* A basic CSS reset to remove default browser styling */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Global CSS variables for theming */
+:root {
+  --header-bg: #2C2D31;
+  --app-bg: #3E4355;
+}

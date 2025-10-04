@@ -1,0 +1,25 @@
+@use "sass:math";
+
+// Variables TODO: Place most of these in common file
+$border-radius: 5px;
+$input-bg: #2C2D31;
+$input-text: #fff;
+$button-bg: #B91C00;
+$body-text: #B5B5B5;
+$example-text: #878787;
+$opacity: 0.5;
+$primary-padding: 0.5rem;
+$box-width: 180px;
+
+// Cancel invite button
+button {
+  background: $button-bg;
+  color: $input-text;
+  border-radius: $border-radius;
+  padding: $primary-padding 1rem;
+  margin: 0.5rem auto;
+  display: block;
+  border: none;
+  cursor: pointer;
+  width: math.div($box-width, 1.5);
+}
