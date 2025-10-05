@@ -59,9 +59,19 @@ go run ./cmd/server
 ## Testing
 
 ### Server Tests
+Install Docker.
+
 ```bash
 cd server
 go test ./... -v
+```
+
+### Server Stress Tests
+Install Grafana k6
+
+```bash
+cd server/tests/k6
+./stress-test.ps1
 ```
 
 ## High Level Architecture

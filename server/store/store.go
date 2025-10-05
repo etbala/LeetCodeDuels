@@ -20,10 +20,10 @@ type dataStore struct {
 func InitDataStore(connStr string) error {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 	if err = db.Ping(); err != nil {
-		return err
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	DataStore = &dataStore{db: db}
 	return nil

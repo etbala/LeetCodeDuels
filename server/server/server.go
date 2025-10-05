@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"leetcodeduels/api"
 	"leetcodeduels/config"
 	"leetcodeduels/services"
@@ -16,22 +17,22 @@ import (
 func New(cfg *config.Config) (*http.Server, error) {
 	err := store.InitDataStore(cfg.DB_URL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize data store: %w", err)
 	}
 
 	err = services.InitInviteManager(cfg.RDB_URL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize invite manager: %w", err)
 	}
 
 	err = services.InitGameManager(cfg.RDB_URL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize game manager: %w", err)
 	}
 
 	err = ws.InitConnManager(cfg.RDB_URL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize connection manager: %w", err)
 	}
 
 	c := cors.New(cors.Options{
