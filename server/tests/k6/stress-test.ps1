@@ -6,8 +6,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $BASE_URL = "http://localhost:$ServerPort"
-$TEST_OUTPUT_DIR = "results"
 $TIMESTAMP = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$TEST_OUTPUT_DIR = "results/$TIMESTAMP"
 
 Write-Host "Starting LeetCodeDuels Stress Test Pipeline" -ForegroundColor Green
 
@@ -31,6 +31,11 @@ function Cleanup {
     Write-Host "Cleaning up..." -ForegroundColor Yellow
     if ($serverProcess -and !$serverProcess.HasExited) {
         Write-Host "Stopping server process..." -ForegroundColor Yellow
+        # Find child 'go' process and kill it, then the cmd process
+        $childProcesses = Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $serverProcess.Id }
+        foreach ($child in $childProcesses) {
+            Stop-Process -Id $child.ProcessId -Force
+        }
         $serverProcess.Kill()
         $serverProcess.WaitForExit(5000)
     }
@@ -60,7 +65,7 @@ try {
     Start-Sleep -Seconds 10
     
     # Check container health
-    $maxHealthRetries = 30
+    $maxHealthRetries = 10
     $healthRetryCount = 0
     do {
         $healthRetryCount++
@@ -122,10 +127,14 @@ try {
     }
 
     Write-Host "Starting server from: $ServerDir" -ForegroundColor Blue
-    Push-Location $ServerDir
-    
-    $serverProcess = Start-Process -FilePath "go" -ArgumentList "run", "main.go" -NoNewWindow -PassThru
-    Pop-Location
+    $serverOutFile = Join-Path $TEST_OUTPUT_DIR "server-output-$TIMESTAMP.log"
+    $serverErrFile = Join-Path $TEST_OUTPUT_DIR "server-error-$TIMESTAMP.log"
+
+    $serverProcess = Start-Process -FilePath "go" -ArgumentList "run", "main.go" `
+        -WorkingDirectory $ServerDir `
+        -RedirectStandardOutput $serverOutFile `
+        -RedirectStandardError $serverErrFile `
+        -NoNewWindow -PassThru
 
     Write-Host "Waiting for server to be ready..." -ForegroundColor Yellow
     $maxRetries = 10
@@ -149,17 +158,18 @@ try {
     } while ($true)
 
     Write-Host "Running K6 stress tests..." -ForegroundColor Blue
-    $k6OutputFile = Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "k6-results-$TIMESTAMP.json"
-    $k6LogFile = Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "k6-log-$TIMESTAMP.txt"
+    $k6MetricsFile = Join-Path $TEST_OUTPUT_DIR "k6-metrics.json"
+    $k6SummaryFile = Join-Path $TEST_OUTPUT_DIR "k6-summary.txt"
+    $k6ConsoleLogFile = Join-Path $TEST_OUTPUT_DIR "k6-console.log"
     
     $env:BASE_URL = $BASE_URL
     
     Push-Location $ScriptDir
     $k6Process = Start-Process -FilePath "k6" -ArgumentList @(
         "run",
-        "--out", "json=$k6OutputFile",
+        "--out", "json=$k6MetricsFile",
         "k6.js"
-    ) -RedirectStandardOutput $k6LogFile -RedirectStandardError (Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "k6-error-$TIMESTAMP.txt") -NoNewWindow -PassThru -Wait
+    ) -RedirectStandardOutput $k6SummaryFile -RedirectStandardError $k6ConsoleLogFile -NoNewWindow -PassThru -Wait
     Pop-Location
 
     if ($k6Process.ExitCode -eq 0) {
@@ -167,16 +177,14 @@ try {
     } else {
         Write-Host "K6 tests failed with exit code: $($k6Process.ExitCode)" -ForegroundColor Red
         
-        # Show error output if available
-        $errorFile = Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "k6-error-$TIMESTAMP.txt"
-        if (Test-Path $errorFile) {
-            Write-Host "Error output:" -ForegroundColor Red
-            Get-Content $errorFile | Write-Host -ForegroundColor Red
+        if (Test-Path $k6ConsoleLogFile) {
+            Write-Host "Console log output from k6:" -ForegroundColor Red
+            Get-Content $k6ConsoleLogFile | Write-Host -ForegroundColor Red
         }
     }
 
     Write-Host "Generating test summary..." -ForegroundColor Blue
-    $summaryFile = Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "test-summary-$TIMESTAMP.txt"
+    $summaryFile = Join-Path $TEST_OUTPUT_DIR "test-summary.txt"
     
     @"
 LeetCodeDuels Stress Test Results
@@ -185,29 +193,24 @@ Timestamp: $TIMESTAMP
 Base URL: $BASE_URL
 K6 Exit Code: $($k6Process.ExitCode)
 
-Files Generated:
-- K6 JSON Results: $k6OutputFile
-- K6 Console Log: $k6LogFile
-- K6 Error Log: $(Join-Path (Resolve-Path $TEST_OUTPUT_DIR) "k6-error-$TIMESTAMP.txt")
-
-Docker Containers Used:
-- PostgreSQL: k6-postgres-test-1 (port 5432)
-- Redis: k6-redis-test-1 (port 6379)
+Files Generated in: $TEST_OUTPUT_DIR
+- Server Output Log: $(Split-Path $serverOutFile -Leaf)
+- Server Error Log:  $(Split-Path $serverErrFile -Leaf)
+- K6 Final Summary:  $(Split-Path $k6SummaryFile -Leaf)
+- K6 Console Log:    $(Split-Path $k6ConsoleLogFile -Leaf)
+- K6 Raw Metrics:    $(Split-Path $k6MetricsFile -Leaf)
 
 Test Configuration:
-- JWT Secret: $JWTSecret
 - Server Port: $ServerPort
-
-Paths Used:
-- Script Directory: $ScriptDir
-- Project Root: $ProjectRoot
-- Server Directory: $ServerDir
-- K6 Test File: $K6TestFile
 "@ | Out-File -FilePath $summaryFile -Encoding UTF8
 
-    Write-Host "Results saved to: $TEST_OUTPUT_DIR/" -ForegroundColor Cyan
-    Write-Host "Summary: $summaryFile" -ForegroundColor Cyan
-    Write-Host "K6 Results: $k6OutputFile" -ForegroundColor Cyan
+    Write-Host "Results saved to: $TEST_OUTPUT_DIR" -ForegroundColor Cyan
+    Write-Host "Summary Report: $summaryFile" -ForegroundColor Cyan
+    Write-Host "Server Output Log: $serverOutFile" -ForegroundColor Cyan
+    Write-Host "Server Error Log: $serverErrFile" -ForegroundColor Cyan
+    Write-Host "K6 Final Summary: $k6SummaryFile" -ForegroundColor Cyan
+    Write-Host "K6 Console Log: $k6ConsoleLogFile" -ForegroundColor Cyan
+    Write-Host "K6 Raw Metrics: $k6MetricsFile" -ForegroundColor Cyan
 
 } catch {
     Write-Host "Error occurred: $($_.Exception.Message)" -ForegroundColor Red
