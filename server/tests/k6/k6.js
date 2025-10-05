@@ -228,7 +228,7 @@ export function websocketGameScenario() {
                 inviterSocket.on('message', function (data) {
                     const msg = JSON.parse(data);
                     console.log(`[VU ${__VU}:${__ITER}] Inviter received: ${msg.type}`);
-                     switch (msg.type) {
+                    switch (msg.type) {
                         case 'start_game':
                             check(msg, { '[Inviter] game starts': m => m.payload && m.payload.sessionID });
                             sessionID = msg.payload.sessionID; // Capture the session ID!
@@ -236,7 +236,7 @@ export function websocketGameScenario() {
                             break;
                         case 'opponent_submission':
                             check(msg, { '[Inviter] receives opponent submission': m => m.payload && m.payload.playerID });
-                             // Send a winning submission after a random delay
+                            // Send a winning submission after a random delay
                             setTimeout(() => {
                                 if (!gameCompleted) {
                                     inviterSocket.send(JSON.stringify(createSubmission('Accepted', 20, 20)));
@@ -248,7 +248,7 @@ export function websocketGameScenario() {
                             gameCompleted = true;
                             inviterSocket.close();
                             break;
-                     }
+                    }
                 });
                 
                 // Add handlers for close/error events for robustness
@@ -320,7 +320,7 @@ export function websocketGameScenario() {
                     });
                 });
             } else {
-                 console.error(`[VU ${__VU}:${__ITER}] Failed to capture sessionID. Skipping post-game checks.`);
+                console.error(`[VU ${__VU}:${__ITER}] Failed to capture sessionID. Skipping post-game checks.`);
             }
         });
     });
