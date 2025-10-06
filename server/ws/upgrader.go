@@ -37,6 +37,8 @@ func WSConnect(w http.ResponseWriter, r *http.Request) {
 
 	userID := claims.UserID
 
+	// todo: disconnect existing connection for this userID after sending other_logon message
+
 	client := NewClient(userID, r.Context(), conn, ConnManager, l)
 	ConnManager.register <- client
 	go client.writePump()
