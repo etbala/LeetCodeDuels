@@ -1,2 +1,66 @@
-<h2>Dashboard</h2>
-<p>Coming soon...</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+</head>
+<body>
+
+<h1 class="duel-header">Start A New Duel</h1>
+
+<div class="dashboard">
+  <div class="left-panel">
+    <input
+      type="text"
+      id="opponentUsername"
+      placeholder="Opponent's Username"
+      [(ngModel)]="opponentUsername"
+    />
+
+    <button type="button" (click)="startDuel()">Send Duel!</button>
+    <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
+  </div>
+
+  <div class="right-panel">
+  <h3 class="box-label">Difficulty</h3>
+  <details name="dropdown">
+    <summary>
+      {{ selectedDifficulties.size ? selectedDifficultiesList : 'Select difficulty...' }}
+    </summary>
+    <div class="dropdown-content">
+      <label class="dropdown-label" *ngFor="let d of difficulties">
+        <input
+          #cb
+          type="checkbox"
+          [checked]="selectedDifficulties.has(d)"
+          (change)="toggleDiff(d, cb.checked)"
+        />
+        {{ d }}
+      </label>
+    </div>
+  </details>
+
+
+  <h3 class="box-label">Tags</h3>
+  <details name="dropdown">
+    <summary>
+      {{ selectedTags.size ? selectedTagsNames : 'Select tags...' }}
+    </summary>
+    <div class="dropdown-content">
+      <label class="dropdown-label" *ngFor="let t of tags">
+        <input
+          #cb
+          type="checkbox"
+          [checked]="selectedTags.has(t.id)"
+          (change)="toggleTag(t.id, cb.checked)"
+        />
+        {{ t.name }}
+      </label>
+    </div>
+  </details>
+  </div>
+</div>
+
+</body>
+</html>
