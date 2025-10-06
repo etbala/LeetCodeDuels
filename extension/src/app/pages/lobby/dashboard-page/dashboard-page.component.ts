@@ -4,11 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment.prod';
 import { Router } from '@angular/router';
-
-interface Tag {
-  id: number;
-  name: string;
-}
+import { Tag } from '../../../models/tag';
 
 interface SendInvitationPayload {
   inviteeID: number;
@@ -17,6 +13,11 @@ interface SendInvitationPayload {
     difficulties: string[];
     tags: number[];
   };
+}
+
+interface Message {
+    type: "send_invitation";
+    payload: SendInvitationPayload;
 }
 
 @Component({
@@ -98,8 +99,8 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  private buildMatchPayload(inviteeID: number): SendInvitationPayload {
-    return {
+  private buildMatchPayload(inviteeID: number): Message {
+    const payload: SendInvitationPayload = {
       inviteeID,
       matchDetails: {
         isRated: false,
@@ -107,19 +108,33 @@ export class DashboardPageComponent implements OnInit {
         tags: Array.from(this.selectedTags),
       },
     };
+
+    // Return the Message wrapper object
+    return {
+        type: "send_invitation", // The required type for the server to recognize the message
+        payload: payload,
+    };
   }
 
-  private sendInvitation(payload: SendInvitationPayload) {
-    const ws = new WebSocket(`${this.API_URL.replace(/^http/, 'ws')}/ws`);
+  private sendInvitation(message: Message): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`${this.API_URL.replace(/^http/, 'ws')}/ws`);
 
-    ws.onopen = () => {
-      console.log('WebSocket connected, sending invitation:', payload);
-      ws.send(JSON.stringify(payload));
-    };
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        ws.onclose = () => console.log('WebSocket closed');
+        reject(new Error('WebSocket connection failed or encountered an error.'));
+      };
 
-    ws.onmessage = (event) => console.log('Message from server:', event.data);
-    ws.onerror = (err) => console.error('WebSocket error:', err);
-    ws.onclose = () => console.log('WebSocket closed');
+      ws.onopen = () => {
+        console.log('WebSocket connected, sending invitation:', message);
+        ws.send(JSON.stringify(message));
+        resolve();
+      };
+
+      ws.onmessage = (event) => console.log('Message from server:', event.data);
+      ws.onclose = () => console.log('WebSocket closed');
+    });
   }
 
   async startDuel() {

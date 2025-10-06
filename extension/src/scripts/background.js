@@ -1,3 +1,4 @@
+import { environment } from '../environments/environment.ts';
 
 try {
     // ON page change
@@ -14,8 +15,7 @@ try {
     console.log(e);
 }
 
-// const SERVER_URL = 'http://localhost:8080';
-const SERVER_URL = 'https://lc-duels-development.fly.dev/';
+const SERVER_URL = environment.apiUrl;
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'getServerUrl') {
         sendResponse({ serverUrl: SERVER_URL });
