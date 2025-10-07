@@ -38,11 +38,6 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
-              },
-              {
-                "glob": "content-script.js",
-                "input": "src/scripts",
-                "output": "scripts"
               }
             ],
             "styles": [

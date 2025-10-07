@@ -5,10 +5,10 @@
     "types": ["chrome"]
   },
   "files": [
-    "src/main.ts",
-    "src/scripts/background.ts"
+    "src/main.ts"
   ],
   "include": [
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "src/scripts/**/*.ts"
   ]
 }
