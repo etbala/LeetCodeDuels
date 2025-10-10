@@ -20,19 +20,35 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
       throw new Error("User is not authenticated. Cannot connect WebSocket.");
     }
 
-    const response = await fetch(`${API_BASE_URL}/ws`, {
+    socket = new WebSocket(SOCKET_URL);
+
+    const ticketResponse = await fetch(`${API_BASE_URL}/api/v1/ws-ticket`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
 
-    // If this check fails, the server doesn't allow an upgrade.
-    if (!response.ok) {
-      throw new Error(`Authorization check failed with status: ${response.status}`);
+    if (!ticketResponse.ok) {
+      throw new Error(`Failed to get WebSocket ticket: ${ticketResponse.statusText}`);
     }
 
-    socket = new WebSocket(SOCKET_URL);
-    setupSocketListeners();
+    const { ticket } = await ticketResponse.json();
+    if (!ticket) {
+        throw new Error("Ticket was not found in the server response.");
+    }
+
+    const socketUrlWithTicket = `${SOCKET_URL}?ticket=${ticket}`;
+    socket = new WebSocket(socketUrlWithTicket);
+
+    socket.onopen = () => {
+      console.log("WebSocket connection established securely using a ticket.");
+      setupSocketListeners();
+    };
+
+    socket.onerror = (err) => {
+      console.error("WebSocket connection failed to open:", err);
+    };
 
     return { status: "success", message: "WebSocket connection initiated." };
 
@@ -53,7 +69,6 @@ function disconnectWebSocket() {
 function setupSocketListeners() {
   if (!socket) return;
 
-  socket.onopen = () => console.log("WebSocket connection established.");
   socket.onerror = (err) => console.error("WebSocket error:", err);
   socket.onclose = () => {
     console.log("WebSocket connection closed.");
