@@ -20,8 +20,6 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
       throw new Error("User is not authenticated. Cannot connect WebSocket.");
     }
 
-    socket = new WebSocket(SOCKET_URL);
-
     const ticketResponse = await fetch(`${API_BASE_URL}/api/v1/ws-ticket`, {
       method: 'POST',
       headers: {
@@ -38,7 +36,7 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
         throw new Error("Ticket was not found in the server response.");
     }
 
-    const socketUrlWithTicket = `${SOCKET_URL}?ticket=${ticket}`;
+    const socketUrlWithTicket = `${SOCKET_URL}/ws?ticket=${ticket}`;
     socket = new WebSocket(socketUrlWithTicket);
 
     socket.onopen = () => {
