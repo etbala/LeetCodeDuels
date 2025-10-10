@@ -111,7 +111,7 @@ export class DashboardPageComponent implements OnInit {
 
     // Return the Message wrapper object
     return {
-        type: "send_invitation", // The required type for the server to recognize the message
+        type: "send_invitation",
         payload: payload,
     };
   }
@@ -146,6 +146,9 @@ export class DashboardPageComponent implements OnInit {
       return;
     }
 
+    // TODO: Remove this, for testing the queue page
+    this.router.navigate(['/queue', trimmedUsername]);
+
     try {
       const inviteeID = await this.getUserIdFromUsername(trimmedUsername);
       if (!inviteeID) {
@@ -157,7 +160,7 @@ export class DashboardPageComponent implements OnInit {
       const payload = this.buildMatchPayload(inviteeID);
       try {
         await this.sendInvitation(payload);
-        this.router.navigate(['/queue']);
+        this.router.navigate(['/queue', trimmedUsername]);
       } catch (inviteErr) {
         this.errorMessage = 'Failed to send duel invitation. Please try again.';
         console.error('Error sending invitation:', inviteErr);
