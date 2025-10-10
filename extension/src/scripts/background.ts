@@ -1,5 +1,6 @@
-import { BackgroundScriptMessage, ExtensionEvent } from './../app/models/background.models';
+import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
+import { ExtensionEventType, UIMessage, StartGamePayload, InvitationRequestPayload, GameOverPayload, OpponentSubmissionPayload, UserIdentifiable } from 'app/models/extension-events';
 
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
@@ -64,24 +65,80 @@ function disconnectWebSocket() {
     }
 }
 
+function forwardToUI<T>(type: ExtensionEventType, payload: T) {
+  console.log(`Forwarding event to UI: ${type}`, payload);
+  const message: UIMessage<T> = {
+    type: type,
+    payload: payload,
+  };
+  chrome.runtime.sendMessage(message);
+}
+
+function handleServerMessage(serverMsgData: { type: string, payload: any }) {
+  console.log(`Received message from server: ${serverMsgData.type}`, serverMsgData.payload);
+
+  const eventType = serverMsgData.type as ExtensionEventType;
+  switch (eventType) {
+    case ExtensionEventType.InvitationRequest:
+      forwardToUI<InvitationRequestPayload>(eventType, serverMsgData.payload);
+      break;
+
+    case ExtensionEventType.StartGame:
+      const startPayload = serverMsgData.payload as StartGamePayload;
+      console.log("Starting game, opening URL:", startPayload.problemURL);
+      if (startPayload.problemURL) {
+        chrome.tabs.create({ url: startPayload.problemURL });
+      }
+      forwardToUI<StartGamePayload>(eventType, startPayload);
+      break;
+
+    case ExtensionEventType.GameOver:
+      forwardToUI<GameOverPayload>(eventType, serverMsgData.payload);
+      break;
+
+    case ExtensionEventType.OpponentSubmission:
+      forwardToUI<OpponentSubmissionPayload>(eventType, serverMsgData.payload);
+      break;
+
+    case ExtensionEventType.InvitationCanceled:
+    case ExtensionEventType.InvitationDeclined:
+    case ExtensionEventType.UserOffline:
+      forwardToUI<UserIdentifiable>(eventType, serverMsgData.payload);
+      break;
+    
+    case ExtensionEventType.InvitationNonexistant:
+    case ExtensionEventType.OtherLogon:
+      forwardToUI<null>(eventType, null); // Events with no payload
+      if (eventType === ExtensionEventType.OtherLogon) {
+        disconnectWebSocket();
+      }
+      break;
+    
+    case ExtensionEventType.ServerError:
+      console.error("Server-side error:", serverMsgData.payload);
+      forwardToUI<any>(eventType, serverMsgData.payload);
+      break;
+
+    default:
+      console.warn(`Unhandled message type from server: ${serverMsgData.type}`);
+      break;
+  }
+}
+
 function setupSocketListeners() {
   if (!socket) return;
 
   socket.onerror = (err) => console.error("WebSocket error:", err);
+  
   socket.onclose = () => {
     console.log("WebSocket connection closed.");
-    socket = null; // Clear the socket instance on close
+    socket = null;
   };
 
   socket.onmessage = (event) => {
     try {
       const serverMsgData = JSON.parse(event.data);
-      const eventToUi: ExtensionEvent = {
-        event: serverMsgData.type,
-        data: serverMsgData.payload,
-      };
-      // Forward the message from your server to the Angular UI
-      chrome.runtime.sendMessage(eventToUi);
+      handleServerMessage(serverMsgData);
     } catch (e) {
       console.error("Could not parse server message:", event.data);
     }
@@ -102,7 +159,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-function sendToServer(type: string, payload?: any) {
+function sendToServer(type: BackgroundActionType, payload?: any) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     const message = JSON.stringify({ type, ...payload });
     socket.send(message);
@@ -114,23 +171,23 @@ function sendToServer(type: string, payload?: any) {
 }
 
 // Listen for messages from Angular UI
-chrome.runtime.onMessage.addListener((message: BackgroundScriptMessage, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendResponse) => {
   console.log("Background received action:", message.action);
   switch (message.action) {
-    case 'duel:send-invitation':
-      sendResponse(sendToServer("send_invitation", message.payload));
+    case BackgroundActionType.DuelSendInvitation:
+      sendResponse(sendToServer(message.action, message.payload));
       break;
-    case 'duel:accept-invitation':
-      sendResponse(sendToServer("accept_invitation", message.payload));
+    case BackgroundActionType.DuelAcceptInvitation:
+      sendResponse(sendToServer(message.action, message.payload));
       break;
-    case 'duel:decline-invitation':
-      sendResponse(sendToServer("decline_invitation", message.payload));
+    case BackgroundActionType.DuelDeclineInvitation:
+      sendResponse(sendToServer(message.action, message.payload));
       break;
-    case 'duel:cancel-invitation':
-      sendResponse(sendToServer("cancel_invitation"));
+    case BackgroundActionType.DuelCancelInvitation:
+      sendResponse(sendToServer(message.action));
       break;
-    case 'duel:submission':
-      sendResponse(sendToServer("submission", message.payload));
+    case BackgroundActionType.DuelSubmission:
+      sendResponse(sendToServer(message.action, message.payload));
       break;
     default:
       sendResponse({ status: "error", error: "Unknown action" });
@@ -139,8 +196,6 @@ chrome.runtime.onMessage.addListener((message: BackgroundScriptMessage, sender, 
   return true;
 });
 
-// Attempt to connect on initial script startup if already authenticated.
 (function initialize() {
-    console.log("Background script started. Checking auth status...");
     connectWebSocket();
 })();

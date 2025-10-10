@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BackgroundAction, BackgroundScriptMessage } from '../../models/background.models';
+import { BackgroundAction, BackgroundScriptMessage } from '../../models/background-actions';
 
 @Injectable({
   providedIn: 'root',
