@@ -1,4 +1,4 @@
-import { MatchDetails, PlayerSubmission } from "./match.models";
+import { MatchDetails, PlayerSubmission } from "./match";
 
 // All possible event types sent from the background script to the UI.
 export enum ExtensionEventType {

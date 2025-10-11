@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Window {
   __CODE_DUELS_EXTENSION_INJECTED__?: boolean;
 }

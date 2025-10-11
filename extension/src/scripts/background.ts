@@ -1,10 +1,15 @@
 import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
-import { ExtensionEventType, UIMessage, StartGamePayload, InvitationRequestPayload, GameOverPayload, OpponentSubmissionPayload, UserIdentifiable } from 'app/models/extension-events';
+import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
+
+interface ServerMessage {
+  type: string;
+  payload: unknown;
+}
 
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
-const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_TOKEN_KEY = 'auth_token'; // todo: replace with constant used by both this and auth service?
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
 
 async function connectWebSocket(): Promise<{ status: string; message?: string }> {
@@ -51,9 +56,10 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
 
     return { status: "success", message: "WebSocket connection initiated." };
 
-  } catch (error: any) {
-    console.error("Failed to connect WebSocket:", error);
-    return { status: "error", message: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to connect WebSocket:", errorMessage);
+    return { status: "error", message: errorMessage };
   }
 }
 
@@ -65,50 +71,46 @@ function disconnectWebSocket() {
     }
 }
 
-function forwardToUI<T>(type: ExtensionEventType, payload: T) {
-  console.log(`Forwarding event to UI: ${type}`, payload);
-  const message: UIMessage<T> = {
-    type: type,
-    payload: payload,
-  };
+function forwardToUI(type: ExtensionEventType, payload: unknown) {
+  const message: UIMessage<unknown> = { type, payload };
   chrome.runtime.sendMessage(message);
 }
 
-function handleServerMessage(serverMsgData: { type: string, payload: any }) {
+function handleServerMessage(serverMsgData: ServerMessage) {
   console.log(`Received message from server: ${serverMsgData.type}`, serverMsgData.payload);
 
   const eventType = serverMsgData.type as ExtensionEventType;
   switch (eventType) {
     case ExtensionEventType.InvitationRequest:
-      forwardToUI<InvitationRequestPayload>(eventType, serverMsgData.payload);
+      forwardToUI(eventType, serverMsgData.payload);
       break;
 
-    case ExtensionEventType.StartGame:
+    case ExtensionEventType.StartGame: {
       const startPayload = serverMsgData.payload as StartGamePayload;
       console.log("Starting game, opening URL:", startPayload.problemURL);
       if (startPayload.problemURL) {
         chrome.tabs.create({ url: startPayload.problemURL });
       }
-      forwardToUI<StartGamePayload>(eventType, startPayload);
+      forwardToUI(eventType, startPayload);
       break;
-
+    }
     case ExtensionEventType.GameOver:
-      forwardToUI<GameOverPayload>(eventType, serverMsgData.payload);
+      forwardToUI(eventType, serverMsgData.payload);
       break;
 
     case ExtensionEventType.OpponentSubmission:
-      forwardToUI<OpponentSubmissionPayload>(eventType, serverMsgData.payload);
+      forwardToUI(eventType, serverMsgData.payload);
       break;
 
     case ExtensionEventType.InvitationCanceled:
     case ExtensionEventType.InvitationDeclined:
     case ExtensionEventType.UserOffline:
-      forwardToUI<UserIdentifiable>(eventType, serverMsgData.payload);
+      forwardToUI(eventType, serverMsgData.payload);
       break;
     
     case ExtensionEventType.InvitationNonexistant:
     case ExtensionEventType.OtherLogon:
-      forwardToUI<null>(eventType, null); // Events with no payload
+      forwardToUI(eventType, null); // Events with no payload
       if (eventType === ExtensionEventType.OtherLogon) {
         disconnectWebSocket();
       }
@@ -116,7 +118,7 @@ function handleServerMessage(serverMsgData: { type: string, payload: any }) {
     
     case ExtensionEventType.ServerError:
       console.error("Server-side error:", serverMsgData.payload);
-      forwardToUI<any>(eventType, serverMsgData.payload);
+      forwardToUI(eventType, serverMsgData.payload);
       break;
 
     default:
@@ -137,10 +139,14 @@ function setupSocketListeners() {
 
   socket.onmessage = (event) => {
     try {
-      const serverMsgData = JSON.parse(event.data);
-      handleServerMessage(serverMsgData);
+      const parsedData: unknown = JSON.parse(event.data);
+      const message = parsedData as ServerMessage;
+      if (!message) {
+        throw new Error("Invalid message format");
+      }
+      handleServerMessage(message);
     } catch (e) {
-      console.error("Could not parse server message:", event.data);
+      console.error("Could not parse server message:", event.data, e);
     }
   };
 }
@@ -159,9 +165,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-function sendToServer(type: BackgroundActionType, payload?: any) {
+function sendToServer(type: BackgroundActionType, payload?: unknown) {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    const message = JSON.stringify({ type, ...payload });
+    const message = JSON.stringify({ type, payload });
     socket.send(message);
     return { status: "success", message: `Sent '${type}' to server.` };
   } else {
@@ -193,7 +199,7 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
       sendResponse({ status: "error", error: "Unknown action" });
       break;
   }
-  return true;
+  return true; // Keep the message channel open for async response
 });
 
 (function initialize() {

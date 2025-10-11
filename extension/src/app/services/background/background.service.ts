@@ -1,14 +1,21 @@
 import { Injectable } from '@angular/core';
-import { BackgroundAction, BackgroundScriptMessage } from '../../models/background-actions';
+import { 
+  AcceptInvitationPayload,
+  BackgroundAction,
+  BackgroundActionType,
+  DeclineInvitationPayload,
+  SendInvitationPayload
+} from '../../models/background-actions';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BackgroundService {
 
-  private sendMessage<T>(action: BackgroundAction, payload?: any): Promise<T> {
+  private sendMessage<T, P>(action: BackgroundActionType, payload?: P): Promise<T> {
     return new Promise((resolve, reject) => {
-      const message: BackgroundScriptMessage = { action, payload };
+      const message: BackgroundAction<P> = { action, payload };
+
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
           return reject(chrome.runtime.lastError.message);
@@ -21,20 +28,19 @@ export class BackgroundService {
     });
   }
 
-  sendInvitation(payload: { inviteeId: string; problemId: string }) {
-    return this.sendMessage('duel:send-invitation', payload);
+  sendInvitation(payload: SendInvitationPayload) {
+    return this.sendMessage(BackgroundActionType.DuelSendInvitation, payload);
   }
 
-  acceptInvitation(payload: { invitationId: string }) {
-    return this.sendMessage('duel:accept-invitation', payload);
+  acceptInvitation(payload: AcceptInvitationPayload) {
+    return this.sendMessage(BackgroundActionType.DuelAcceptInvitation, payload);
   }
 
-  declineInvitation(payload: { invitationId: string }) {
-    return this.sendMessage('duel:decline-invitation', payload);
+  declineInvitation(payload: DeclineInvitationPayload) {
+    return this.sendMessage(BackgroundActionType.DuelDeclineInvitation, payload);
   }
 
-  cancelInvitation(payload: { invitationId: string }) {   
-    return this.sendMessage('duel:cancel-invitation', payload);
+  cancelInvitation() {
+    return this.sendMessage(BackgroundActionType.DuelCancelInvitation);
   }
-
 }
