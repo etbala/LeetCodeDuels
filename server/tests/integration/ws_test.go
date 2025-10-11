@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -19,32 +20,74 @@ func wsURL() string {
 	return "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws"
 }
 
-func TestWSUpgrader(t *testing.T) {
-	token, err := services.GenerateJWT(12345) // Alice
-	require.NoError(t, err)
+func TestWSTicketFlow(t *testing.T) {
+	t.Run("should successfully connect with a valid ticket", func(t *testing.T) {
+		token, err := services.GenerateJWT(12345) // Test user
+		require.NoError(t, err)
 
-	header := http.Header{}
-	header.Set("Authorization", "Bearer "+token)
+		req, err := http.NewRequest("POST", ts.URL+"/api/v1/ws-ticket", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(), header)
-	require.NoError(t, err, "should upgrade to WebSocket without error")
-	defer conn.Close()
-	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+		resp, err := ts.Client().Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// perform a simple ping-pong to verify channel works
-	err = conn.WriteMessage(websocket.TextMessage, []byte("ping"))
-	require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		require.NoError(t, err)
+		var ticketResponse struct {
+			Ticket string `json:"ticket"`
+		}
+		require.NoError(t, json.Unmarshal(body, &ticketResponse))
+		require.NotEmpty(t, ticketResponse.Ticket)
+
+		wsURLWithTicket := wsURL() + "?ticket=" + ticketResponse.Ticket
+		conn, resp, err := websocket.DefaultDialer.Dial(wsURLWithTicket, nil)
+		require.NoError(t, err, "WebSocket dial should succeed with a valid ticket")
+		defer conn.Close()
+		require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+	})
+
+	t.Run("should fail to connect with an invalid or no ticket", func(t *testing.T) {
+		// Attempt to dial without a ticket
+		_, resp, err := websocket.DefaultDialer.Dial(wsURL(), nil)
+		require.Error(t, err, "WebSocket dial should fail without a ticket")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		// Attempt to dial with a fake ticket
+		wsURLWithFakeTicket := wsURL() + "?ticket=fake-ticket-123"
+		_, resp, err = websocket.DefaultDialer.Dial(wsURLWithFakeTicket, nil)
+		require.Error(t, err, "WebSocket dial should fail with a fake ticket")
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
 }
 
 func dialWS(t *testing.T, userID int64) *websocket.Conn {
 	token, err := services.GenerateJWT(userID)
 	require.NoError(t, err)
 
-	header := http.Header{}
-	header.Set("Authorization", "Bearer "+token)
-
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL(), header)
+	req, err := http.NewRequest("POST", ts.URL+"/api/v1/ws-ticket", nil)
 	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	require.NoError(t, err)
+
+	var ticketResponse struct {
+		Ticket string `json:"ticket"`
+	}
+	require.NoError(t, json.Unmarshal(body, &ticketResponse))
+	require.NotEmpty(t, ticketResponse.Ticket, "server should return a ticket")
+
+	wsURLWithTicket := wsURL() + "?ticket=" + ticketResponse.Ticket
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURLWithTicket, nil)
+	require.NoError(t, err, "WebSocket dial should succeed with a valid ticket")
 	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
 
 	time.Sleep(10 * time.Millisecond)

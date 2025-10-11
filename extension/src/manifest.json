@@ -17,10 +17,10 @@
         "http://localhost:8080/*"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' wss://localhost:8080 wss://lc-duels-development.fly.dev http://localhost:8080 https://lc-duels-development.fly.dev https://github.com https://api.github.com"
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' ws://localhost:8080 wss://lc-duels-development.fly.dev http://localhost:8080 https://lc-duels-development.fly.dev https://github.com https://api.github.com"
     },
     "background": {
-        "service_worker": "scripts/background.js"
+        "service_worker": "background.js"
     },
     "action": {
         "default_popup": "index.html"
@@ -28,7 +28,7 @@
     "content_scripts": [
         {
             "matches": ["https://leetcode.com/problems/*"],
-            "js": ["scripts/content-script.js"],
+            "js": ["content.js"],
             "run_at": "document_start"
         }
     ],

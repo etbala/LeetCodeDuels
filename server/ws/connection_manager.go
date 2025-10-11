@@ -7,6 +7,7 @@ import (
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -18,6 +19,7 @@ import (
 const (
 	userLocationPrefix  = "user_location:"
 	serverChannelPrefix = "server:"
+	wsTicketPrefix      = "ws_ticket:"
 	userLocationTTL     = 60 * time.Second
 )
 
@@ -59,6 +61,10 @@ func userLocationKey(userID int64) string {
 
 func serverChannel(serverID string) string {
 	return fmt.Sprintf("%s%s", serverChannelPrefix, serverID)
+}
+
+func wsTicketKey(ticket string) string {
+	return fmt.Sprintf("%s%s", wsTicketPrefix, ticket)
 }
 
 func newConnManager(redisURL string) (*connManager, error) {
@@ -712,4 +718,30 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 	}
 
 	return nil
+}
+
+func (cm *connManager) StoreTicket(ctx context.Context, ticket string, userID int64, ttl time.Duration) error {
+	return cm.redisClient.Set(ctx, wsTicketKey(ticket), userID, ttl).Err()
+}
+
+func (cm *connManager) ValidateTicket(ctx context.Context, ticket string) (int64, error) {
+	key := wsTicketKey(ticket)
+	pipe := cm.redisClient.TxPipeline()
+	getResult := pipe.Get(ctx, key)
+	pipe.Del(ctx, key)
+
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return 0, fmt.Errorf("redis transaction failed: %w", err)
+	}
+
+	userIDStr, err := getResult.Result()
+	if err == redis.Nil {
+		return 0, fmt.Errorf("ticket not found or already used")
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to get ticket from redis: %w", err)
+	}
+
+	return strconv.ParseInt(userIDStr, 10, 64)
 }
