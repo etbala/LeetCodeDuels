@@ -2,7 +2,6 @@ package ws
 
 import (
 	"net/http"
-	// remove "leetcodeduels/services" if no longer needed here
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
