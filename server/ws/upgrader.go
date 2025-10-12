@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"leetcodeduels/services"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -16,15 +15,22 @@ var upgrader = websocket.Upgrader{
 func WSConnect(w http.ResponseWriter, r *http.Request) {
 	l := log.Ctx(r.Context())
 
-	claims, err := services.GetClaimsFromRequest(r)
+	ticket := r.URL.Query().Get("ticket")
+	if ticket == "" {
+		l.Warn().Msg("Attempted to connect to WebSocket without a ticket")
+		http.Error(w, "Bad Request: Missing ticket", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := ConnManager.ValidateTicket(r.Context(), ticket)
 	if err != nil {
-		l.Warn().Msg("Unauthorized attempt to open WebSocket connection")
+		l.Warn().Err(err).Str("ticket", ticket).Msg("Unauthorized attempt to open WebSocket connection with invalid ticket")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Int64("user_id", claims.UserID)
+		return c.Int64("user_id", userID)
 	})
 
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -35,7 +41,7 @@ func WSConnect(w http.ResponseWriter, r *http.Request) {
 
 	l.Info().Msg("WebSocket connection established")
 
-	userID := claims.UserID
+	// todo: disconnect existing connection for this userID after sending other_logon message
 
 	client := NewClient(userID, r.Context(), conn, ConnManager, l)
 	ConnManager.register <- client

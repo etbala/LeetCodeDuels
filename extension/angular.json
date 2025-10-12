@@ -15,11 +15,14 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular-builders/custom-webpack:browser",
           "options": {
+            "customWebpackConfig": {
+              "path": "./webpack.config.js"
+            },
             "outputPath": "dist",
             "index": "src/index.html",
-            "browser": "src/main.ts",
+            "main": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
@@ -35,11 +38,6 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
-              },
-              {
-                "glob": "**/*",
-                "input": "src/scripts",
-                "output": "scripts"
               }
             ],
             "styles": [
@@ -61,40 +59,31 @@
                   "maximumError": "8kB"
                 }
               ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "outputHashing": "none"
             },
             "dev": {
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true,
-              "outputHashing": "none"
-            },
-            "local": {
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
               "fileReplacements": [
                 {
-                  "replace": "src/environments/environment.prod.ts",
-                  "with": "src/environments/environment.ts"
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
                 }
               ],
               "outputHashing": "none"
-            }
-          },
-          "defaultConfiguration": "dev"
-        },
-        "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "configurations": {
-            "prod": {
-              "buildTarget": "extension:build:prod"
-            },
-            "dev": {
-              "buildTarget": "extension:build:dev"
             },
             "local": {
-              "buildTarget": "extension:build:local"
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "outputHashing": "none"
             }
           },
           "defaultConfiguration": "dev"
