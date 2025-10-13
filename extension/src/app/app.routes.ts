@@ -6,8 +6,7 @@ import { ChallengePageComponent } from './pages/lobby/challenge-page/challenge-p
 import { InGamePageComponent } from './pages/game/in-game-page/in-game-page.component';
 import { ResultPageComponent } from './pages/game/result-page/result-page.component';
 import { SettingsPageComponent } from './pages/settings-page/settings-page.component';
-import { NotificationsPageComponent } from './pages/notifications-page/notifications-page.component';
-import { AuthGuard } from './services/auth.guard';
+import { AuthGuard } from './services/auth/auth.guard';
 
 export const appRoutes: Route[] = [
   { path: 'login', component: LoginPageComponent },

@@ -157,11 +157,17 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 		handlers.AllTags(w, r)
 	}).Methods("GET")
 
+	// ----------------------
+	// WebSocket Ticket Route
+	// ----------------------
+	wsTicketRouter := api.PathPrefix("/v1/ws-ticket").Subrouter()
+	wsTicketRouter.Use(authMiddleware)
+	wsTicketRouter.HandleFunc("", ws.GenerateWSTicket).Methods("POST")
+
 	// --------------------
 	// WebSocket Upgrader
 	// --------------------
 	wsRouter := r.PathPrefix("/ws").Subrouter()
-	wsRouter.Use(authMiddleware)
 
 	wsRouter.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
 		ws.WSConnect(w, r)

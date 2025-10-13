@@ -25,14 +25,14 @@ func main() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		panic(err)
+		log.Fatalf("Config loading failed: %v", err)
 	}
 
 	setLogLevel(cfg.LOG_LEVEL)
 
 	srv, err := server.New(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Server initialization failed: %v", err)
 	}
 
 	// Start server in goroutine

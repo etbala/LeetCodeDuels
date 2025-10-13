@@ -112,3 +112,42 @@ INSERT INTO submissions (
   ('00000000-0000-0000-0000-000000000002', 4, 12345, 10, 10, 'Accepted', 0, 5000, 'python', now()),
   ('00000000-0000-0000-0000-000000000004', 0, 52340, 10, 10, 'Accepted', 0, 5000, 'c', now())
 ;
+
+-- Add the static users used in k6 tests
+INSERT INTO users (
+  id, username, discriminator, lc_username, access_token,
+  created_at, updated_at, rating
+) VALUES
+  (9001, 'k6user1', '0001', 'k6user1_lc', 'dummy-token', now(), now(), 1200),
+  (9002, 'k6user2', '0001', 'k6user2_lc', 'dummy-token', now(), now(), 1150)
+ON CONFLICT (id) DO NOTHING;
+
+-- Add some matches with the static users for testing match history
+INSERT INTO matches (
+  id, problem_id, is_rated, status, winner_id, start_time, end_time
+) VALUES 
+  ('11111111-1111-1111-1111-111111111111', 1, true, 'Won', 9001, now() - INTERVAL '1 day', now() - INTERVAL '1 day' + INTERVAL '15 minutes'),
+  ('22222222-2222-2222-2222-222222222222', 2, true, 'Won', 9002, now() - INTERVAL '2 days', now() - INTERVAL '2 days' + INTERVAL '20 minutes'),
+  ('33333333-3333-3333-3333-333333333333', 5, false, 'Won', 9001, now() - INTERVAL '3 days', now() - INTERVAL '3 days' + INTERVAL '12 minutes')
+ON CONFLICT (id) DO NOTHING;
+
+-- Add match players
+INSERT INTO match_players (match_id, player_id) VALUES
+  ('11111111-1111-1111-1111-111111111111', 9001),
+  ('11111111-1111-1111-1111-111111111111', 9002),
+  ('22222222-2222-2222-2222-222222222222', 9001),
+  ('22222222-2222-2222-2222-222222222222', 9002),
+  ('33333333-3333-3333-3333-333333333333', 9001),
+  ('33333333-3333-3333-3333-333333333333', 20579)
+ON CONFLICT (match_id, player_id) DO NOTHING;
+
+-- Add some submissions for these matches
+INSERT INTO submissions (
+  match_id, submission_id, player_id, passed_test_cases, 
+  total_test_cases, status, runtime, memory, lang, submitted_at
+) VALUES
+  ('11111111-1111-1111-1111-111111111111', 0, 9002, 8, 10, 'Wrong Answer', 45, 15000, 'python3', now() - INTERVAL '1 day' + INTERVAL '5 minutes'),
+  ('11111111-1111-1111-1111-111111111111', 1, 9001, 10, 10, 'Accepted', 32, 14500, 'cpp', now() - INTERVAL '1 day' + INTERVAL '15 minutes'),
+  ('22222222-2222-2222-2222-222222222222', 0, 9001, 7, 12, 'Wrong Answer', 67, 18000, 'java', now() - INTERVAL '2 days' + INTERVAL '8 minutes'),
+  ('22222222-2222-2222-2222-222222222222', 1, 9002, 12, 12, 'Accepted', 89, 17200, 'go', now() - INTERVAL '2 days' + INTERVAL '20 minutes')
+ON CONFLICT (match_id, submission_id) DO NOTHING;
