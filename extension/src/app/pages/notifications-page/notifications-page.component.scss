@@ -1,0 +1,91 @@
+@use '../../theme/styles/_variables' as theme;
+
+.header {
+  text-align: center;
+}
+
+.notifications-container {
+  padding: 10px;
+}
+
+.invite-scroll-area {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+
+  // The whole scrollbar area
+  &::-webkit-scrollbar {
+    width: 8px; // Makes the scrollbar thinner
+  }
+
+  // Hides the background track
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  // The part you drag
+  &::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  // Lighter on hover
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #777;
+  }
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; // Content left, buttons right
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background-color: theme.$input-bg;
+  color: theme.$input-text;
+}
+
+.invite-content {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%; // Makes avitar circular
+  margin-right: 10px;
+}
+
+.invite-text {
+  font-size: 10px;
+  font-weight: 500;
+  margin: 0; // Removes default
+}
+
+.username {
+  font-weight: bold;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+}
+
+.accept-btn {
+    background-color: theme.$good;
+    color: theme.$input-text;
+}
+
+.decline-btn {
+    background-color: theme.$bad;
+    color: theme.$input-text;
+    // Space between the two buttons
+    margin-left: 10px;
+}

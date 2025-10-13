@@ -6,13 +6,14 @@ import { ChallengePageComponent } from './pages/lobby/challenge-page/challenge-p
 import { InGamePageComponent } from './pages/game/in-game-page/in-game-page.component';
 import { ResultPageComponent } from './pages/game/result-page/result-page.component';
 import { SettingsPageComponent } from './pages/settings-page/settings-page.component';
+import { NotificationPageComponent } from './pages/notifications-page/notifications-page.component';
 import { AuthGuard } from './services/auth/auth.guard';
 
 export const appRoutes: Route[] = [
   { path: 'login', component: LoginPageComponent },
   { path: '', component: DashboardPageComponent },
   { path: 'settings', component: SettingsPageComponent, canActivate: [AuthGuard] },
-  { path: 'notifications', component: NotificationsPageComponent, canActivate: [AuthGuard] },
+  { path: 'notifications', component: NotificationPageComponent, canActivate: [AuthGuard] },
   { path: 'queue/:username', component: QueuePageComponent, canActivate: [AuthGuard] },
   { path: 'challenge', component: ChallengePageComponent, canActivate: [AuthGuard] },
   { path: 'game', component: InGamePageComponent, canActivate: [AuthGuard] },

@@ -1,1 +1,45 @@
-<h1>Invites</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications</title>
+</head>
+<body>
+
+<h1 class="header">Invites</h1>
+
+<div class="notifications-container">
+    <div *ngIf="invites$ | async as invites; else loading">
+        <!-- Display message if no invites. -->
+        <div *ngIf="invites.length === 0; else inviteList" class="no-invites">
+            Looks like your coding skill is unchallenged.
+        </div>
+
+        <!-- Display invites -->
+        <ng-template #inviteList>
+            <div class="invite-scroll-area">
+                <div *ngFor="let invite of invites" class="invite-card">
+                    <div class="invite-content">
+                        <!-- User Avitar -->
+                        <img [src]="invite.from_user.avatar_url"
+                            alt="Avatar of {{ invite.from_user.username }}"
+                            class="avatar">
+
+                        <!-- Notification Text -->
+                        <p class="invite-text">
+                            <span class="username">{{ invite.from_user.username }}</span> wants to duel!
+                        </p>
+                    </div>
+
+                    <button (click)="acceptInvite(invite)" class="btn accept-btn">Accept</button>
+                    <button (click)="declineInvite(invite)" class="btn decline-btn">Decline</button>
+                </div>
+            </div>
+        </ng-template>
+    </div>
+
+    <ng-template #loading>
+        <p class="loading-message">Seeking Challengers...</p>
+    </ng-template>
+</div>
