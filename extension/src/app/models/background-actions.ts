@@ -1,4 +1,4 @@
-import { MatchDetails } from "./match";
+import { MatchDetails, PlayerSubmission } from "./match";
 
 // All possible event types sent from angular UI to the background script.
 export enum BackgroundActionType {
@@ -24,6 +24,10 @@ export interface AcceptInvitationPayload {
 
 export interface DeclineInvitationPayload {
   inviterID: number;
+}
+
+export interface SubmissionPayload {
+  submission: PlayerSubmission
 }
 
 export interface BackgroundAction<T = string> {

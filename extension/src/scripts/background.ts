@@ -1,4 +1,4 @@
-import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
+import { BackgroundAction, BackgroundActionType, SubmissionPayload } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
 import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
 
@@ -7,9 +7,14 @@ interface ServerMessage {
   payload: unknown;
 }
 
+interface User {
+  id: string;
+}
+
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
 const AUTH_TOKEN_KEY = 'auth_token'; // todo: replace with constant used by both this and auth service?
+const USER_DATA_KEY = 'user_data';
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
 
 async function connectWebSocket(): Promise<{ status: string; message?: string }> {
@@ -176,6 +181,40 @@ function sendToServer(type: BackgroundActionType, payload?: unknown) {
   }
 }
 
+/**
+ * Handles an incoming duel submission message.
+ * It fetches the current user's ID, injects it into the payload,
+ * and then forwards it to the WebSocket server.
+ * @param payload The submission payload from the content script.
+ * @returns The result from the sendToServer function.
+ */
+async function handleDuelSubmission(payload: SubmissionPayload) {
+  if (!payload || !payload.submission) {
+    throw new Error("Invalid submission payload received.");
+  }
+
+  // 1. Fetch the stored user data
+  const storage = await chrome.storage.local.get(USER_DATA_KEY);
+  const userJson = storage[USER_DATA_KEY];
+  
+  if (!userJson) {
+    throw new Error("User data not found in storage. Cannot set player ID.");
+  }
+
+  const user: User = JSON.parse(userJson);
+  if (!user || !user.id) {
+    throw new Error("Malformed user data found in storage.");
+  }
+
+  // 2. Set the playerID on the submission object
+  // Note: The user ID from your DB is a string, but PlayerSubmission expects a number.
+  payload.submission.playerID = parseInt(user.id, 10);
+  console.log(`Player ID ${payload.submission.playerID} set for submission.`);
+
+  // 3. Send the modified payload to the server
+  return sendToServer(BackgroundActionType.DuelSubmission, payload);
+}
+
 // Listen for messages from Angular UI
 chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendResponse) => {
   console.log("Background received action:", message.action);
@@ -193,8 +232,14 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
       sendResponse(sendToServer(message.action));
       break;
     case BackgroundActionType.DuelSubmission:
-      sendResponse(sendToServer(message.action, message.payload));
-      break;
+      handleDuelSubmission(message.payload as unknown as SubmissionPayload)
+        .then(sendResponse)
+        .catch(error => {
+          console.error("Error handling submission:", error);
+          sendResponse({ status: 'error', error: error.message });
+        });
+      // Return true to indicate that sendResponse will be called asynchronously
+      return true;
     default:
       sendResponse({ status: "error", error: "Unknown action" });
       break;
