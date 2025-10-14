@@ -1,8 +1,6 @@
 param (
     [string]$JWTSecret = "testjwtsecret",
-    [string]$ServerPort = "8080",
-    [string]$LOG_LEVEL = "error",
-    [string]$SUBMISSION_VALIDATION = "disable"
+    [string]$ServerPort = "8080"
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,6 +95,8 @@ try {
     $env:RDB_URL = "redis://localhost:6379"
     $env:JWT_SECRET = $JWTSecret
     $env:PORT = $ServerPort
+    $env:LOG_LEVEL = "error"
+    $env:SUBMISSION_VALIDATION = "disable"
 
     Write-Host "Creating database schema..." -ForegroundColor Blue
     $migrationsDir = Join-Path $ProjectRoot "server\tests\migrations"

@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func MainTest(m *testing.M) {
+func TestMain(m *testing.M) {
 	os.Setenv("JWT_SECRET", "0")
 
-	_, err := config.LoadConfig()
+	_, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("could not load config: %s", err)
 	}
