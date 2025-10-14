@@ -105,6 +105,27 @@ function createSubmission(status, passed, total) {
     };
 }
 
+function connectWithTicket(userId, callback) {
+    const token = generateJWT(userId);
+    const ticketRes = http.post(`${BASE_URL}/api/v1/ws-ticket`, null, {
+        headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (!check(ticketRes, { '[WS Ticket] Auth ticket request successful': (r) => r.status === 200 })) {
+        console.error(`[VU ${__VU}] Failed to get ticket for user ${userId}: ${ticketRes.body}`);
+        return null;
+    }
+
+    const ticket = ticketRes.json('ticket');
+    if (!check(ticket, { '[WS Ticket] Ticket received': (t) => t && typeof t === 'string' })) {
+        console.error(`[VU ${__VU}] Ticket was empty for user ${userId}`);
+        return null;
+    }
+
+    const url = `${WS_URL}/ws?ticket=${ticket}`;
+    return ws.connect(url, null, callback);
+}
+
 export function restApiScenario() {
     const user1Token = generateJWT(STATIC_USER_ID_1);
     const authHeaders = { 
@@ -186,11 +207,11 @@ export function websocketGameScenario() {
     let sessionID = null; // Will be captured from the 'start_game' message
     let gameCompleted = false;
 
-    const res = ws.connect(`${WS_URL}/ws`, inviterAuthParams, function (inviterSocket) {
+    const res = connectWithTicket(inviterId, function (inviterSocket) {
         inviterSocket.on('open', function open() {
             console.log(`[VU ${__VU}:${__ITER}] Inviter ${inviterId} connected`);
             // Inviter connected, now connect the invitee
-            ws.connect(`${WS_URL}/ws`, inviteeAuthParams, function (inviteeSocket) {
+            connectWithTicket(inviteeId, function (inviteeSocket) {
                 console.log(`[VU ${__VU}:${__ITER}] Invitee ${inviteeId} connected`);
                 
                 // --- Set up Invitee's behavior ---

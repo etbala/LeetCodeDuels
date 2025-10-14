@@ -1,7 +1,8 @@
-param(
+param (
     [string]$JWTSecret = "testjwtsecret",
     [string]$ServerPort = "8080",
-    [string]$LOG_LEVEL = "debug"
+    [string]$LOG_LEVEL = "error",
+    [string]$SUBMISSION_VALIDATION = "disable"
 )
 
 $ErrorActionPreference = "Stop"
