@@ -272,6 +272,7 @@ func TestSubmissionFlow(t *testing.T) {
 	require.Equal(t, p1.SessionID, p2.SessionID)
 
 	submission1 := ws.SubmissionPayload{
+		ID:              1,
 		Status:          "Compile Error",
 		PassedTestCases: 3,
 		TotalTestCases:  82,
@@ -299,13 +300,10 @@ func TestSubmissionFlow(t *testing.T) {
 
 	require.Equal(t, int64(inviteeID), oppSub.PlayerID)
 	require.Equal(t, submission1.Status, oppSub.Status)
-	require.Equal(t, submission1.PassedTestCases, oppSub.PassedTestCases)
-	require.Equal(t, submission1.TotalTestCases, oppSub.TotalTestCases)
-	require.Equal(t, submission1.Runtime, oppSub.Runtime)
-	require.Equal(t, submission1.Memory, oppSub.Memory)
 	require.Equal(t, submission1.Language, oppSub.Language)
 
 	submission2 := ws.SubmissionPayload{
+		ID:              2,
 		Status:          "Accepted",
 		PassedTestCases: 82,
 		TotalTestCases:  82,

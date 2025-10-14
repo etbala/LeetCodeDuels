@@ -658,7 +658,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 		}
 
 		submission := models.PlayerSubmission{
-			ID:              id,
+			ID:              int64(id),
 			PlayerID:        playerID,
 			PassedTestCases: passedTestCases,
 			TotalTestCases:  totalTestCases,

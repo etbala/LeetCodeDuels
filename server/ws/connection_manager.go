@@ -604,7 +604,7 @@ func (c *connManager) handleLeaveQueue(userID int64) error {
 func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error {
 	c.log.Info().
 		Int64("user_id", userID).
-		Str("status", p.Status).
+		Str("status", string(p.Status)).
 		Msg("Processing submission")
 
 	sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
@@ -629,22 +629,22 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
-	submissionID := len(session.Submissions)
-	submissionStatus, _ := models.ParseSubmissionStatus(p.Status)
-	submissionLang, _ := models.ParseLang(p.Language)
+	// todo: get submission information from LeetCode GraphQL API
+	// Note: can only validate if status is "Accepted"
+	// Overwrite time and make sure problem slug matches match problem
+
+	submissionID := p.ID
 	submission := models.PlayerSubmission{
 		ID:              submissionID,
 		PlayerID:        userID,
 		PassedTestCases: p.PassedTestCases,
 		TotalTestCases:  p.TotalTestCases,
-		Status:          submissionStatus,
+		Status:          p.Status,
 		Runtime:         p.Runtime,
 		Memory:          p.Memory,
-		Lang:            submissionLang,
+		Lang:            p.Language,
 		Time:            p.Time,
 	}
-
-	// TODO: Verify submission information is correct against LeetCode's API
 
 	err = services.GameManager.AddSubmission(sessionID, submission)
 	if err != nil {
@@ -658,7 +658,7 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
-	if submissionStatus == models.Accepted {
+	if p.Status == models.Accepted {
 		session, err = services.GameManager.CompleteGame(sessionID, userID)
 		if err != nil {
 			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to complete game")
@@ -697,15 +697,11 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 	}
 
 	reply := OpponentSubmissionPayload{
-		ID:              submissionID,
-		PlayerID:        userID,
-		PassedTestCases: p.PassedTestCases,
-		TotalTestCases:  p.TotalTestCases,
-		Status:          p.Status,
-		Runtime:         p.Runtime,
-		Memory:          p.Memory,
-		Language:        p.Language,
-		Time:            p.Time,
+		ID:       p.ID,
+		PlayerID: userID,
+		Status:   p.Status,
+		Language: p.Language,
+		Time:     p.Time,
 	}
 
 	payload, _ := json.Marshal(reply)

@@ -61,13 +61,16 @@ type EnterQueuePayload struct {
 }
 
 type SubmissionPayload struct {
-	Status          string    `json:"status"`
-	PassedTestCases int       `json:"passedTestCases"`
-	TotalTestCases  int       `json:"totalTestCases"`
-	Runtime         int       `json:"runtime"`
-	Memory          int       `json:"memory"`
-	Language        string    `json:"language"`
-	Time            time.Time `json:"time"`
+	ID                int64                   `json:"submissionID"`
+	Status            models.SubmissionStatus `json:"status"`
+	PassedTestCases   int                     `json:"passedTestCases"`
+	TotalTestCases    int                     `json:"totalTestCases"`
+	Runtime           int                     `json:"runtime"`
+	RuntimePercentile float32                 `json:"runtimePercentile"`
+	Memory            int                     `json:"memory"`
+	MemoryPercentile  float32                 `json:"memoryPercentile"`
+	Language          models.LanguageType     `json:"language"`
+	Time              time.Time               `json:"time"`
 }
 
 type InvitationRequestPayload struct {
@@ -85,17 +88,13 @@ type StartGamePayload struct {
 	OpponentID int64  `json:"opponentID"`
 }
 
-// Notifies a player about the opponent's submission
+// Notifies a player about submission their opponent made
 type OpponentSubmissionPayload struct {
-	ID              int       `json:"submissionID"`
-	PlayerID        int64     `json:"playerID"`
-	Status          string    `json:"status"`
-	PassedTestCases int       `json:"passedTestCases"`
-	TotalTestCases  int       `json:"totalTestCases"`
-	Runtime         int       `json:"runtime"`
-	Memory          int       `json:"memory"`
-	Language        string    `json:"language"`
-	Time            time.Time `json:"time"`
+	ID       int64                   `json:"submissionID"`
+	PlayerID int64                   `json:"playerID"`
+	Status   models.SubmissionStatus `json:"status"`
+	Language models.LanguageType     `json:"language"`
+	Time     time.Time               `json:"time"`
 }
 
 type GameOverPayload struct {
