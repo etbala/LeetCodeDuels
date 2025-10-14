@@ -10,11 +10,11 @@ interface SubmissionStatusResponse {
   total_testcases: number;
   display_runtime: string;
   runtime_percentile: number;
-  question_id: string;
   memory: number;
   memory_percentile: number;
   lang: string;
   submission_id: string;
+  task_finish_time: number;
 }
 
 function main() {
@@ -67,7 +67,6 @@ function main() {
             type: 'submissionResult',
             data: {
               SubmissionID: parseInt(data.submission_id, 10),
-              ProblemID: parseInt(data.question_id, 10),
               PassedTestCases: data.total_correct,
               TotalTestCases: data.total_testcases,
               Status: data.status_msg,

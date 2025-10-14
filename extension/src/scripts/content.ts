@@ -56,9 +56,8 @@ function mapLangToEnum(langString: string): LanguageType {
 * @returns The corresponding SubmissionStatus enum member.
 */
 function mapStatusToEnum(statusString: string): SubmissionStatus {
-  // This handles cases like "Accepted", "Wrong Answer", "Runtime Error", etc.
   const key = Object.keys(SubmissionStatus).find(k => SubmissionStatus[k as keyof typeof SubmissionStatus] === statusString);
-  return key ? SubmissionStatus[key as keyof typeof SubmissionStatus] : SubmissionStatus.CompileError; // Default fallback
+  return key ? SubmissionStatus[key as keyof typeof SubmissionStatus] : SubmissionStatus.OutputLimitExceeded; // Default fallback
 }
 
 /**
@@ -94,9 +93,16 @@ function sendSubmissionToBackground(submission: PlayerSubmission): Promise<void>
 async function handleSubmissionResult(rawData: LeetCodeSubmissionData): Promise<void> {
   const playerSubmission: PlayerSubmission = {
     submissionID: rawData.SubmissionID,
-    playerID: 0, // Backend will assign this based on the authenticated user
     problemID: rawData.ProblemID,
-    status: mapStatusToEnum(rawData.Status)
+    time: rawData.FinishTime,
+    status: mapStatusToEnum(rawData.Status),
+    Language: mapLangToEnum(rawData.Lang),
+    PassedTestCases: rawData.PassedTestCases,
+    TotalTestCases: rawData.TotalTestCases,
+    Runtime: rawData.Runtime,
+    RuntimePercentile: rawData.RuntimePercentile,
+    Memory: rawData.Memory,
+    MemoryPercentile: rawData.MemoryPercentile,
   };
 
   try {

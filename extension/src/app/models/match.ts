@@ -2,6 +2,7 @@ export enum SubmissionStatus {
   Accepted = "Accepted",
   CompileError = "Compile Error",
   MemoryLimitExceeded = "Memory Limit Exceeded",
+  OutputLimitExceeded = "Output Limit Exceeded",
   RuntimeError = "Runtime Error",
   TimeLimitExceeded = "Time Limit Exceeded",
   WrongAnswer = "Wrong Answer",
@@ -50,9 +51,16 @@ export interface MatchDetails {
 
 export interface PlayerSubmission {
     submissionID: number;
-    playerID: number;
     problemID: number;
+    time: number;
     status: SubmissionStatus;
+    Language: LanguageType;
+    PassedTestCases?: number;
+    TotalTestCases?: number;
+    Runtime?: number;
+    RuntimePercentile?: number;
+    Memory?: number;
+    MemoryPercentile?: number;
 }
 
 export interface Session {
