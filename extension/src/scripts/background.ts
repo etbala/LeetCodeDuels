@@ -1,6 +1,7 @@
 import { BackgroundAction, BackgroundActionType, SubmissionPayload } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
 import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
+import { ServerMessageType } from 'app/models/server-messages';
 
 interface ServerMessage {
   type: string;
@@ -170,7 +171,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-function sendToServer(type: BackgroundActionType, payload?: unknown) {
+function sendToServer(type: ServerMessageType, payload?: unknown) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     const message = JSON.stringify({ type, payload });
     socket.send(message);
@@ -193,7 +194,6 @@ async function handleDuelSubmission(payload: SubmissionPayload) {
     throw new Error("Invalid submission payload received.");
   }
 
-  // 1. Fetch the stored user data
   const storage = await chrome.storage.local.get(USER_DATA_KEY);
   const userJson = storage[USER_DATA_KEY];
   
@@ -206,13 +206,11 @@ async function handleDuelSubmission(payload: SubmissionPayload) {
     throw new Error("Malformed user data found in storage.");
   }
 
-  // 2. Set the playerID on the submission object
-  // Note: The user ID from your DB is a string, but PlayerSubmission expects a number.
   payload.submission.playerID = parseInt(user.id, 10);
-  console.log(`Player ID ${payload.submission.playerID} set for submission.`);
 
-  // 3. Send the modified payload to the server
-  return sendToServer(BackgroundActionType.DuelSubmission, payload);
+  console.log(`Submission ${payload.submission.submissionID} sent to server.`)
+
+  return sendToServer(ServerMessageType.ClientSubmission, payload);
 }
 
 // Listen for messages from Angular UI
@@ -220,16 +218,16 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
   console.log("Background received action:", message.action);
   switch (message.action) {
     case BackgroundActionType.DuelSendInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientSendInvitation, message.payload));
       break;
     case BackgroundActionType.DuelAcceptInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientAcceptInvitation, message.payload));
       break;
     case BackgroundActionType.DuelDeclineInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientDeclineInvitation, message.payload));
       break;
     case BackgroundActionType.DuelCancelInvitation:
-      sendResponse(sendToServer(message.action));
+      sendResponse(sendToServer(ServerMessageType.ClientCancelInvitation));
       break;
     case BackgroundActionType.DuelSubmission:
       handleDuelSubmission(message.payload as unknown as SubmissionPayload)

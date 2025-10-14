@@ -9,12 +9,16 @@ interface InjectedScriptMessage {
 
 interface LeetCodeSubmissionData {
   SubmissionID: number;
+  ProblemID: number,
   PassedTestCases: number;
   TotalTestCases: number;
   Status: string;
   Runtime: number;
+  RuntimePercentile: number;
   Memory: number;
+  MemoryPercentile: number;
   Lang: string;
+  FinishTime: number;
 }
 
 function main() {
@@ -91,13 +95,8 @@ async function handleSubmissionResult(rawData: LeetCodeSubmissionData): Promise<
   const playerSubmission: PlayerSubmission = {
     submissionID: rawData.SubmissionID,
     playerID: 0, // Backend will assign this based on the authenticated user
-    passedTestCases: rawData.PassedTestCases,
-    totalTestCases: rawData.TotalTestCases,
-    status: mapStatusToEnum(rawData.Status),
-    runtime: rawData.Runtime,
-    memory: rawData.Memory,
-    lang: mapLangToEnum(rawData.Lang),
-    time: new Date().toISOString(),
+    problemID: rawData.ProblemID,
+    status: mapStatusToEnum(rawData.Status)
   };
 
   try {

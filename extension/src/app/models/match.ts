@@ -51,13 +51,8 @@ export interface MatchDetails {
 export interface PlayerSubmission {
     submissionID: number;
     playerID: number;
-    passedTestCases: number;
-    totalTestCases: number;
+    problemID: number;
     status: SubmissionStatus;
-    runtime: number;
-    memory: number;
-    lang: LanguageType;
-    time: string; // ISO 8601 date string
 }
 
 export interface Session {

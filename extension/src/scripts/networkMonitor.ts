@@ -5,10 +5,14 @@ interface SubmissionCreateResponse {
 interface SubmissionStatusResponse {
   state: 'PENDING' | 'STARTED' | 'SUCCESS';
   status_msg: string;
+  status_code: number;
   total_correct: number;
   total_testcases: number;
-  status_runtime: string;
-  memory: string;
+  display_runtime: string;
+  runtime_percentile: number;
+  question_id: string;
+  memory: number;
+  memory_percentile: number;
   lang: string;
   submission_id: string;
 }
@@ -29,14 +33,15 @@ function main() {
 
   window.fetch = async function(...args: [RequestInfo | URL, RequestInit | undefined]) {
     const resource = args[0];
-    const resourceUrl = typeof resource === 'string' ? resource : (resource as any).url;
+    const rawUrl = typeof resource === 'string' ? resource : (resource as any).url;
+    const absoluteUrl = new URL(rawUrl, window.location.href).href;
 
     const submitUrlPattern = `https://leetcode.com/problems/${problemSlug}/submit/`;
     const checkUrlPattern = `https://leetcode.com/submissions/detail/${currentSubmissionId}/check/`;
 
     const response = await originalFetch.apply(this, args);
 
-    if (resourceUrl === submitUrlPattern) {
+    if (absoluteUrl === submitUrlPattern) {
       try {
         const data: SubmissionCreateResponse = await response.clone().json();
         if (data.submission_id) {
@@ -49,7 +54,7 @@ function main() {
       }
     }
 
-    if (resourceUrl === checkUrlPattern && awaitingSubmissionResponse) {
+    if (absoluteUrl === checkUrlPattern && awaitingSubmissionResponse) {
       try {
         const data: SubmissionStatusResponse = await response.clone().json();
         if (data.state === 'SUCCESS') {
@@ -61,12 +66,15 @@ function main() {
             source: 'leetcode-duel-network-monitor',
             type: 'submissionResult',
             data: {
-              SubmissionID: parseInt(data.submission_id, 10) || null,
+              SubmissionID: parseInt(data.submission_id, 10),
+              ProblemID: parseInt(data.question_id, 10),
               PassedTestCases: data.total_correct,
               TotalTestCases: data.total_testcases,
               Status: data.status_msg,
-              Runtime: parseInt(data.status_runtime.replace(' ms', ''), 10) || null,
-              Memory: parseFloat(data.memory.replace(' MB', '')) || null,
+              Runtime: parseInt(data.display_runtime, 10) || null,
+              RuntimePercentile: data.runtime_percentile,
+              Memory: data.memory,
+              MemoryPercentile: data.memory_percentile,
               Lang: data.lang,
             }
           }, '*');

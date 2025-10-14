@@ -34,7 +34,7 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["network-monitor.js"],
+            "resources": ["networkMonitor.js"],
             "matches": ["https://leetcode.com/*"]
         },
         {
