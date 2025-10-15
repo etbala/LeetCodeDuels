@@ -59,6 +59,7 @@ INSERT INTO tags (id, name) VALUES
 INSERT INTO problem_tags (problem_id, tag_id) VALUES
   (1, 1),
   (1, 3),
+  (1, 6),
   (2, 6),
   (2, 9),
   (2, 11),
@@ -70,6 +71,18 @@ INSERT INTO problem_tags (problem_id, tag_id) VALUES
   (5, 8),
   (7, 6)
 ;
+
+-- Added Links for Full Coverage (for k6 tests)
+INSERT INTO problem_tags (problem_id, tag_id) VALUES
+  -- Make sure every tag has an 'Easy' problem
+  (1, 2), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11),
+
+  -- Make sure every tag has a 'Medium' problem
+  (2, 1), (2, 3), (2, 7), (2, 10), (5, 3),
+  
+  -- Make sure every tag has a 'Hard' problem
+  (4, 2), (4, 3), (4, 5), (4, 6), (4, 8), (4, 9), (4, 11)
+ON CONFLICT (problem_id, tag_id) DO NOTHING;
 
 -- matches
 INSERT INTO matches (
