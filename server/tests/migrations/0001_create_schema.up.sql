@@ -49,13 +49,14 @@ CREATE TABLE match_players (
 
 CREATE TABLE submissions (
     match_id          UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    submission_id     INT NOT NULL,
+    submission_id     BIGINT NOT NULL,
     player_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
     passed_test_cases INT NOT NULL,
     total_test_cases  INT NOT NULL,
     status            TEXT CHECK (status IN (
-        'Accepted', 'Compile Error', 'Memory Limit Exceeded',
-        'Runtime Error', 'Time Limit Exceeded', 'Wrong Answer'
+        'Accepted', 'Compile Error', 'Memory Limit Exceeded', 
+        'Output Limit Exceeded', 'Runtime Error', 
+        'Time Limit Exceeded', 'Wrong Answer'
     )),
     runtime      INT,
     memory       INT,
