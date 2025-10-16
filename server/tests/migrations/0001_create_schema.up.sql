@@ -1,13 +1,21 @@
+CREATE TYPE problem_difficulty AS ENUM ('Easy', 'Medium', 'Hard');
+CREATE TYPE match_status AS ENUM ('Won', 'Canceled', 'Reverted');
+CREATE TYPE submission_status AS ENUM (
+    'Accepted', 'Compile Error', 'Memory Limit Exceeded', 
+    'Output Limit Exceeded', 'Runtime Error', 
+    'Time Limit Exceeded', 'Wrong Answer'
+);
+
 CREATE TABLE users (
-  id BIGINT PRIMARY KEY,
-  access_token TEXT NOT NULL,
-  username TEXT NOT NULL,
+  id            BIGINT PRIMARY KEY,
+  access_token  TEXT NOT NULL,
+  username      TEXT NOT NULL,
   discriminator VARCHAR(4) NOT NULL,
-  lc_username TEXT NOT NULL DEFAULT '',
-  avatar_url TEXT NOT NULL DEFAULT '',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  rating SMALLINT DEFAULT 1000,
+  lc_username   TEXT NOT NULL DEFAULT '',
+  avatar_url    TEXT NOT NULL DEFAULT '',
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  rating        SMALLINT DEFAULT 1000,
   UNIQUE (username, discriminator)
 );
 
@@ -16,8 +24,8 @@ CREATE TABLE problems (
     problem_num INTEGER UNIQUE NOT NULL,
     name       TEXT NOT NULL,
     slug       TEXT NOT NULL,
-    difficulty TEXT CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
-    is_paid   BOOLEAN NOT NULL DEFAULT false
+    difficulty problem_difficulty NOT NULL,
+    is_paid    BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE tags (
@@ -33,9 +41,9 @@ CREATE TABLE problem_tags (
 
 CREATE TABLE matches (
     id          UUID PRIMARY KEY,
-    problem_id  INT NOT NULL REFERENCES problems(id) ON DELETE SET NULL,
+    problem_id  INT NOT NULL REFERENCES problems(id) ON DELETE RESTRICT,
     is_rated    BOOLEAN NOT NULL DEFAULT false,
-    status      TEXT CHECK (status IN ('Won', 'Canceled', 'Reverted')),
+    status      match_status NOT NULL,
     winner_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,
     start_time  TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time    TIMESTAMP WITH TIME ZONE NOT NULL
@@ -48,19 +56,17 @@ CREATE TABLE match_players (
 );
 
 CREATE TABLE submissions (
-    match_id          UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    submission_id     BIGINT NOT NULL,
-    player_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    passed_test_cases INT NOT NULL,
-    total_test_cases  INT NOT NULL,
-    status            TEXT CHECK (status IN (
-        'Accepted', 'Compile Error', 'Memory Limit Exceeded', 
-        'Output Limit Exceeded', 'Runtime Error', 
-        'Time Limit Exceeded', 'Wrong Answer'
-    )),
-    runtime      INT,
-    memory       INT,
-    lang         TEXT,
-    submitted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    match_id            UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    submission_id       BIGINT NOT NULL,
+    player_id           BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    passed_test_cases   INT NOT NULL,
+    total_test_cases    INT NOT NULL,
+    status              submission_status NOT NULL,
+    runtime             INT,
+    runtime_percentile  DECIMAL,
+    memory              INT,
+    memory_percentile   DECIMAL,
+    lang                TEXT,
+    submitted_at        TIMESTAMP WITH TIME ZONE NOT NULL,
     PRIMARY KEY (match_id, submission_id)
 );

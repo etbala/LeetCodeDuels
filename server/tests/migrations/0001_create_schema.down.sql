@@ -5,3 +5,6 @@ DROP TABLE IF EXISTS problem_tags;
 DROP TABLE IF EXISTS tags;
 DROP TABLE IF EXISTS problems;
 DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS problem_difficulty;
+DROP TYPE IF EXISTS match_status;
+DROP TYPE IF EXISTS submission_status;
