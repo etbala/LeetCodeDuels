@@ -12,7 +12,7 @@ export enum ServerMessageType {
   ServerInvitationCanceled = "invitation_canceled",
   ServerInvitationDeclined = "invitation_declined",
   ServerUserOffline        = "user_offline",
-  ServerInviteDoesNotExist = "invitation_nonexistant",
+  ServerInviteDoesNotExist = "invitation_nonexistent",
   ServerStartGame          = "start_game",
   ServerGameOver           = "game_over",
   ServerOpponentSubmission = "opponent_submission",

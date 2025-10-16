@@ -25,7 +25,7 @@ const (
 	ServerMsgInvitationCanceled = "invitation_canceled"
 	ServerMsgInvitationDeclined = "invitation_declined"
 	ServerMsgUserOffline        = "user_offline"
-	ServerMsgInviteDoesNotExist = "invitation_nonexistant" // No Payload
+	ServerMsgInviteDoesNotExist = "invitation_nonexistent" // No Payload
 	ServerMsgStartGame          = "start_game"
 	ServerMsgGameOver           = "game_over"
 	ServerMsgOpponentSubmission = "opponent_submission"
