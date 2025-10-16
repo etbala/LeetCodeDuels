@@ -31,6 +31,9 @@ func InitConfig() (*Config, error) {
 }
 
 func GetConfig() *Config {
+	if appConfig == nil {
+		panic("Config not initialized. Call InitConfig() first.")
+	}
 	return appConfig
 }
 

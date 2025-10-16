@@ -94,15 +94,15 @@ async function handleSubmissionResult(rawData: LeetCodeSubmissionData): Promise<
   const playerSubmission: PlayerSubmission = {
     submissionID: rawData.SubmissionID,
     problemID: rawData.ProblemID,
-    time: rawData.FinishTime,
+    time: rawData.FinishTime ? new Date(rawData.FinishTime).toISOString() : new Date().toISOString(),
     status: mapStatusToEnum(rawData.Status),
-    Language: mapLangToEnum(rawData.Lang),
-    PassedTestCases: rawData.PassedTestCases,
-    TotalTestCases: rawData.TotalTestCases,
-    Runtime: rawData.Runtime,
-    RuntimePercentile: rawData.RuntimePercentile,
-    Memory: rawData.Memory,
-    MemoryPercentile: rawData.MemoryPercentile,
+    language: mapLangToEnum(rawData.Lang),
+    passedTestCases: rawData.PassedTestCases,
+    totalTestCases: rawData.TotalTestCases,
+    runtime: rawData.Runtime,
+    runtimePercentile: rawData.RuntimePercentile,
+    memory: rawData.Memory,
+    memoryPercentile: rawData.MemoryPercentile,
   };
 
   try {

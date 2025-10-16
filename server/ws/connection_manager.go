@@ -630,10 +630,6 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
-	// todo: get submission information from LeetCode GraphQL API
-	// Note: can only validate if status is "Accepted"
-	// Overwrite time and make sure problem slug matches match problem
-
 	// get leetcode username associated with userID
 	lcUsername, err := store.DataStore.GetLCUsername(userID)
 	if err != nil {
@@ -672,6 +668,8 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 
 		p.Time = lastSubmission.Timestamp
 	}
+
+	// todo: need to check if opponent made a submission first before declaring victor
 
 	submissionID := p.ID
 	submission := models.PlayerSubmission{

@@ -82,6 +82,14 @@ function main() {
               Memory: data.memory,
               MemoryPercentile: data.memory_percentile,
               Lang: data.lang,
+              FinishTime: data.task_finish_time
+                ? new Date(
+                    // If task_finish_time is in seconds, multiply by 1000
+                    data.task_finish_time > 1e12
+                      ? data.task_finish_time
+                      : data.task_finish_time * 1000
+                  ).toISOString()
+                : null,
             }
           }, '*');
         }

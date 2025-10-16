@@ -52,15 +52,15 @@ export interface MatchDetails {
 export interface PlayerSubmission {
     submissionID: number;
     problemID: number;
-    time: number;
+    time: string; // ISO 8601 date string
     status: SubmissionStatus;
-    Language: LanguageType;
-    PassedTestCases?: number;
-    TotalTestCases?: number;
-    Runtime?: number;
-    RuntimePercentile?: number;
-    Memory?: number;
-    MemoryPercentile?: number;
+    language: LanguageType;
+    passedTestCases?: number;
+    totalTestCases?: number;
+    runtime?: number;
+    runtimePercentile?: number;
+    memory?: number;
+    memoryPercentile?: number;
 }
 
 export interface Session {

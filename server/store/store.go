@@ -645,7 +645,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 
 	var submissions []models.PlayerSubmission
 	for rows.Next() {
-		var id int
+		var id int64
 		var playerID int64
 		var passedTestCases int
 		var totalTestCases int
@@ -671,7 +671,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 		}
 
 		submission := models.PlayerSubmission{
-			ID:              int64(id),
+			ID:              id,
 			PlayerID:        playerID,
 			PassedTestCases: passedTestCases,
 			TotalTestCases:  totalTestCases,
