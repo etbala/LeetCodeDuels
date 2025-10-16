@@ -112,8 +112,7 @@ async function handleSubmissionResult(rawData: LeetCodeSubmissionData): Promise<
   }
 }
 
-if ((window as any).__CODE_DUELS_EXTENSION_INJECTED__) {
-} else {
-  (window as any).__CODE_DUELS_EXTENSION_INJECTED__ = true;
+if (!window.__CODE_DUELS_EXTENSION_INJECTED__) {
+  window.__CODE_DUELS_EXTENSION_INJECTED__ = true;
   main();
 }

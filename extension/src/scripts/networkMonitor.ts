@@ -33,7 +33,14 @@ function main() {
 
   window.fetch = async function(...args: [RequestInfo | URL, RequestInit | undefined]) {
     const resource = args[0];
-    const rawUrl = typeof resource === 'string' ? resource : (resource as any).url;
+    let rawUrl: string;
+    if (resource instanceof Request) {
+      rawUrl = resource.url;
+    } else if (typeof resource === 'string') {
+      rawUrl = resource;
+    } else {
+      rawUrl = resource.href; // URL object
+    }
     const absoluteUrl = new URL(rawUrl, window.location.href).href;
 
     const submitUrlPattern = `https://leetcode.com/problems/${problemSlug}/submit/`;
@@ -88,9 +95,9 @@ function main() {
 }
 
 (function() {
-  if ((window as any).__NETWORK_MONITOR_INJECTED__) {
+  if (window.__NETWORK_MONITOR_INJECTED__) {
     return;
   }
-  (window as any).__NETWORK_MONITOR_INJECTED__ = true;
+  window.__NETWORK_MONITOR_INJECTED__ = true;
   main();
 })();
