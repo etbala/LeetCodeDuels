@@ -109,9 +109,11 @@ func TestMain(m *testing.M) {
 	))
 	os.Setenv("PORT", "8765")
 	os.Setenv("JWT_SECRET", "0")
+	os.Setenv("LOG_LEVEL", "error")               // only log errors during tests
+	os.Setenv("SUBMISSION_VALIDATION", "disable") // don't query leetcode during tests
 
 	// Migrations (Create Tables)
-	cfg, _ := config.LoadConfig()
+	cfg, _ := config.InitConfig()
 	mustMigrate(cfg.DB_URL)
 
 	// Start Server

@@ -69,6 +69,19 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 	return &u, nil
 }
 
+func (ds *dataStore) GetLCUsername(userID int64) (string, error) {
+	var lcUsername sql.NullString
+	query := `SELECT lc_username FROM users WHERE id = $1`
+	err := ds.db.QueryRow(query, userID).Scan(&lcUsername)
+	if err != nil {
+		return "", fmt.Errorf("GetLCUsername: %w", err)
+	}
+	if !lcUsername.Valid {
+		return "", nil
+	}
+	return lcUsername.String, nil
+}
+
 // Retrieves the full user record by username + discriminator, or nil if not found.
 func (ds *dataStore) GetUserProfileByUsername(username string, discriminator string) (*models.User, error) {
 	query := `SELECT id, access_token, 	username, discriminator,
@@ -632,7 +645,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 
 	var submissions []models.PlayerSubmission
 	for rows.Next() {
-		var id int
+		var id int64
 		var playerID int64
 		var passedTestCases int
 		var totalTestCases int

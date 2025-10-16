@@ -1,7 +1,6 @@
-param(
+param (
     [string]$JWTSecret = "testjwtsecret",
-    [string]$ServerPort = "8080",
-    [string]$LOG_LEVEL = "debug"
+    [string]$ServerPort = "8080"
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +61,7 @@ try {
     Pop-Location
 
     Write-Host "Waiting for services to be healthy..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 10
+    Start-Sleep -Seconds 5
     
     # Check container health
     $maxHealthRetries = 10
@@ -96,6 +95,8 @@ try {
     $env:RDB_URL = "redis://localhost:6379"
     $env:JWT_SECRET = $JWTSecret
     $env:PORT = $ServerPort
+    $env:LOG_LEVEL = "info"
+    $env:SUBMISSION_VALIDATION = "disable"
 
     Write-Host "Creating database schema..." -ForegroundColor Blue
     $migrationsDir = Join-Path $ProjectRoot "server\tests\migrations"

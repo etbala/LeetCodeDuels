@@ -458,7 +458,6 @@ func TestGetMatchSubmissions(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&submissions)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(submissions))
-	assert.Equal(t, 0, submissions[0].ID)
 	assert.Equal(t, int64(12345), submissions[0].PlayerID)
 	assert.Equal(t, models.Accepted, submissions[0].Status)
 	assert.Equal(t, models.Cpp, submissions[0].Lang)

@@ -23,7 +23,7 @@ func main() {
 		log.Println("Info: .env file not found, relying on system environment variables.")
 	}
 
-	cfg, err := config.LoadConfig()
+	cfg, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("Config loading failed: %v", err)
 	}

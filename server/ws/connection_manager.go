@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"leetcodeduels/config"
 	"leetcodeduels/models"
 	"leetcodeduels/services"
 	"leetcodeduels/store"
@@ -604,7 +605,7 @@ func (c *connManager) handleLeaveQueue(userID int64) error {
 func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error {
 	c.log.Info().
 		Int64("user_id", userID).
-		Str("status", p.Status).
+		Str("status", string(p.Status)).
 		Msg("Processing submission")
 
 	sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
@@ -629,22 +630,59 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
-	submissionID := len(session.Submissions)
-	submissionStatus, _ := models.ParseSubmissionStatus(p.Status)
-	submissionLang, _ := models.ParseLang(p.Language)
+	// get leetcode username associated with userID
+	lcUsername, err := store.DataStore.GetLCUsername(userID)
+	if err != nil {
+		c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user data")
+		return err
+	}
+	if lcUsername == "" {
+		c.log.Error().Int64("user_id", userID).Msg("No LeetCode username associated with user")
+		return fmt.Errorf("no LeetCode username associated with user, cannot validate submission")
+	}
+
+	cfg := config.GetConfig()
+	if cfg.SUBMISSION_VALIDATION && p.Status == models.Accepted {
+		lastSubmission, err := services.GetLastAcceptedSubmission(lcUsername)
+		if err != nil {
+			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get last accepted submission")
+			return err
+		}
+		if lastSubmission == nil {
+			c.log.Warn().Int64("user_id", userID).Msg("No accepted submissions found for user")
+			return fmt.Errorf("no accepted submissions found for user, cannot validate submission")
+		}
+		if lastSubmission.SubmissionID != p.ID {
+			c.log.Warn().Int64("user_id", userID).Msg("Submission ID does not match last accepted submission")
+			return fmt.Errorf("submission ID does not match last accepted submission, cannot validate submission")
+		}
+
+		if lastSubmission.TitleSlug != session.Problem.Slug {
+			c.log.Warn().
+				Int64("user_id", userID).
+				Str("expected_slug", session.Problem.Slug).
+				Str("actual_slug", lastSubmission.TitleSlug).
+				Msg("Submission problem slug does not match game problem")
+			return fmt.Errorf("submission problem slug does not match game problem, cannot validate submission")
+		}
+
+		p.Time = lastSubmission.Timestamp
+	}
+
+	// todo: need to check if opponent made a submission first before declaring victor
+
+	submissionID := p.ID
 	submission := models.PlayerSubmission{
 		ID:              submissionID,
 		PlayerID:        userID,
 		PassedTestCases: p.PassedTestCases,
 		TotalTestCases:  p.TotalTestCases,
-		Status:          submissionStatus,
+		Status:          p.Status,
 		Runtime:         p.Runtime,
 		Memory:          p.Memory,
-		Lang:            submissionLang,
+		Lang:            p.Language,
 		Time:            p.Time,
 	}
-
-	// TODO: Verify submission information is correct against LeetCode's API
 
 	err = services.GameManager.AddSubmission(sessionID, submission)
 	if err != nil {
@@ -658,7 +696,7 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
-	if submissionStatus == models.Accepted {
+	if p.Status == models.Accepted {
 		session, err = services.GameManager.CompleteGame(sessionID, userID)
 		if err != nil {
 			c.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to complete game")
@@ -697,15 +735,11 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 	}
 
 	reply := OpponentSubmissionPayload{
-		ID:              submissionID,
-		PlayerID:        userID,
-		PassedTestCases: p.PassedTestCases,
-		TotalTestCases:  p.TotalTestCases,
-		Status:          p.Status,
-		Runtime:         p.Runtime,
-		Memory:          p.Memory,
-		Language:        p.Language,
-		Time:            p.Time,
+		ID:       p.ID,
+		PlayerID: userID,
+		Status:   p.Status,
+		Language: p.Language,
+		Time:     p.Time,
 	}
 
 	payload, _ := json.Marshal(reply)

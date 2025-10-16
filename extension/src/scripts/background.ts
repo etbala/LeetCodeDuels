@@ -1,6 +1,7 @@
 import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
 import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
+import { ServerMessageType } from 'app/models/server-messages';
 
 interface ServerMessage {
   type: string;
@@ -165,13 +166,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-function sendToServer(type: BackgroundActionType, payload?: unknown) {
+function sendToServer(type: ServerMessageType, payload?: unknown) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     const message = JSON.stringify({ type, payload });
     socket.send(message);
     return { status: "success", message: `Sent '${type}' to server.` };
   } else {
-    // todo: try reconnecting?
+    // todo: try reconnecting.
     return { status: "error", error: "WebSocket is not connected." };
   }
 }
@@ -181,19 +182,19 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
   console.log("Background received action:", message.action);
   switch (message.action) {
     case BackgroundActionType.DuelSendInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientSendInvitation, message.payload));
       break;
     case BackgroundActionType.DuelAcceptInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientAcceptInvitation, message.payload));
       break;
     case BackgroundActionType.DuelDeclineInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientDeclineInvitation, message.payload));
       break;
     case BackgroundActionType.DuelCancelInvitation:
-      sendResponse(sendToServer(message.action));
+      sendResponse(sendToServer(ServerMessageType.ClientCancelInvitation));
       break;
     case BackgroundActionType.DuelSubmission:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientSubmission, message.payload));
       break;
     default:
       sendResponse({ status: "error", error: "Unknown action" });

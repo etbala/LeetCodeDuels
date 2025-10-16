@@ -14,6 +14,7 @@ const (
 	CompileError        SubmissionStatus = "Compile Error"
 	MemoryLimitExceeded SubmissionStatus = "Memory Limit Exceeded"
 	RuntimeError        SubmissionStatus = "Runtime Error"
+	OutputLimitExceeded SubmissionStatus = "Output Limit Exceeded"
 	TimeLimitExceeded   SubmissionStatus = "Time Limit Exceeded"
 	WrongAnswer         SubmissionStatus = "Wrong Answer"
 )
@@ -28,6 +29,8 @@ func ParseSubmissionStatus(status string) (SubmissionStatus, error) {
 		return MemoryLimitExceeded, nil
 	case "Runtime Error":
 		return RuntimeError, nil
+	case "Output Limit Exceeded":
+		return OutputLimitExceeded, nil
 	case "Time Limit Exceeded":
 		return TimeLimitExceeded, nil
 	case "Wrong Answer":
@@ -180,8 +183,9 @@ func (s *MatchStatus) UnmarshalJSON(data []byte) error {
 	}
 }
 
+// Submission attached to Game Session
 type PlayerSubmission struct {
-	ID              int              `json:"submissionID"`
+	ID              int64            `json:"submissionID"`
 	PlayerID        int64            `json:"playerID"`
 	PassedTestCases int              `json:"passedTestCases"`
 	TotalTestCases  int              `json:"totalTestCases"`

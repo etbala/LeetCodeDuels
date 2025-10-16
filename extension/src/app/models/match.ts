@@ -2,6 +2,7 @@ export enum SubmissionStatus {
   Accepted = "Accepted",
   CompileError = "Compile Error",
   MemoryLimitExceeded = "Memory Limit Exceeded",
+  OutputLimitExceeded = "Output Limit Exceeded",
   RuntimeError = "Runtime Error",
   TimeLimitExceeded = "Time Limit Exceeded",
   WrongAnswer = "Wrong Answer",
@@ -50,14 +51,16 @@ export interface MatchDetails {
 
 export interface PlayerSubmission {
     submissionID: number;
-    playerID: number;
-    passedTestCases: number;
-    totalTestCases: number;
-    status: SubmissionStatus;
-    runtime: number;
-    memory: number;
-    lang: LanguageType;
+    problemID: number;
     time: string; // ISO 8601 date string
+    status: SubmissionStatus;
+    language: LanguageType;
+    passedTestCases?: number;
+    totalTestCases?: number;
+    runtime?: number;
+    runtimePercentile?: number;
+    memory?: number;
+    memoryPercentile?: number;
 }
 
 export interface Session {
