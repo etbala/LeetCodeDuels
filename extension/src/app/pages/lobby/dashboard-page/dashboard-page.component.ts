@@ -146,7 +146,7 @@ export class DashboardPageComponent implements OnInit {
       return;
     }
 
-    // TODO: Remove this, for testing the queue page
+    // TODO: Remove this when implmenting functonality
     this.router.navigate(['/queue', trimmedUsername]);
 
     try {

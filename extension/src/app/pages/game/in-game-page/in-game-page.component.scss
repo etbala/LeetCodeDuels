@@ -1,0 +1,41 @@
+@use '../../../theme/styles/_variables' as theme;
+
+.match-header {
+  text-align: center;
+}
+
+.players-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.avatar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%; // Makes avitar circular
+}
+
+.names {
+  margin: 5px;
+}
+
+.stats-box {
+  background-color: theme.$input-bg;
+  height: 120px;
+  padding: theme.$primary-padding;
+  box-sizing: border-box;
+  border-radius: 5%;
+  font-size: 12px;
+}
+
+.stats-list {
+  list-style-type: none;
+  padding-left: 0;
+}

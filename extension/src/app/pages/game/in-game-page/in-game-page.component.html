@@ -1,2 +1,98 @@
-<h2>In Game</h2>
-<p>Coming soon...</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications</title>
+</head>
+<body>
+
+<div class="match-header">
+    <ng-container>
+        <h1>Duel In Progress</h1>
+
+        <div class="status-circle"></div>
+    </ng-container>
+</div>
+
+<div class="players-container">
+    <div class="player-column">
+        <div class="avatar-container">
+        <img
+            src="https://placehold.co/100x100/7B68EE/FFFFFF?text=YOU"
+            alt="Your Avatar"
+            class="avatar player-avatar">
+        </div>
+
+        <h2 class="names player-name">Your Name</h2>
+
+        <div class="stats-box player-stats-box">
+            <ul class="stats-list">
+                <li>
+                <span class="stat-value">7</span>
+                <span class="stat-label"> runs</span>
+                </li>
+                <li>
+                <span class="stat-value">2</span>
+                <span class="stat-label"> submissions</span>
+                </li>
+                <li>
+                <span class="stat-value"> 3</span>
+                <span class="stat-label">
+                    <!-- The green circle for passed cases -->
+                    <span class="status-indicator passed"></span>
+                    cases
+                </span>
+                </li>
+                <li>
+                <span class="stat-value"> 5</span>
+                <span class="stat-label">
+                    <!-- The red circle for failed cases -->
+                    <span class="status-indicator failed"></span>
+                    cases
+                </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="opponent-column">
+        <div class="avatar-container">
+        <img
+            src="https://placehold.co/100x100/7B68EE/FFFFFF?text=OPP"
+            alt="Opponent Avatar"
+            class="avatar opponent-avatar">
+        </div>
+
+        <h2 class="names opponent-name">Opponent Name</h2>
+
+        <div class="stats-box opponent-stats-box">
+            <ul class="stats-list">
+                <li>
+                <span class="stat-value">7</span>
+                <span class="stat-label"> runs</span>
+                </li>
+                <li>
+                <span class="stat-value">2</span>
+                <span class="stat-label"> submissions</span>
+                </li>
+                <li>
+                <span class="stat-value">3</span>
+                <span class="stat-label">
+                    <!-- The green circle for passed cases -->
+                    <span class="status-indicator passed"></span>
+                    cases
+                </span>
+                </li>
+                <li>
+                <span class="stat-value">5</span>
+                <span class="stat-label">
+                    <!-- The red circle for failed cases -->
+                    <span class="status-indicator failed"></span>
+                    cases
+                </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
