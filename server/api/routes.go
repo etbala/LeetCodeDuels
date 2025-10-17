@@ -86,8 +86,8 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	}).Methods("GET")
 
 	// GET /users/{id}/status
-	// Returns whether a user is currently online, offline, or in a game.
-	// Response: models.UserStatus
+	// Returns whether a user is currently online, offline, or in a game (and game ID if in-game).
+	// Response: models.UserStatusResponse
 	accountRouter.HandleFunc("/{id}/status", func(w http.ResponseWriter, r *http.Request) {
 		handlers.UserStatus(w, r)
 	}).Methods("GET")
