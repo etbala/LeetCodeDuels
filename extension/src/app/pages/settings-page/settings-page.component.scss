@@ -1,0 +1,150 @@
+@use '../../theme/styles/_variables' as *;
+@use "sass:color";
+
+:host {
+  display: block;
+  height: 100%;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.settings-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid $input-bg;
+}
+
+.user-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.username {
+  font-size: 20px;
+  font-weight: 600;
+  color: $input-text;
+}
+
+.discriminator {
+  font-size: 16px;
+  font-weight: 400;
+  color: $body-text;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-size: 14px;
+    font-weight: 500;
+    color: $body-text;
+  }
+
+  input[type="text"] {
+    border-radius: $border-radius;
+    border: 1px solid transparent;
+    padding: $primary-padding;
+    background-color: $input-bg;
+    color: $input-text;
+    font-size: 13px;
+    width: 250px;
+
+    &:focus {
+      outline: none;
+      border-color: $good;
+    }
+  }
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.btn {
+  background: transparent;
+  color: $input-text;
+  border-radius: $border-radius;
+  padding: $primary-padding 1.25rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: $good;
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+}
+
+.btn-secondary {
+  background: $input-bg;
+  &:hover:not(:disabled) {
+    background: color.adjust($input-bg, $lightness: 5%);
+  }
+}
+
+.btn-danger {
+  background-color: $bad;
+  color: $input-text;
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+}
+
+.message {
+    font-size: 13px;
+    padding: 0.5rem;
+    border-radius: $border-radius;
+    max-width: 250px;
+
+    &.success {
+        color: $good;
+        background-color: rgba($good, 0.1);
+    }
+    &.error {
+        color: $bad;
+        background-color: rgba($bad, 0.1);
+    }
+}
+
+.loading-container {
+    color: $body-text;
+    font-style: italic;
+}

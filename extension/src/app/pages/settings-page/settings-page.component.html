@@ -1,4 +1,42 @@
-<h2>Settings</h2>
-<div>
-    <button type="button" (click)="logout()">Logout</button>
+<h2 class="settings-header">Account Settings</h2>
+
+<div *ngIf="isLoading; else pageContent" class="loading-container">
+  <p>Loading Settings...</p>
 </div>
+
+<ng-template #pageContent>
+  <div class="profile-card">
+    
+    <div *ngIf="currentUser" class="profile-header">
+      <div class="profile-info">
+        <img [src]="currentUser.avatar_url" alt="Profile Avatar" class="profile-avatar">
+        <div class="user-identity">
+          <span class="username">{{ currentUser.username }}</span>
+          <span class="discriminator">#{{ currentUser.discriminator }}</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary" (click)="logout()">Logout</button>
+    </div>
+
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+      <div class="form-group">
+        <label for="username">Display Name</label>
+        <input id="username" type="text" formControlName="username">
+      </div>
+      <div class="form-group">
+        <label for="lc_username">LeetCode Username</label>
+        <input id="lc_username" type="text" formControlName="lc_username">
+      </div>
+      
+      <div class="button-group">
+        <button type="submit" class="btn btn-primary" [disabled]="profileForm.pristine || isSaving">
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
+        </button>
+        <div *ngIf="message" class="message" [class.success]="message.type === 'success'" [class.error]="message.type === 'error'">
+          {{ message.text }}
+        </div>
+      </div>
+    </form>
+  </div>
+  
+  </ng-template>
