@@ -18,8 +18,9 @@ type UserInfoResponse struct {
 }
 
 type UserStatusResponse struct {
-	Online bool `json:"online"`
-	InGame bool `json:"in_game"`
+	Online bool   `json:"online"`
+	InGame bool   `json:"in_game"`
+	GameID string `json:"game_id,omitempty"` // If InGame, include current game ID
 }
 
 type InviteNotification struct {
