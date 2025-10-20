@@ -1,6 +1,13 @@
 @use '../../../theme/styles/_variables' as *;
 @use "sass:math";
 
+:host {
+  display: block;
+  height: 300px;
+  padding: 0.75rem;
+  overflow-y: auto;
+}
+
 .dashboard {
   display: flex;
   gap: 1rem;

@@ -1,15 +1,19 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from 'environments/environment.prod';
+import { environment } from 'environments/environment';
 import { User } from 'app/models/user.model';
 
-/**
- * Represents the data structure for updating a user's profile.
- */
 export interface UpdateUserRequest {
   username?: string;
   lc_username?: string;
+}
+
+export interface UpdateUserResponse {
+  id: number;
+  username: string;
+  discriminator: string;
+  lc_username: string;
 }
 
 @Injectable({
@@ -35,8 +39,8 @@ export class UserService {
    * @returns An Observable of the updated user profile data.
    * @description Hits the `PATCH /api/v1/users/me` endpoint.
    */
-  updateUser(userData: UpdateUserRequest): Observable<User> {
-    return this.http.patch<User>(`${this.apiUrl}/me`, userData);
+  updateUser(userData: UpdateUserRequest): Observable<UpdateUserResponse> {
+    return this.http.patch<UpdateUserResponse>(`${this.apiUrl}/me`, userData);
   }
 
   /**

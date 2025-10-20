@@ -1,5 +1,3 @@
-<h2 class="settings-header">Account Settings</h2>
-
 <div *ngIf="isLoading; else pageContent" class="loading-container">
   <p>Loading Settings...</p>
 </div>
@@ -18,25 +16,45 @@
       <button type="button" class="btn btn-secondary" (click)="logout()">Logout</button>
     </div>
 
-    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
-      <div class="form-group">
-        <label for="username">Display Name</label>
-        <input id="username" type="text" formControlName="username">
+    <div class="form-group">
+      <label for="username">Display Name</label>
+      <div *ngIf="!isEditingUsername; else editUsernameTpl" class="editable-field">
+        <span>{{ currentUser?.username }}</span>
+        <button class="btn btn-secondary" (click)="editUsername()">Edit</button>
       </div>
-      <div class="form-group">
-        <label for="lc_username">LeetCode Username</label>
-        <input id="lc_username" type="text" formControlName="lc_username">
+      <ng-template #editUsernameTpl>
+        <div class="editable-field">
+          <input id="username" type="text" [formControl]="usernameControl">
+          <div class="edit-actions">
+            <button class="btn btn-icon btn-primary" (click)="saveUsername()" [disabled]="usernameControl.invalid || usernameControl.pristine || isSavingUsername">&#10003;</button>
+            <button class="btn btn-icon btn-danger" (click)="cancelEditUsername()">&#10005;</button>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="form-group">
+      <label for="lc_username">LeetCode Username</label>
+      <div *ngIf="!isEditingLcUsername; else editLcUsernameTpl" class="editable-field">
+        <span>{{ currentUser?.lc_username || 'Not set' }}</span>
+        <button class="btn btn-secondary" (click)="editLcUsername()">Edit</button>
       </div>
-      
-      <div class="button-group">
-        <button type="submit" class="btn btn-primary" [disabled]="profileForm.pristine || isSaving">
-          {{ isSaving ? 'Saving...' : 'Save Changes' }}
-        </button>
-        <div *ngIf="message" class="message" [class.success]="message.type === 'success'" [class.error]="message.type === 'error'">
+      <ng-template #editLcUsernameTpl>
+        <div class="editable-field">
+          <input id="lc_username" type="text" [formControl]="lcUsernameControl">
+          <div class="edit-actions">
+            <button class="btn btn-icon btn-primary" (click)="saveLcUsername()" [disabled]="lcUsernameControl.invalid || lcUsernameControl.pristine || isSavingLcUsername">&#10003;</button>
+            <button class="btn btn-icon btn-danger" (click)="cancelEditLcUsername()">&#10005;</button>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <div *ngIf="message" class="message-container">
+        <div class="message" [class.success]="message.type === 'success'" [class.error]="message.type === 'error'">
           {{ message.text }}
         </div>
-      </div>
-    </form>
+    </div>
   </div>
   
   </ng-template>

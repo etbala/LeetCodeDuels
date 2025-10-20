@@ -1,7 +1,7 @@
+@use './theme/styles/_variables' as *;
+
 .content {
-    padding: 1rem;
     width: 400px;
-    height:250px;
-    background: var(--app-bg);
+    background: $bg-primary;
     color: white;
 }
