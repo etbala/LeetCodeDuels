@@ -11,7 +11,12 @@ interface ServerMessage {
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
 const AUTH_TOKEN_KEY = 'auth_token'; // todo: replace with constant used by both this and auth service?
+const USER_KEY = 'user_data';
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
+
+async function logout() {
+  await chrome.storage.local.remove([AUTH_TOKEN_KEY, USER_KEY]);
+}
 
 async function connectWebSocket(): Promise<{ status: string; message?: string }> {
   if (socket && socket.readyState === WebSocket.OPEN) {
@@ -33,6 +38,12 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
         'Authorization': `Bearer ${token}`
       }
     });
+
+    if (ticketResponse.status === 401) {
+      console.warn("Authentication token is invalid or expired. Logging out.");
+      await logout();
+      return { status: "error", message: "Authentication failed. Logged out." };
+    }
 
     if (!ticketResponse.ok) {
       throw new Error(`Failed to get WebSocket ticket: ${ticketResponse.statusText}`);
