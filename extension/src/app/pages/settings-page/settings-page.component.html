@@ -1,4 +1,60 @@
-<h2>Settings</h2>
-<div>
-    <button type="button" (click)="logout()">Logout</button>
+<div *ngIf="isLoading; else pageContent" class="loading-container">
+  <p>Loading Settings...</p>
 </div>
+
+<ng-template #pageContent>
+  <div class="profile-card">
+    
+    <div *ngIf="currentUser" class="profile-header">
+      <div class="profile-info">
+        <img [src]="currentUser.avatar_url" alt="Profile Avatar" class="profile-avatar">
+        <div class="user-identity">
+          <span class="username">{{ currentUser.username }}</span>
+          <span class="discriminator">#{{ currentUser.discriminator }}</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary" (click)="logout()">Logout</button>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Display Name</label>
+      <div *ngIf="!isEditingUsername; else editUsernameTpl" class="editable-field">
+        <span>{{ currentUser?.username }}</span>
+        <button class="btn btn-secondary" (click)="editUsername()">Edit</button>
+      </div>
+      <ng-template #editUsernameTpl>
+        <div class="editable-field">
+          <input id="username" type="text" [formControl]="usernameControl">
+          <div class="edit-actions">
+            <button class="btn btn-icon btn-primary" (click)="saveUsername()" [disabled]="usernameControl.invalid || usernameControl.pristine || isSavingUsername">&#10003;</button>
+            <button class="btn btn-icon btn-danger" (click)="cancelEditUsername()">&#10005;</button>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="form-group">
+      <label for="lc_username">LeetCode Username</label>
+      <div *ngIf="!isEditingLcUsername; else editLcUsernameTpl" class="editable-field">
+        <span>{{ currentUser?.lc_username || 'Not set' }}</span>
+        <button class="btn btn-secondary" (click)="editLcUsername()">Edit</button>
+      </div>
+      <ng-template #editLcUsernameTpl>
+        <div class="editable-field">
+          <input id="lc_username" type="text" [formControl]="lcUsernameControl">
+          <div class="edit-actions">
+            <button class="btn btn-icon btn-primary" (click)="saveLcUsername()" [disabled]="lcUsernameControl.invalid || lcUsernameControl.pristine || isSavingLcUsername">&#10003;</button>
+            <button class="btn btn-icon btn-danger" (click)="cancelEditLcUsername()">&#10005;</button>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <div *ngIf="message" class="message-container">
+        <div class="message" [class.success]="message.type === 'success'" [class.error]="message.type === 'error'">
+          {{ message.text }}
+        </div>
+    </div>
+  </div>
+  
+  </ng-template>

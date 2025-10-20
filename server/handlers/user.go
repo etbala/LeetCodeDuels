@@ -313,7 +313,13 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeSuccess(w, nil)
+	var user models.UpdateUserResponse = models.UpdateUserResponse{
+		ID:            claims.UserID,
+		Username:      req.Username,
+		Discriminator: discriminator,
+		LCUsername:    req.LeetCodeUsername,
+	}
+	writeSuccess(w, user)
 }
 
 func UserMatches(w http.ResponseWriter, r *http.Request) {

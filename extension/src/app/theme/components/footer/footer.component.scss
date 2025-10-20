@@ -1,5 +1,7 @@
+@use './../../styles/_variables' as *;
+
 .app-footer {
-    background: var(--app-bg);
+    background: $header-bg;
     color: white;
     display: flex;
     justify-content: center;
