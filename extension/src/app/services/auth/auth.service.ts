@@ -230,7 +230,7 @@ export class AuthService {
         });
       });
     }
-    return null
+    return null;
   }
 
   private async setStoredUser(user: User): Promise<void> {
