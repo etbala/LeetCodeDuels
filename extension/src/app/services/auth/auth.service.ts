@@ -196,7 +196,6 @@ export class AuthService {
     return !!token;
   }
 
-  // Get current user
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
@@ -209,8 +208,7 @@ export class AuthService {
         });
       });
     }
-    // Fallback to localStorage for development
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return null;
   }
 
   private async setStoredToken(token: string): Promise<void> {
@@ -221,8 +219,6 @@ export class AuthService {
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
   }
 
   private async getStoredUser(): Promise<User | null> {
@@ -234,9 +230,7 @@ export class AuthService {
         });
       });
     }
-    // Fallback to localStorage for development
-    const userData = localStorage.getItem(USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    return null
   }
 
   private async setStoredUser(user: User): Promise<void> {
@@ -248,8 +242,6 @@ export class AuthService {
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.setItem(USER_KEY, userString);
   }
 
   private async clearAuth(): Promise<void> {
@@ -260,9 +252,6 @@ export class AuthService {
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
   }
 
   private generateState(): string {
