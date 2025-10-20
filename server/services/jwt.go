@@ -24,7 +24,7 @@ const UserContextKey contextKey = "user"
 // GenerateJWT generates a JWT for the given user ID and username.
 // It returns the signed token as a string.
 func GenerateJWT(userID int64) (string, error) {
-	cfg, _ := config.LoadConfig()
+	cfg := config.GetConfig()
 	secretKey := cfg.JWT_SECRET
 
 	// Create the JWT claims, including the user ID and username.
@@ -48,7 +48,7 @@ func GenerateJWT(userID int64) (string, error) {
 // ValidateJWT validates the given JWT string and returns the claims if valid.
 // It returns an error if the token is invalid or expired.
 func ValidateJWT(tokenString string) (*Claims, error) {
-	cfg, _ := config.LoadConfig()
+	cfg := config.GetConfig()
 	secretKey := cfg.JWT_SECRET
 
 	claims := &Claims{}

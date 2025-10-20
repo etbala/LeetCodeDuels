@@ -1,3 +1,6 @@
+@use './app/theme/styles/_variables' as *;
+@use "sass:color";
+
 /* You can add global styles to this file, and also import other style files */
 /* A basic CSS reset to remove default browser styling */
 * {
@@ -6,8 +9,50 @@
   padding: 0;
 }
 
-/* Global CSS variables for theming */
-:root {
-  --header-bg: #2C2D31;
-  --app-bg: #3E4355;
+.btn {
+  background: transparent;
+  color: $input-text;
+  border-radius: $border-radius;
+  padding: $primary-padding 1.25rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background: $good;
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+}
+
+.btn-secondary {
+  background: $input-bg;
+  &:hover:not(:disabled) {
+    background: color.adjust($input-bg, $lightness: 5%);
+  }
+}
+
+.btn-danger {
+  background-color: $bad;
+  color: $input-text;
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+}
+
+.btn-icon {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
 }

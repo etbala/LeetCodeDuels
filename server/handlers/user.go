@@ -182,6 +182,17 @@ func UserStatus(w http.ResponseWriter, r *http.Request) {
 		InGame: inGame,
 	}
 
+	if inGame {
+		sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
+		if err != nil {
+			l.Error().Err(err).Msg("Error getting session ID for in-game user")
+			writeError(w, http.StatusInternalServerError, "Internal Error")
+			return
+		}
+
+		res.GameID = sessionID
+	}
+
 	writeSuccess(w, res)
 }
 
@@ -302,7 +313,13 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeSuccess(w, nil)
+	var user models.UpdateUserResponse = models.UpdateUserResponse{
+		ID:            claims.UserID,
+		Username:      req.Username,
+		Discriminator: discriminator,
+		LCUsername:    req.LeetCodeUsername,
+	}
+	writeSuccess(w, user)
 }
 
 func UserMatches(w http.ResponseWriter, r *http.Request) {
@@ -311,8 +328,34 @@ func UserMatches(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userIDStr := vars["id"]
 
+	query := r.URL.Query()
+	pageStr := query.Get("page")
+	limitStr := query.Get("limit")
+
+	// page is optional param, defaults to 1
+	// limit is optional param, defaults to 10, max 50
+	page := 1
+	limit := 10
+	var err error
+	if pageStr != "" {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil || page < 1 {
+			l.Warn().Msg("UserMatches called with invalid page")
+			writeError(w, http.StatusBadRequest, "Invalid page parameter. Must be a positive integer.")
+			return
+		}
+	}
+	if limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit < 1 || limit > 50 {
+			l.Warn().Msg("UserMatches called with invalid limit")
+			writeError(w, http.StatusBadRequest, "Invalid limit parameter. Must be between 1 and 50 (inclusive).")
+			return
+		}
+	}
+
 	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("user_id", userIDStr)
+		return c.Str("user_id", userIDStr).Str("page", pageStr).Str("limit", limitStr)
 	})
 	l.Info().Msg("Received request for UserMatches")
 
@@ -323,7 +366,7 @@ func UserMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessions, err := store.DataStore.GetPlayerMatches(userID)
+	sessions, err := store.DataStore.GetPlayerMatches(userID, page, limit)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to get match history")
 		writeError(w, http.StatusInternalServerError, "Internal Error")

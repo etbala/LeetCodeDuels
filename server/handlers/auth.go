@@ -204,10 +204,7 @@ func AuthGitHubExchange(w http.ResponseWriter, r *http.Request) {
 // Handles the full OAuth + upsert flow, purely functional.
 func exchangeCodeForUser(code string) (*models.User, error) {
 	// load client credentials
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("load config: %w", err)
-	}
+	cfg := config.GetConfig()
 
 	token, err := exchangeCode(cfg.GITHUB_CLIENT_ID, cfg.GITHUB_CLIENT_SECRET, code)
 	if err != nil {

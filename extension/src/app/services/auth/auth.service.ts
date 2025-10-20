@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AUTH_TOKEN_KEY, USER_KEY } from 'app/common/auth.constants';
 
 interface User {
   id: string;
@@ -21,8 +22,6 @@ interface AuthResponse {
 export class AuthService {
   private readonly API_URL = environment.apiUrl;
   private readonly GITHUB_CLIENT_ID = environment.githubClientId;
-  private readonly STORAGE_KEY = 'auth_token';
-  private readonly USER_KEY = 'user_data';
   
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -34,6 +33,30 @@ export class AuthService {
 
   constructor(private http: HttpClient) {
     this.initializeAuth();
+    this.listenForStorageChanges();
+  }
+
+  private updateLocalState(user: User | null): void {
+    this.currentUserSubject.next(user);
+    this.isAuthenticatedSubject.next(!!user);
+  }
+
+  // Listen for changes in Chrome storage to update auth state
+  private listenForStorageChanges(): void {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== 'local') return;
+
+        if (changes[AUTH_TOKEN_KEY]) {
+          const tokenChange = changes[AUTH_TOKEN_KEY];
+
+          if (!tokenChange.newValue) {
+            console.log('Auth token removed from storage. Updating auth state.');
+            this.updateLocalState(null);
+          }
+        }
+      });
+    }
   }
 
   private async initializeAuth(): Promise<void> {
@@ -42,8 +65,9 @@ export class AuthService {
       const user = await this.getStoredUser();
       
       if (token && user) {
-        this.currentUserSubject.next(user);
-        this.isAuthenticatedSubject.next(true);
+        this.updateLocalState(user);
+      } else {
+        this.updateLocalState(null);
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -147,8 +171,7 @@ export class AuthService {
       await this.setStoredToken(response.token);
       await this.setStoredUser(response.user);
       
-      this.currentUserSubject.next(response.user);
-      this.isAuthenticatedSubject.next(true);
+      this.updateLocalState(response.user);
     } catch (error) {
       console.error('Token exchange failed:', error);
       throw error;
@@ -173,7 +196,6 @@ export class AuthService {
     return !!token;
   }
 
-  // Get current user
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
@@ -181,65 +203,55 @@ export class AuthService {
   private async getStoredToken(): Promise<string | null> {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return new Promise((resolve) => {
-        chrome.storage.local.get([this.STORAGE_KEY], (result) => {
-          resolve(result[this.STORAGE_KEY] || null);
+        chrome.storage.local.get([AUTH_TOKEN_KEY], (result) => {
+          resolve(result[AUTH_TOKEN_KEY] || null);
         });
       });
     }
-    // Fallback to localStorage for development
-    return localStorage.getItem(this.STORAGE_KEY);
+    return null;
   }
 
   private async setStoredToken(token: string): Promise<void> {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return new Promise((resolve) => {
-        chrome.storage.local.set({ [this.STORAGE_KEY]: token }, () => {
+        chrome.storage.local.set({ [AUTH_TOKEN_KEY]: token }, () => {
           resolve();
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.setItem(this.STORAGE_KEY, token);
   }
 
   private async getStoredUser(): Promise<User | null> {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return new Promise((resolve) => {
-        chrome.storage.local.get([this.USER_KEY], (result) => {
-          const userData = result[this.USER_KEY];
+        chrome.storage.local.get([USER_KEY], (result) => {
+          const userData = result[USER_KEY];
           resolve(userData ? JSON.parse(userData) : null);
         });
       });
     }
-    // Fallback to localStorage for development
-    const userData = localStorage.getItem(this.USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    return null;
   }
 
   private async setStoredUser(user: User): Promise<void> {
     const userString = JSON.stringify(user);
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return new Promise((resolve) => {
-        chrome.storage.local.set({ [this.USER_KEY]: userString }, () => {
+        chrome.storage.local.set({ [USER_KEY]: userString }, () => {
           resolve();
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.setItem(this.USER_KEY, userString);
   }
 
   private async clearAuth(): Promise<void> {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return new Promise((resolve) => {
-        chrome.storage.local.remove([this.STORAGE_KEY, this.USER_KEY], () => {
+        chrome.storage.local.remove([AUTH_TOKEN_KEY, USER_KEY], () => {
           resolve();
         });
       });
     }
-    // Fallback to localStorage for development
-    localStorage.removeItem(this.STORAGE_KEY);
-    localStorage.removeItem(this.USER_KEY);
   }
 
   private generateState(): string {

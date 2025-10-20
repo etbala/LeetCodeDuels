@@ -69,6 +69,19 @@ func (ds *dataStore) GetUserProfile(githubID int64) (*models.User, error) {
 	return &u, nil
 }
 
+func (ds *dataStore) GetLCUsername(userID int64) (string, error) {
+	var lcUsername sql.NullString
+	query := `SELECT lc_username FROM users WHERE id = $1`
+	err := ds.db.QueryRow(query, userID).Scan(&lcUsername)
+	if err != nil {
+		return "", fmt.Errorf("GetLCUsername: %w", err)
+	}
+	if !lcUsername.Valid {
+		return "", nil
+	}
+	return lcUsername.String, nil
+}
+
 // Retrieves the full user record by username + discriminator, or nil if not found.
 func (ds *dataStore) GetUserProfileByUsername(username string, discriminator string) (*models.User, error) {
 	query := `SELECT id, access_token, 	username, discriminator,
@@ -541,8 +554,13 @@ func (ds *dataStore) GetMatch(matchID uuid.UUID) (*models.Session, error) {
 	}, nil
 }
 
-// Returns match information (EXCEPT SUBMISSIONS, MUST GET SEPARATELY)
-func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
+// Returns the most recent count matches for a given user.
+func (ds *dataStore) GetPlayerMatches(userID int64, page int, limit int) ([]models.Session, error) {
+	if (page < 1 || limit < 1) || limit > 50 {
+		return nil, fmt.Errorf("GetPlayerMatches: invalid page or limit")
+	}
+
+	offset := (page - 1) * limit
 	query := `
 	SELECT 
 		m.id, 
@@ -562,9 +580,10 @@ func (ds *dataStore) GetPlayerMatches(userID int64) ([]models.Session, error) {
 	JOIN match_players mp2 ON mp2.match_id = m.id
 	WHERE mp.player_id = $1
 	GROUP BY m.id, m.problem_id, p.name, p.slug, p.difficulty, m.is_rated, m.status, m.winner_id, m.start_time, m.end_time
-	ORDER BY m.start_time DESC`
+	ORDER BY m.start_time DESC
+	LIMIT $2 OFFSET $3`
 
-	rows, err := ds.db.Query(query, userID)
+	rows, err := ds.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("GetPlayerMatches: %w", err)
 	}
@@ -632,7 +651,7 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 
 	var submissions []models.PlayerSubmission
 	for rows.Next() {
-		var id int
+		var id int64
 		var playerID int64
 		var passedTestCases int
 		var totalTestCases int

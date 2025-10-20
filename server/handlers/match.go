@@ -53,8 +53,7 @@ func MatchesGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session)
+	writeSuccess(w, session)
 }
 
 func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
@@ -87,17 +86,16 @@ func MatchSubmissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err = store.DataStore.GetMatch(uuid)
+	submissions, err := store.DataStore.GetMatchSubmissions(uuid)
 	if err != nil {
-		l.Error().Err(err).Msg("Failed to get match from datastore")
+		l.Error().Err(err).Msg("Failed to get submissions from datastore")
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
 		return
 	}
-	if session == nil {
-		http.Error(w, "Match Not Found", http.StatusNotFound)
+	if submissions == nil {
+		http.Error(w, "Submissions Not Found", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session.Submissions)
+	writeSuccess(w, submissions)
 }

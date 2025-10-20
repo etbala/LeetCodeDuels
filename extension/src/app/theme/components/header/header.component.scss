@@ -1,9 +1,11 @@
+@use './../../styles/_variables' as *;
+
 .app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 1rem;
-    background: var(--header-bg);
+    background: $header-bg;
 
     .logo {
         padding: 0;

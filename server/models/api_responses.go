@@ -17,9 +17,17 @@ type UserInfoResponse struct {
 	Rating        int    `json:"rating"`
 }
 
+type UpdateUserResponse struct {
+	ID            int64  `json:"id"`
+	Username      string `json:"username"`
+	Discriminator string `json:"discriminator"`
+	LCUsername    string `json:"lc_username"`
+}
+
 type UserStatusResponse struct {
-	Online bool `json:"online"`
-	InGame bool `json:"in_game"`
+	Online bool   `json:"online"`
+	InGame bool   `json:"in_game"`
+	GameID string `json:"game_id,omitempty"` // If InGame, include current game ID
 }
 
 type InviteNotification struct {

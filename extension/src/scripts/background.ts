@@ -1,6 +1,8 @@
 import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
 import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
+import { ServerMessageType } from 'app/models/server-messages';
+import { AUTH_TOKEN_KEY, USER_KEY } from 'app/common/auth.constants';
 
 interface ServerMessage {
   type: string;
@@ -9,8 +11,11 @@ interface ServerMessage {
 
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
-const AUTH_TOKEN_KEY = 'auth_token'; // todo: replace with constant used by both this and auth service?
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
+
+async function logout() {
+  await chrome.storage.local.remove([AUTH_TOKEN_KEY, USER_KEY]);
+}
 
 async function connectWebSocket(): Promise<{ status: string; message?: string }> {
   if (socket && socket.readyState === WebSocket.OPEN) {
@@ -23,7 +28,8 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
     const token = storage[AUTH_TOKEN_KEY];
 
     if (!token) {
-      throw new Error("User is not authenticated. Cannot connect WebSocket.");
+      console.log("No auth token found. WebSocket will not connect.");
+      return { status: "error", message: "No auth token found." };
     }
 
     const ticketResponse = await fetch(`${API_BASE_URL}/api/v1/ws-ticket`, {
@@ -32,6 +38,12 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
         'Authorization': `Bearer ${token}`
       }
     });
+
+    if (ticketResponse.status === 401) {
+      console.warn("Authentication token is invalid or expired. Logging out.");
+      await logout();
+      return { status: "error", message: "Authentication failed. Logged out." };
+    }
 
     if (!ticketResponse.ok) {
       throw new Error(`Failed to get WebSocket ticket: ${ticketResponse.statusText}`);
@@ -165,13 +177,31 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-function sendToServer(type: BackgroundActionType, payload?: unknown) {
+async function sendToServer(type: ServerMessageType, payload?: unknown) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     const message = JSON.stringify({ type, payload });
     socket.send(message);
     return { status: "success", message: `Sent '${type}' to server.` };
   } else {
-    // todo: try reconnecting?
+    const storage = await chrome.storage.local.get(AUTH_TOKEN_KEY);
+    const token = storage[AUTH_TOKEN_KEY];
+
+    if (!token) {
+      console.warn("Message not sent. User is unauthenticated.");
+      return { status: "error", message: "No auth token found." };
+    }
+
+    const connectResult = await connectWebSocket();
+    if (connectResult.status === "success") {
+      // wait a moment for connection to establish
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const message = JSON.stringify({ type, payload });
+        socket.send(message);
+        return { status: "success", message: `Sent '${type}' to server.` };
+      }
+    }
+
     return { status: "error", error: "WebSocket is not connected." };
   }
 }
@@ -181,19 +211,19 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
   console.log("Background received action:", message.action);
   switch (message.action) {
     case BackgroundActionType.DuelSendInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientSendInvitation, message.payload));
       break;
     case BackgroundActionType.DuelAcceptInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientAcceptInvitation, message.payload));
       break;
     case BackgroundActionType.DuelDeclineInvitation:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientDeclineInvitation, message.payload));
       break;
     case BackgroundActionType.DuelCancelInvitation:
-      sendResponse(sendToServer(message.action));
+      sendResponse(sendToServer(ServerMessageType.ClientCancelInvitation));
       break;
     case BackgroundActionType.DuelSubmission:
-      sendResponse(sendToServer(message.action, message.payload));
+      sendResponse(sendToServer(ServerMessageType.ClientSubmission, message.payload));
       break;
     default:
       sendResponse({ status: "error", error: "Unknown action" });
