@@ -17,7 +17,7 @@ export class ExtensionEventsService {
    * Sets up the main listener for all messages from the service worker.
    */
   private listenForMessages(): void {
-    chrome.runtime.onMessage.addListener((message: UIMessage<unknown>, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message: UIMessage<unknown>, sender) => {
       // Messages from the service worker won't have a tab sender.
       if (sender.tab) {
         return;
