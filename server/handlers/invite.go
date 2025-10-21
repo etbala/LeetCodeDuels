@@ -30,7 +30,7 @@ func CanSendInvite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-	canSend := invite == nil
+	canSend := models.CanSendInviteResponse{CanSend: invite == nil}
 	writeSuccess(w, canSend)
 }
 
