@@ -378,6 +378,56 @@ func UserMatches(w http.ResponseWriter, r *http.Request) {
 
 func MyNotifications(w http.ResponseWriter, r *http.Request) {
 	l := log.Ctx(r.Context())
-	l.Warn().Msg("Unimplemented Endpoint Called")
-	writeError(w, http.StatusNotImplemented, "Not Implemented")
+
+	claims, err := services.GetClaimsFromRequest(r)
+	if err != nil {
+		l.Warn().Msg("Attempted to call MyNotifications without valid claims")
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	l.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Int64("user_id", claims.UserID)
+	})
+	l.Info().Msg("Received request for MyNotifications")
+
+	invites, err := services.InviteManager.GetPendingInvites(claims.UserID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to get pending invites")
+		writeError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	var inviteNotifications []models.InviteNotification
+	for _, invite := range invites {
+		fromUser, err := store.DataStore.GetUserProfile(invite.InviterID)
+		if err != nil {
+			l.Error().Err(err).Int64("inviter_id", invite.InviterID).Msg("Failed to get inviter profile")
+			continue
+		}
+		if fromUser == nil {
+			l.Warn().Int64("inviter_id", invite.InviterID).Msg("Inviter profile not found")
+			continue
+		}
+
+		inviteNotification := models.InviteNotification{
+			FromUser: models.UserInfoResponse{
+				ID:            fromUser.ID,
+				Username:      fromUser.Username,
+				Discriminator: fromUser.Discriminator,
+				LCUsername:    fromUser.LeetCodeUsername,
+				AvatarURL:     fromUser.AvatarURL,
+				Rating:        fromUser.Rating,
+			},
+			MatchDetails: invite.MatchDetails,
+			CreatedAt:    invite.CreatedAt,
+		}
+		inviteNotifications = append(inviteNotifications, inviteNotification)
+	}
+
+	response := models.NotificationsResponse{
+		Invites: inviteNotifications,
+	}
+
+	writeSuccess(w, response)
 }

@@ -215,6 +215,7 @@ type MatchDetails struct {
 }
 
 type Invite struct {
+	InviterID    int64        `json:"inviterID"`
 	InviteeID    int64        `json:"inviteeID"`
 	MatchDetails MatchDetails `json:"matchDetails"`
 	CreatedAt    time.Time    `json:"createdAt"`

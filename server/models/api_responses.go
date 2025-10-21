@@ -43,3 +43,7 @@ type NotificationsResponse struct {
 type QueueSizeResponse struct {
 	Size int `json:"size"`
 }
+
+type CanSendInviteResponse struct {
+	CanSend bool `json:"can_send"`
+}
