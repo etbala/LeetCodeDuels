@@ -12,6 +12,7 @@ interface ServerMessage {
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
+const WEBSOCKET_KEEP_ALIVE_ALARM = 'websocket-keep-alive';
 
 async function logout() {
   await chrome.storage.local.remove([AUTH_TOKEN_KEY, USER_KEY]);
@@ -59,6 +60,9 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
 
     socket.onopen = () => {
       console.log("WebSocket connection established securely using a ticket.");
+      chrome.alarms.create(WEBSOCKET_KEEP_ALIVE_ALARM, {
+        periodInMinutes: 0.4 // Fire every 24 seconds (prevent idle timeout)
+      });
       setupSocketListeners();
     };
 
@@ -78,10 +82,18 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
 function disconnectWebSocket() {
     if (socket && socket.readyState === WebSocket.OPEN) {
         console.log("Disconnecting WebSocket.");
+        chrome.alarms.clear(WEBSOCKET_KEEP_ALIVE_ALARM);
         socket.close();
         socket = null;
     }
 }
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === WEBSOCKET_KEEP_ALIVE_ALARM) {
+    console.log("Keep-alive alarm: Resetting service worker timer.");
+    // We get here every 24 seconds, can maybe try reconnecting if needed.
+  }
+});
 
 function forwardToUI(type: ExtensionEventType, payload: unknown) {
   const message: UIMessage<unknown> = { type, payload };
