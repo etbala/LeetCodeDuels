@@ -1,0 +1,10 @@
+<div *ngIf="receivedInvitation" class="invitation-container">
+  <p class="invitation-text">
+    You have a duel invitation from <strong>{{ receivedInvitation.inviterID }}</strong>!
+  </p>
+  
+  <div class="button-group">
+    <button (click)="accept()" class="btn btn-primary">Accept</button>
+    <button (click)="decline()" class="btn btn-danger">Decline</button>
+  </div>
+</div>
