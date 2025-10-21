@@ -1,25 +1,79 @@
+@use '../../../theme/styles/_variables' as theme;
 @use "sass:math";
 
-// Variables TODO: Place most of these in common file
-$border-radius: 5px;
-$input-bg: #2C2D31;
-$input-text: #fff;
-$button-bg: #B91C00;
-$body-text: #B5B5B5;
-$example-text: #878787;
-$opacity: 0.5;
-$primary-padding: 0.5rem;
-$box-width: 180px;
+:host {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  background: theme.$bg-primary;
+  color: theme.$body-text;
+}
 
-// Cancel invite button
+/* Waiting text */
+p {
+  text-align: center;
+  font-size: 14px;
+  margin: 0.5rem 0 0.25rem;
+  span { font-weight: 600; color: theme.$input-text; }
+}
+
+/* Loading dots wave */
+.loading-dots-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: theme.$body-text;
+  opacity: theme.$opacity;
+  animation: bounce 1.2s infinite ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: theme.$opacity; }
+  40% { transform: translateY(-10px); opacity: 1; }
+}
+
+.dot:nth-child(1) { animation-delay: 0s; }
+.dot:nth-child(2) { animation-delay: 0.1s; }
+.dot:nth-child(3) { animation-delay: 0.2s; }
+.dot:nth-child(4) { animation-delay: 0.3s; }
+.dot:nth-child(5) { animation-delay: 0.4s; }
+
+/* Avatar */
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  margin: 6px auto 0;
+  display: block;
+  background: theme.$header-bg;
+}
+
+/* Cancel invite button */
 button {
-  background: $button-bg;
-  color: $input-text;
-  border-radius: $border-radius;
-  padding: $primary-padding 1rem;
+  background: theme.$bad;
+  color: theme.$input-text;
+  border-radius: theme.$border-radius;
+  padding: theme.$primary-padding 1rem;
   margin: 0.5rem auto;
   display: block;
   border: none;
   cursor: pointer;
-  width: math.div($box-width, 1.5);
+  width: math.div(theme.$box-width, 1.5);
+}
+
+/* Messages */
+.error-message {
+  text-align: center;
+  color: theme.$bad;
+  font-size: 14px;
+  margin-top: 5px;
 }

@@ -1,49 +1,18 @@
-import { Component, OnInit } from '@angular/core';
+// Angular Imports
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, of } from 'rxjs'; // TODO: Delete of with mock data deletion
-import { map } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
-import { NotificationsResponse, InviteNotification } from 'app/models/api_responses';
-import { Difficulty } from 'app/models/match'; // TODO: Delete with mock data deletion
-// import { BackgroundAction, BackgroundActionType, AcceptInvitationPayload, DeclineInvitationPayload } from '../../models/background-actions';
 
-// TODO: Delete when implment functionality. Used for match page navigation
-const MOCK_INVITES: InviteNotification[] = [
-  {
-    from_user: {
-      id: 101,
-      username: 'CodeSlayer_42',
-      discriminator: '001',
-      lc_username: 'codeslayer',
-      avatar_url: 'https://placehold.co/100x100/7B68EE/FFFFFF?text=CS',
-      rating: 1850,
-    },
-    matchDetails: {
-      isRated: true,
-      difficulties: [Difficulty.Medium, Difficulty.Hard],
-      tags: [1, 12, 25],
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    from_user: {
-      id: 202,
-      username: 'AlgoQueen',
-      discriminator: '002',
-      lc_username: 'algoqueen',
-      avatar_url: 'https://placehold.co/100x100/F76D82/FFFFFF?text=AQ',
-      rating: 2100,
-    },
-    matchDetails: {
-      isRated: false,
-      difficulties: [Difficulty.Easy],
-      tags: [5, 18],
-    },
-    createdAt: new Date(Date.now() - 3600 * 1000).toISOString(), 
-  },
-];
+// RxJS Imports
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+// Application Imports
+import { BackgroundService } from 'app/services/background/background.service';
+import { NotificationsResponse, InviteNotification } from 'app/models/api_responses';
+import { AcceptInvitationPayload, DeclineInvitationPayload } from '../../models/background-actions';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-notification-page',
@@ -55,12 +24,16 @@ const MOCK_INVITES: InviteNotification[] = [
 export class NotificationPageComponent implements OnInit {
   private readonly API_URL = environment.apiUrl;
   public invites$!: Observable<InviteNotification[]>;
+  errorText: string | null = null;
 
-  constructor(private router: Router, private http: HttpClient) {}
+  constructor(
+    private router: Router,
+    private http: HttpClient,
+    private backgroundService: BackgroundService
+  ) {}
 
   ngOnInit(): void {
-    // this.invites$ = this.fetchPendingInvites();
-    this.invites$ = of(MOCK_INVITES);
+    this.invites$ = this.fetchPendingInvites();
   }
 
   private fetchPendingInvites(): Observable<InviteNotification[]> {
@@ -71,12 +44,31 @@ export class NotificationPageComponent implements OnInit {
     );
   }
 
-  public acceptInvite(invite: InviteNotification): void {
-    console.log(`Navigating to game, accepting invite from ${invite.from_user.username}`);
-    this.router.navigate(['/game']);
+  public async acceptInvite(invite: InviteNotification): Promise<void> {
+    this.errorText = null;
+    const payload: AcceptInvitationPayload = { inviterID: invite.from_user.id };
+
+    try {
+      await this.backgroundService.acceptInvitation(payload);
+      console.log(`Navigating to game, accepting invite from ${invite.from_user.username}`);
+      this.router.navigate(['/game']);
+    } catch (err) {
+      console.error('Failed to accept invite:', err);
+      this.errorText = 'Could not accept invite. Please try again.';
+    }
   }
 
-  public declineInvite(invite: InviteNotification): void {
-    console.log(`Declined invite from ${invite.from_user.username}`);
+  public async declineInvite(invite: InviteNotification): Promise<void> {
+    this.errorText = null;
+    const payload: DeclineInvitationPayload = { inviterID: invite.from_user.id };
+
+    try {
+      await this.backgroundService.declineInvitation(payload);
+      console.log(`Declined invite from ${invite.from_user.username}`);
+      // optionally remove card in UI here
+    } catch (err) {
+      console.error('Failed to decline invite:', err);
+      this.errorText = 'Could not decline invite. Please try again.';
+    }
   }
 }

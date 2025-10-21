@@ -9,11 +9,13 @@
 
 <h1 class="header">Invites</h1>
 
+<div *ngIf="errorText" class="error-message">{{ errorText }}</div>
+
 <div class="notifications-container">
     <div *ngIf="invites$ | async as invites; else loading">
         <!-- Display message if no invites. -->
         <div *ngIf="invites.length === 0; else inviteList" class="no-invites">
-            Looks like your coding skill is unchallenged.
+            Looks like your coding skill is unchallenged. Reload.
         </div>
 
         <!-- Display invites -->
@@ -40,6 +42,8 @@
     </div>
 
     <ng-template #loading>
-        <p class="loading-message">Seeking Challengers...</p>
+        <p class="loading-message">
+            Looks like your coding skill is unchallenged.
+        </p>
     </ng-template>
 </div>

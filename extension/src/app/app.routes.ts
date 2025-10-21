@@ -14,7 +14,7 @@ export const appRoutes: Route[] = [
   { path: '', component: DashboardPageComponent },
   { path: 'settings', component: SettingsPageComponent, canActivate: [AuthGuard] },
   { path: 'notifications', component: NotificationPageComponent, canActivate: [AuthGuard] },
-  { path: 'queue/:username', component: QueuePageComponent, canActivate: [AuthGuard] },
+  { path: 'queue/:inviteeID', component: QueuePageComponent, canActivate: [AuthGuard] },
   { path: 'challenge', component: ChallengePageComponent, canActivate: [AuthGuard] },
   { path: 'game', component: InGamePageComponent, canActivate: [AuthGuard] },
   { path: 'result', component: ResultPageComponent, canActivate: [AuthGuard] },

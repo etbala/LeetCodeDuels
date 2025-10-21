@@ -1,6 +1,7 @@
-<div>
-  <p>Waiting on <span>{{ opponentUsername }}</span></p>
+<div class="waiting-text">
+  <p>Waiting on <span>{{ opponent?.username || 'opponent' }}</span></p>
 </div>
+
 
 <div class="loading-dots-container">
   <div class="dot"></div>
@@ -11,9 +12,15 @@
 </div>
 
 <div>
-  <img src="https://via.placeholder.com/100" alt="User Avatar">
+  <img
+    class="avatar"
+    [src]="opponent?.avatar_url || 'https://via.placeholder.com/100'"
+    alt="User Avatar"
+  >
 </div>
 
 <div>
-    <button type="button" (click)="cancelInvite()">Cancel Invite</button>
+  <button type="button" (click)="cancelInvite()">Cancel Invite</button>
 </div>
+
+<div *ngIf="errorText" class="error-message">{{ errorText }}</div>

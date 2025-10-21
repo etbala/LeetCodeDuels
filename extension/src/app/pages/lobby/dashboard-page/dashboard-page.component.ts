@@ -5,20 +5,9 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { Router } from '@angular/router';
 import { Tag } from '../../../models/tag';
-
-interface SendInvitationPayload {
-  inviteeID: number;
-  matchDetails: {
-    isRated: boolean;
-    difficulties: string[];
-    tags: number[];
-  };
-}
-
-interface Message {
-    type: "send_invitation";
-    payload: SendInvitationPayload;
-}
+import { BackgroundService } from 'app/services/background/background.service';
+import { SendInvitationPayload } from 'app/models/background-actions';
+import { Difficulty } from 'app/models/match';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -37,7 +26,11 @@ export class DashboardPageComponent implements OnInit {
   tags: Tag[] = [];
   selectedTags = new Set<number>();
 
-  constructor(private router: Router, private http: HttpClient) {}
+  constructor(
+    private router: Router,
+    private http: HttpClient,
+    private backgroundService : BackgroundService
+  ) {}
 
   get selectedDifficultiesList(): string {
     return Array.from(this.selectedDifficulties).join(', ');
@@ -99,42 +92,22 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  private buildMatchPayload(inviteeID: number): Message {
+  private buildMatchPayload(inviteeID: number): SendInvitationPayload {
     const payload: SendInvitationPayload = {
       inviteeID,
       matchDetails: {
         isRated: false,
-        difficulties: Array.from(this.selectedDifficulties),
+        difficulties: Array.from(this.selectedDifficulties).map(s => s as Difficulty),
         tags: Array.from(this.selectedTags),
       },
     };
 
     // Return the Message wrapper object
-    return {
-        type: "send_invitation",
-        payload: payload,
-    };
+    return payload;
   }
 
-  private sendInvitation(message: Message): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const ws = new WebSocket(`${this.API_URL.replace(/^http/, 'ws')}/ws`);
-
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-        ws.onclose = () => console.log('WebSocket closed');
-        reject(new Error('WebSocket connection failed or encountered an error.'));
-      };
-
-      ws.onopen = () => {
-        console.log('WebSocket connected, sending invitation:', message);
-        ws.send(JSON.stringify(message));
-        resolve();
-      };
-
-      ws.onmessage = (event) => console.log('Message from server:', event.data);
-      ws.onclose = () => console.log('WebSocket closed');
-    });
+  private sendInvitation(payload: SendInvitationPayload): Promise<any> {
+    return this.backgroundService.sendInvitation(payload);
   }
 
   async startDuel() {
@@ -145,9 +118,6 @@ export class DashboardPageComponent implements OnInit {
       this.errorMessage = 'Please enter an opponent username.';
       return;
     }
-
-    // TODO: Remove this when implmenting functonality
-    this.router.navigate(['/queue', trimmedUsername]);
 
     try {
       const inviteeID = await this.getUserIdFromUsername(trimmedUsername);
@@ -160,7 +130,7 @@ export class DashboardPageComponent implements OnInit {
       const payload = this.buildMatchPayload(inviteeID);
       try {
         await this.sendInvitation(payload);
-        this.router.navigate(['/queue', trimmedUsername]);
+        this.router.navigate(['/queue', inviteeID]);
       } catch (inviteErr) {
         this.errorMessage = 'Failed to send duel invitation. Please try again.';
         console.error('Error sending invitation:', inviteErr);
