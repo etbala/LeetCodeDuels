@@ -111,7 +111,7 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 
 	// GET /invites/can_send
 	// Checks if the current user can send a match invite.
-	// Response: models.CanSendInviteResponse
+	// Response: bool
 	inviteRouter.HandleFunc("/can_send", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CanSendInvite(w, r)
 	}).Methods("GET")
