@@ -104,6 +104,33 @@ func SetupRoutes(authMiddleware mux.MiddlewareFunc) *mux.Router {
 	}).Methods("GET")
 
 	// ----------------------
+	// Match Invite Routes
+	// ----------------------
+	inviteRouter := api.PathPrefix("/v1/invites").Subrouter()
+	inviteRouter.Use(authMiddleware)
+
+	// GET /invites/can_send
+	// Checks if the current user can send a match invite.
+	// Response: models.CanSendInviteResponse
+	inviteRouter.HandleFunc("/can_send", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CanSendInvite(w, r)
+	}).Methods("GET")
+
+	// GET /invites/sent
+	// Returns a list of match invites sent by the current user.
+	// Response: []models.Invite
+	inviteRouter.HandleFunc("/sent", func(w http.ResponseWriter, r *http.Request) {
+		handlers.SentInvites(w, r)
+	}).Methods("GET")
+
+	// GET /invites/received
+	// Returns a list of match invites received by the current user.
+	// Response: []models.Invite
+	inviteRouter.HandleFunc("/received", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ReceivedInvites(w, r)
+	}).Methods("GET")
+
+	// ----------------------
 	// Matchmaking Routes
 	// ----------------------
 	mmRouter := api.PathPrefix("/v1/queue").Subrouter()
