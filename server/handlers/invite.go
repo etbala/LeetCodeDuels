@@ -39,7 +39,7 @@ func SentInvites(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
-		l.Warn().Msg("Attempted to call UpdateUser without valid claims")
+		l.Warn().Msg("Attempted to call SentInvites without valid claims")
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
@@ -70,7 +70,7 @@ func ReceivedInvites(w http.ResponseWriter, r *http.Request) {
 
 	claims, err := services.GetClaimsFromRequest(r)
 	if err != nil {
-		l.Warn().Msg("Attempted to call UpdateUser without valid claims")
+		l.Warn().Msg("Attempted to call ReceivedInvites without valid claims")
 		writeError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}

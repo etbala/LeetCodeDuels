@@ -204,7 +204,7 @@ func (im *inviteManager) RemoveInvite(inviterID int64) (bool, error) {
 	return true, nil
 }
 
-// Checks if an invite by this inviter still exists (im.e., awaiting response)
+// Checks if an invite by this inviter still exists (i.e., awaiting response)
 func (im *inviteManager) IsAwaitingResponse(inviterID int64) (bool, error) {
 	inviterKey := inviterSetPrefix + strconv.FormatInt(inviterID, 10)
 	count, err := im.client.SCard(im.ctx, inviterKey).Result()
