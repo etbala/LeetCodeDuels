@@ -1,6 +1,7 @@
+@use "colors" as *;
+
 $bg-primary: #3E4355;
 $header-bg: #2C2D31;
-$border-radius: 5px;
 $input-bg: #2C2D31;
 $input-text: #fff;
 $good: #5ACE73;
@@ -10,3 +11,22 @@ $example-text: #878787;
 $opacity: 0.5;
 $primary-padding: 0.5rem;
 $box-width: 180px;
+
+// todo: migrate to below vars (remove above)
+
+$bg-primary: #3E4355;
+$bg-secondary: #2C2D31;
+$bg-tertiary: #25262B;
+
+$brand-primary: #4ea1ff;  // todo: update brand colors to what we decide on
+$brand-secondary: #a29bfe;
+
+$text-header: #ffffff;
+$text-body: #b5b5b5;
+$text-muted: #878787;
+$text-url: #4ea1ff;
+
+$state-good: #5ACE73;
+$state-bad: #B91C00;
+$state-warn: #FFB800;
+

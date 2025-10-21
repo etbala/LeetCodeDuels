@@ -1,0 +1,9 @@
+@use "colors" as *;
+
+$border-width: 1px;
+$border-radius: .25rem; // 4px
+$border-radius-sm: .2rem; // 3.2px
+$border-radius-lg: .5rem; // 8px
+
+$box-shadow: 0 .5rem 1rem rgba($black, .15);
+$box-shadow-sm: 0 .125rem .25rem rgba($black, .075);

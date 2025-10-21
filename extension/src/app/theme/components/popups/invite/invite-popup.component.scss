@@ -1,0 +1,50 @@
+@use 'theme/styles' as *;
+
+:host {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.invitation-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  background-color: $header-bg;
+  color: $input-text;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 300px;
+  border: 1px solid #4A4A68;
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.invitation-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+
+  strong {
+    font-weight: 600;
+    color: #a29bfe;
+  }
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
