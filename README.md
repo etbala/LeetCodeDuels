@@ -2,7 +2,8 @@
 
 ![Server CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/go.yml/badge.svg?branch=main)
 ![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/extension.yml/badge.svg?branch=main)
-![Deploy Server](https://github.com/etbala/LeetCodeDuels/actions/workflows/fly.yml/badge.svg?branch=main)
+![Deploy Server to GKE](https://github.com/etbala/LeetCodeDuels/actions/workflows/deploy.yml/badge.svg?branch=main)
+![Deploy Server to Fly.io](https://github.com/etbala/LeetCodeDuels/actions/workflows/fly.yml/badge.svg?branch=main)
 
 A browser extension that lets you challenge friends to real-time LeetCode duels.
 

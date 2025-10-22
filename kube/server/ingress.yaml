@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: leetcodeduels-ingress
+  annotations:
+    # --- Sticky session annotations for WebSockets ---
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800" # 2 days
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    
+    # --- WebSocket connection timeout annotations ---
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  defaultBackend:
+    service:
+      name: leetcodeduels-service
+      port:
+        number: 80
