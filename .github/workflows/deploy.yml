@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'server/**'
+      - 'kube/server/**'
   workflow_dispatch:
 
 env:
@@ -16,19 +17,17 @@ env:
   GKE_CLUSTER_NAME: leetcodeduels-cluster
   GKE_REGION: us-central1
   K8S_DEPLOYMENT_NAME: leetcodeduels-deployment
-
   GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
   GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-  
+ 
 permissions:
   contents: 'read'
   id-token: 'write'
 
 jobs:
-  build-and-push:
-    name: Build and Push Server
+  build-and-deploy:
+    name: Build and Deploy to GKE
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -61,12 +60,11 @@ jobs:
       - name: Build and Push Image
         uses: docker/build-push-action@v5
         with:
-          context: ./server 
+          context: ./server
           file: ./server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Enable build caching for faster runs
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -77,8 +75,22 @@ jobs:
           location: ${{ env.GKE_REGION }}
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Deploy to GKE
+      - name: Apply Kubernetes Configurations
         run: |
-          echo "Deploying image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}"
-          kubectl set image deployment/${{ env.K8S_DEPLOYMENT_NAME }} leetcodeduels-server=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
-          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT_NAME }}
+          echo "Applying Kubernetes configurations..."
+          kubectl apply -f kube/server/
+
+      - name: Verify Deployment
+        run: |
+          echo "Waiting for deployment to be ready..."
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT_NAME }} --timeout=5m
+          
+      - name: Show Deployment Status
+        if: always()
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -l app=leetcodeduels
+          echo "=== Services ==="
+          kubectl get services
+          echo "=== Ingress ==="
+          kubectl get ingress
