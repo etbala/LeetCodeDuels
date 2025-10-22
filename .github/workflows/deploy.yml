@@ -1,4 +1,4 @@
-name: Build and Push Server Image to GAR
+name: Deploy to GKE
 
 on:
   push:
@@ -9,11 +9,14 @@ on:
   workflow_dispatch:
 
 env:
+  GCP_PROJECT_ID: leetcodeduels
   GCP_ARTIFACT_REGISTRY_LOCATION: us-central1
   GCP_ARTIFACT_REGISTRY_REPO: leetcodeduels-repo
   IMAGE_NAME: leetcodeduels-image
+  GKE_CLUSTER_NAME: leetcodeduels-cluster
+  GKE_REGION: us-central1
+  K8S_DEPLOYMENT_NAME: leetcodeduels-deployment
 
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
   GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
   
@@ -66,3 +69,16 @@ jobs:
           # Enable build caching for faster runs
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+          location: ${{ env.GKE_REGION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        run: |
+          echo "Deploying image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}"
+          kubectl set image deployment/${{ env.K8S_DEPLOYMENT_NAME }} leetcodeduels-server=${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT_NAME }}
