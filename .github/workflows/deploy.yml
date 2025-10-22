@@ -1,0 +1,68 @@
+name: Build and Push Server Image to GAR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+  workflow_dispatch:
+
+env:
+  GCP_ARTIFACT_REGISTRY_LOCATION: us-central1
+  GCP_ARTIFACT_REGISTRY_REPO: leetcodeduels-repo
+  IMAGE_NAME: leetcodeduels-image
+
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+jobs:
+  build-and-push:
+    name: Build and Push Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short,prefix=v1.0.0-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server 
+          file: ./server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Enable build caching for faster runs
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
