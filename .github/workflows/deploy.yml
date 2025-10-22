@@ -78,11 +78,7 @@ jobs:
       - name: Apply Kubernetes Configurations
         run: |
           echo "Applying Kubernetes configurations..."
-          kubectl apply -f kube/server/config.yaml
-          kubectl apply -f kube/server/redis.yaml
-          kubectl apply -f kube/server/service.yaml
-          kubectl apply -f kube/server/ingress.yaml
-          kubectl apply -f kube/server/deployment.yaml
+          kubectl apply -f kube/server/
 
       - name: Verify Deployment
         run: |
