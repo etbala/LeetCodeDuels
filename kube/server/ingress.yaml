@@ -14,8 +14,14 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
-  defaultBackend:
-    service:
-      name: leetcodeduels-service
-      port:
-        number: 80
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: leetcodeduels-service
+            port:
+              number: 80
