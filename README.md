@@ -2,8 +2,7 @@
 
 ![Server CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/go.yml/badge.svg?branch=main)
 ![Extension CI](https://github.com/etbala/LeetCodeDuels/actions/workflows/extension.yml/badge.svg?branch=main)
-![Deploy Server to GKE](https://github.com/etbala/LeetCodeDuels/actions/workflows/deploy.yml/badge.svg?branch=main)
-![Deploy Server to Fly.io](https://github.com/etbala/LeetCodeDuels/actions/workflows/fly.yml/badge.svg?branch=main)
+![Deploy Server](https://github.com/etbala/LeetCodeDuels/actions/workflows/deploy.yml/badge.svg?branch=main)
 
 A browser extension that lets you challenge friends to real-time LeetCode duels.
 
@@ -18,7 +17,7 @@ cd LeetCodeDuels
 ## Extension
 
 ### 1. Install Dependencies
-Install Node.js (v22+) and Angular CLI
+Install Node.js (v22+) and Angular CLI.
 ```bash
 npm install -g @angular/cli
 ```
@@ -45,7 +44,7 @@ Load Unpacked Extension from Directory: `/extension/dist/browser`
 ## Server
 
 ### 1. Install Dependencies
-Go (v1.24+)
+Install Go (v1.24+).
 
 ### 2. Set up .env
 Create a `.env` file in the `/server` directory by copying the template file: [`/server/.env.template`](./server/.env.template).
@@ -60,7 +59,7 @@ go run ./cmd/server
 ## Testing
 
 ### Server Tests
-Install Docker.
+Install and run Docker.
 
 ```bash
 cd server
@@ -68,7 +67,7 @@ go test ./... -v
 ```
 
 ### Server Stress Tests
-Install Grafana k6
+Install Grafana k6 and Powershell.
 
 ```bash
 cd server/tests/k6
@@ -112,6 +111,6 @@ graph TD
 
 * **Redis**:
 
-    * *Session & State Storage*: Stores ephemeral (temporary) data like active game sessions, pending user invites, and which users are currently online.
+    * *Session & State Storage*: Stores temporary data like active game sessions, pending user invites, and which users are currently online.
 
     * *Horizontal Communication (Pub/Sub)*: Redis acts as a message bus that allows the different backend instances to communicate with each other. For example, if a user connected to Instance A sends a game invite to a user connected to Instance B, the message is published to a Redis channel, which instantly delivers it to the correct instance.
