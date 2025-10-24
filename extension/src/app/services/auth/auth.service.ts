@@ -107,8 +107,9 @@ export class AuthService {
           return;
         }
         
-        // Check if it's our OAuth callback
         if (event.data?.type === 'github-oauth-callback') {
+          clearInterval(windowChecker);
+          clearTimeout(timeoutId);
           window.removeEventListener('message', messageListener);
           
           if (this.authWindow && !this.authWindow.closed) {
@@ -135,17 +136,16 @@ export class AuthService {
       
       window.addEventListener('message', messageListener);
       
-      // Clean up if window is closed without completing auth
       const windowChecker = setInterval(() => {
         if (this.authWindow && this.authWindow.closed) {
           clearInterval(windowChecker);
+          clearTimeout(timeoutId);
           window.removeEventListener('message', messageListener);
           reject(new Error('Authentication window was closed'));
         }
       }, 1000);
       
-      // Timeout after 5 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         clearInterval(windowChecker);
         window.removeEventListener('message', messageListener);
         if (this.authWindow && !this.authWindow.closed) {
