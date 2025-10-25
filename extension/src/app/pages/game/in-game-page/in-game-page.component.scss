@@ -1,13 +1,24 @@
 @use '../../../theme/styles/_variables' as theme;
 
+:host {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: theme.$bg-primary;
+  color: theme.$body-text;
+}
+
 .match-header {
   text-align: center;
 }
 
 .players-container {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: space-around;
   align-items: flex-start;
+  gap: 1rem;
+  margin: 10px;
 }
 
 .avatar-container {
@@ -19,16 +30,19 @@
 .avatar {
   width: 55px;
   height: 55px;
-  border-radius: 50%; // Makes avitar circular
+  border-radius: 50%;
+  border: 2px solid theme.$input-bg;
 }
 
 .names {
-  margin: 5px;
+  text-align: center;
+  margin: 5px 0;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .stats-box {
   background-color: theme.$input-bg;
-  height: 120px;
   padding: theme.$primary-padding;
   box-sizing: border-box;
   border-radius: 5%;
@@ -37,5 +51,26 @@
 
 .stats-list {
   list-style-type: none;
-  padding-left: 0;
+  padding: 0;
+  margin: 0;
+
+  li {
+    margin: 4px 0;
+  }
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+
+  &.passed {
+    background-color: theme.$good;
+  }
+  &.failed {
+    background-color: theme.$bad;
+  }
 }

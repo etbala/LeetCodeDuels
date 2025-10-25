@@ -1,12 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject, takeUntil } from 'rxjs';
 
 import { UserInfoResponse } from 'app/models/api_responses';
 import { environment } from 'environments/environment';
 import { BackgroundService } from 'app/services/background/background.service';
+import { ExtensionEventType } from 'models/extension-events';
+import { ExtensionEventsService } from 'services/background/extension-events.service';
 
 @Component({
   selector: 'app-queue-page',
@@ -15,8 +17,9 @@ import { BackgroundService } from 'app/services/background/background.service';
   templateUrl: './queue-page.component.html',
   styleUrls: ['./queue-page.component.scss']
 })
-export class QueuePageComponent implements OnInit {
+export class QueuePageComponent implements OnInit, OnDestroy {
   private readonly API_URL = environment.apiUrl;
+  private destroy$ = new Subject<void>();
   errorText: string | null = null;
   isLoading = true;
 
@@ -27,7 +30,8 @@ export class QueuePageComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private backgroundService: BackgroundService,
-    private http: HttpClient
+    private http: HttpClient,
+    private events: ExtensionEventsService
   ) {}
 
   ngOnInit(): void {
@@ -41,6 +45,16 @@ export class QueuePageComponent implements OnInit {
     }
 
     this.loadOpponentProfile(this.inviteeID);
+
+    this.events
+      .listenFor<{ opponentID?: number; matchId?: string }>(ExtensionEventType.StartGame)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({ opponentID, matchId }) => {
+        // If inviteeID is known, ensure it matches; otherwise accept any.
+        if (!this.inviteeID || opponentID === this.inviteeID) {
+          this.router.navigate(matchId ? ['/game', matchId] : ['/game']);
+        }
+      });
   }
 
   private async loadOpponentProfile(id: number): Promise<void> {
@@ -68,5 +82,10 @@ export class QueuePageComponent implements OnInit {
       console.error('Failed to cancel invite:', err);
       this.errorText = 'Could not cancel invite. Please try again.';
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

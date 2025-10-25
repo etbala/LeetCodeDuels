@@ -16,7 +16,7 @@ export const appRoutes: Route[] = [
   { path: 'notifications', component: NotificationPageComponent, canActivate: [AuthGuard] },
   { path: 'queue/:inviteeID', component: QueuePageComponent, canActivate: [AuthGuard] },
   { path: 'challenge', component: ChallengePageComponent, canActivate: [AuthGuard] },
-  { path: 'game', component: InGamePageComponent, canActivate: [AuthGuard] },
+  { path: 'game/:matchID', component: InGamePageComponent, canActivate: [AuthGuard] },
   { path: 'result', component: ResultPageComponent, canActivate: [AuthGuard] },
   { path: '**', redirectTo: '' },
 ];

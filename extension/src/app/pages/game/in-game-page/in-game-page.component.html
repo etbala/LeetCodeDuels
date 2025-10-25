@@ -15,84 +15,86 @@
     </ng-container>
 </div>
 
-<div class="players-container">
-    <div class="player-column">
-        <div class="avatar-container">
-        <img
-            src="https://placehold.co/100x100/7B68EE/FFFFFF?text=YOU"
-            alt="Your Avatar"
-            class="avatar player-avatar">
-        </div>
+<div class="players-container" *ngIf="!isLoading; else loadingBlock">
 
-        <h2 class="names player-name">Your Name</h2>
-
-        <div class="stats-box player-stats-box">
-            <ul class="stats-list">
-                <li>
-                <span class="stat-value">7</span>
-                <span class="stat-label"> runs</span>
-                </li>
-                <li>
-                <span class="stat-value">2</span>
-                <span class="stat-label"> submissions</span>
-                </li>
-                <li>
-                <span class="stat-value"> 3</span>
-                <span class="stat-label">
-                    <!-- The green circle for passed cases -->
-                    <span class="status-indicator passed"></span>
-                    cases
-                </span>
-                </li>
-                <li>
-                <span class="stat-value"> 5</span>
-                <span class="stat-label">
-                    <!-- The red circle for failed cases -->
-                    <span class="status-indicator failed"></span>
-                    cases
-                </span>
-                </li>
-            </ul>
-        </div>
+  <!-- Player 1 -->
+  <div class="player-column">
+    <div class="avatar-container">
+      <img
+        [src]="player1?.avatar_url || 'https://placehold.co/100x100/7B68EE/FFFFFF?text=P1'"
+        alt="Player 1 Avatar"
+        class="avatar player-avatar">
     </div>
 
-    <div class="opponent-column">
-        <div class="avatar-container">
-        <img
-            src="https://placehold.co/100x100/7B68EE/FFFFFF?text=OPP"
-            alt="Opponent Avatar"
-            class="avatar opponent-avatar">
-        </div>
+    <h2 class="names player-name">
+      {{ player1?.username || 'Player 1' }}
+    </h2>
 
-        <h2 class="names opponent-name">Opponent Name</h2>
-
-        <div class="stats-box opponent-stats-box">
-            <ul class="stats-list">
-                <li>
-                <span class="stat-value">7</span>
-                <span class="stat-label"> runs</span>
-                </li>
-                <li>
-                <span class="stat-value">2</span>
-                <span class="stat-label"> submissions</span>
-                </li>
-                <li>
-                <span class="stat-value">3</span>
-                <span class="stat-label">
-                    <!-- The green circle for passed cases -->
-                    <span class="status-indicator passed"></span>
-                    cases
-                </span>
-                </li>
-                <li>
-                <span class="stat-value">5</span>
-                <span class="stat-label">
-                    <!-- The red circle for failed cases -->
-                    <span class="status-indicator failed"></span>
-                    cases
-                </span>
-                </li>
-            </ul>
-        </div>
+    <div class="stats-box player-stats-box">
+      <ul class="stats-list">
+        <li>
+          <span class="stat-value">{{ player1Stats.submissions }}</span>
+          <span class="stat-label"> submissions</span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player1Stats.passed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator passed"></span>
+            cases
+          </span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player1Stats.failed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator failed"></span>
+            cases
+          </span>
+        </li>
+      </ul>
     </div>
+  </div>
+
+  <!-- Player 2 -->
+  <div class="opponent-column">
+    <div class="avatar-container">
+      <img
+        [src]="player2?.avatar_url || 'https://placehold.co/100x100/7B68EE/FFFFFF?text=P2'"
+        alt="Player 2 Avatar"
+        class="avatar opponent-avatar">
+    </div>
+
+    <h2 class="names opponent-name">
+      {{ player2?.username || 'Player 2' }}
+    </h2>
+
+    <div class="stats-box opponent-stats-box">
+      <ul class="stats-list">
+        <li>
+          <span class="stat-value">{{ player2Stats.submissions }}</span>
+          <span class="stat-label"> submissions</span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player2Stats.passed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator passed"></span>
+            cases
+          </span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player2Stats.failed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator failed"></span>
+            cases
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
 </div>
+
+<ng-template #loadingBlock>
+  <div class="loading-state">
+    Loading match...
+  </div>
+</ng-template>
