@@ -106,7 +106,7 @@ export class DashboardPageComponent implements OnInit {
     return payload;
   }
 
-  private sendInvitation(payload: SendInvitationPayload): Promise<any> {
+  private sendInvitation(payload: SendInvitationPayload) {
     return this.backgroundService.sendInvitation(payload);
   }
 
