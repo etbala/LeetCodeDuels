@@ -395,12 +395,16 @@ func (c *connManager) handleSendInvitation(
 		Int64("invitee_id", p.InviteeID).
 		Msg("Processing invitation request")
 
+	// todo: check if inviter and invitee are the same
+
 	isOnline := c.redisClient.Exists(context.Background(), userLocationKey(p.InviteeID)).Val() == 1
 	if !isOnline {
 		b, _ := json.Marshal(Message{Type: ServerMsgUserOffline})
 		c.direct <- directMessage{userID: userID, payload: b}
 		return nil
 	}
+
+	// todo: check if user is in-game already.
 
 	success, err := services.InviteManager.CreateInvite(userID, p.InviteeID, p.MatchDetails)
 	if err != nil {
@@ -452,6 +456,8 @@ func (c *connManager) handleAcceptInvitation(userID int64, p AcceptInvitationPay
 		ConnManager.SendToUser(userID, b)
 		return nil
 	}
+
+	// todo: check if user is already in game
 
 	problem, err := store.DataStore.GetRandomProblemByTagsAndDifficulties(invite.MatchDetails.Tags, invite.MatchDetails.Difficulties)
 	if err != nil {
