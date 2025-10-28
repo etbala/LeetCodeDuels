@@ -12,7 +12,6 @@ import (
 const (
 	maxMessageSize = 2048
 	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
 	writeWait      = 10 * time.Second
 )
 
@@ -51,10 +50,6 @@ func (c *Client) readPump() {
 
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
-	})
 
 	for {
 		_, raw, err := c.conn.ReadMessage()
@@ -62,6 +57,8 @@ func (c *Client) readPump() {
 			c.log.Info().Err(err).Msg("Websocket closed")
 			break
 		}
+
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
 		c.log.Debug().Bytes("raw_message", raw).Msg("Received message from client")
 
@@ -82,33 +79,18 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	ticker := time.NewTicker(pingPeriod)
 	defer func() {
-		ticker.Stop()
 		c.conn.Close()
 	}()
-	for {
-		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				// connManager closed the channel
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			err := c.conn.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				return
-			}
-
-		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
+	for message := range c.send {
+		c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			return
 		}
 	}
+
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 }
 
 func (c *Client) sendError(code, msg string) {
