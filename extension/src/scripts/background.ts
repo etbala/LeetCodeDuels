@@ -61,7 +61,7 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
     socket.onopen = () => {
       console.log("WebSocket connection established securely using a ticket.");
       chrome.alarms.create(WEBSOCKET_KEEP_ALIVE_ALARM, {
-        periodInMinutes: 0.4 // Fire every 24 seconds (prevent idle timeout)
+        periodInMinutes: 0.45 // Fire every 27 seconds (prevent idle timeout)
       });
       setupSocketListeners();
     };
@@ -90,8 +90,8 @@ function disconnectWebSocket() {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WEBSOCKET_KEEP_ALIVE_ALARM) {
-    console.log("Keep-alive alarm: Resetting service worker timer.");
-    // We get here every 24 seconds, can maybe try reconnecting if needed.
+    // console.log("Keep-alive alarm: Resetting service worker timer.");
+    sendToServer(ServerMessageType.ClientHeartbeat);
   }
 });
 
