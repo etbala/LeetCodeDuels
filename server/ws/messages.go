@@ -63,6 +63,7 @@ type EnterQueuePayload struct {
 
 type SubmissionPayload struct {
 	ID                int64                   `json:"submissionID"`
+	ProblemID         int                     `json:"problemID"`
 	Status            models.SubmissionStatus `json:"status"`
 	PassedTestCases   int                     `json:"passedTestCases"`
 	TotalTestCases    int                     `json:"totalTestCases"`

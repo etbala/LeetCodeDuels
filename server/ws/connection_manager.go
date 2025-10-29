@@ -639,6 +639,14 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
+	if p.ProblemID != session.Problem.ID {
+		c.log.Warn().Str("session_id", sessionID).
+			Int("expected_problem_id", session.Problem.ID).
+			Int("actual_problem_id", p.ProblemID).
+			Msg("Submission problem ID does not match game problem ID")
+		return nil // Not an error, just ignore.
+	}
+
 	// get leetcode username associated with userID
 	lcUsername, err := store.DataStore.GetLCUsername(userID)
 	if err != nil {

@@ -27,9 +27,7 @@ export interface DeclineInvitationPayload {
   inviterID: number;
 }
 
-export interface SubmissionPayload {
-  submission: PlayerSubmission
-}
+export type SubmissionPayload = PlayerSubmission;
 
 export interface BackgroundAction<T = string> {
   action: BackgroundActionType;
