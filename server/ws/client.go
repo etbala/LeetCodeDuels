@@ -11,7 +11,7 @@ import (
 
 const (
 	maxMessageSize = 2048
-	pongWait       = 60 * time.Second
+	readTimeout    = 60 * time.Second
 	writeWait      = 10 * time.Second
 )
 
@@ -49,7 +49,7 @@ func (c *Client) readPump() {
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadDeadline(time.Now().Add(readTimeout))
 
 	for {
 		_, raw, err := c.conn.ReadMessage()
@@ -58,7 +58,7 @@ func (c *Client) readPump() {
 			break
 		}
 
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.conn.SetReadDeadline(time.Now().Add(readTimeout))
 
 		c.log.Debug().Bytes("raw_message", raw).Msg("Received message from client")
 
