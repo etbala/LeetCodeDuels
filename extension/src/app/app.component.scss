@@ -5,3 +5,33 @@
     background: $bg-primary;
     color: white;
 }
+
+.invite-scroll-area {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+
+  // The whole scrollbar area
+  &::-webkit-scrollbar {
+    width: 8px; // Makes the scrollbar thinner
+  }
+
+  // Hides the background track
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  // The part you drag
+  &::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  // Lighter on hover
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #777;
+  }
+}

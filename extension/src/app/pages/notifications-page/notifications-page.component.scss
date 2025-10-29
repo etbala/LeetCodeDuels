@@ -1,0 +1,75 @@
+@use '../../theme/styles/_variables' as theme;
+
+.header {
+  text-align: center;
+}
+
+.error-message {
+  text-align: center;
+  color: theme.$bad;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.loading-message {
+  text-align: center;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.notifications-container {
+  padding: 10px;
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; // Content left, buttons right
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background-color: theme.$input-bg;
+  color: theme.$input-text;
+}
+
+.invite-content {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%; // Makes avitar circular
+  margin-right: 10px;
+}
+
+.invite-text {
+  font-size: 10px;
+  font-weight: 500;
+  margin: 0; // Removes default
+}
+
+.username {
+  font-weight: bold;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.accept-btn {
+    background-color: theme.$good;
+    color: theme.$input-text;
+}
+
+.decline-btn {
+    background-color: theme.$bad;
+    color: theme.$input-text;
+    // Space between the two buttons
+    margin-left: 10px;
+}

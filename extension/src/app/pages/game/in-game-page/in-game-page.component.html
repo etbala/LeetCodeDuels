@@ -1,2 +1,100 @@
-<h2>In Game</h2>
-<p>Coming soon...</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications</title>
+</head>
+<body>
+
+<div class="match-header">
+    <ng-container>
+        <h1>Duel In Progress</h1>
+
+        <h2>{{ problemTitle }}</h2>
+    </ng-container>
+</div>
+
+<div class="players-container" *ngIf="!isLoading; else loadingBlock">
+
+  <!-- Player 1 -->
+  <div class="player-column">
+    <div class="avatar-container">
+      <img
+        [src]="player1?.avatar_url || 'https://placehold.co/100x100/7B68EE/FFFFFF?text=P1'"
+        alt="Player 1 Avatar"
+        class="avatar player-avatar">
+    </div>
+
+    <h2 class="names player-name">
+      {{ player1?.username || 'Player 1' }}
+    </h2>
+
+    <div class="stats-box player-stats-box">
+      <ul class="stats-list">
+        <li>
+          <span class="stat-value">{{ player1Stats.submissions }}</span>
+          <span class="stat-label"> submissions</span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player1Stats.passed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator passed"></span>
+            cases
+          </span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player1Stats.failed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator failed"></span>
+            cases
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Player 2 -->
+  <div class="opponent-column">
+    <div class="avatar-container">
+      <img
+        [src]="player2?.avatar_url || 'https://placehold.co/100x100/7B68EE/FFFFFF?text=P2'"
+        alt="Player 2 Avatar"
+        class="avatar opponent-avatar">
+    </div>
+
+    <h2 class="names opponent-name">
+      {{ player2?.username || 'Player 2' }}
+    </h2>
+
+    <div class="stats-box opponent-stats-box">
+      <ul class="stats-list">
+        <li>
+          <span class="stat-value">{{ player2Stats.submissions }}</span>
+          <span class="stat-label"> submissions</span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player2Stats.passed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator passed"></span>
+            cases
+          </span>
+        </li>
+        <li>
+          <span class="stat-value">{{ player2Stats.failed }}</span>
+          <span class="stat-label">
+            <span class="status-indicator failed"></span>
+            cases
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<ng-template #loadingBlock>
+  <div class="loading-state">
+    Loading match...
+  </div>
+</ng-template>
