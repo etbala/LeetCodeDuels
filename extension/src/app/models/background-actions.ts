@@ -9,6 +9,7 @@ export enum BackgroundActionType {
   DuelDeclineInvitation = 'duel:decline-invitation',
   DuelCancelInvitation = 'duel:cancel-invitation',
   DuelSubmission = 'duel:submission',
+  DuelForfeit = 'duel:forfeit',
   // QueueEnter = 'queue:enter',
   // QueueLeave = 'queue:leave',
 }

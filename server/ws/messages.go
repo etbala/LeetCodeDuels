@@ -15,6 +15,7 @@ const (
 	ClientMsgEnterQueue        = "enter_queue"
 	ClientMsgLeaveQueue        = "leave_queue" // No Payload
 	ClientMsgSubmission        = "submission"
+	ClientMsgForfeit           = "forfeit"   // No Payload
 	ClientMsgHeartbeat         = "heartbeat" // No Payload
 )
 

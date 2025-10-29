@@ -351,3 +351,71 @@ func TestUnknown(t *testing.T) {
 	require.NoError(t, json.Unmarshal(m.Payload, &e))
 	require.Equal(t, "unknown_type", e.Code)
 }
+
+func TestForfeitFlow(t *testing.T) {
+	player1ID := int64(11111)
+	player2ID := int64(22222)
+
+	player1 := dialWS(t, player1ID)
+	defer player1.Close()
+	player2 := dialWS(t, player2ID)
+	defer player2.Close()
+
+	// --- Start Game Setup ---
+	invite := ws.SendInvitationPayload{
+		InviteeID:    player2ID,
+		MatchDetails: models.MatchDetails{Tags: []int{1}, Difficulties: []models.Difficulty{models.Easy}},
+	}
+	err := player1.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgSendInvitation,
+		Payload: ws.MarshalPayload(invite),
+	})
+	require.NoError(t, err)
+
+	reqMsg := readMessage(t, player2)
+	require.Equal(t, ws.ServerMsgInvitationRequest, reqMsg.Type)
+
+	accept := ws.AcceptInvitationPayload{InviterID: player1ID}
+	err = player2.WriteJSON(ws.Message{
+		Type:    ws.ClientMsgAcceptInvitation,
+		Payload: ws.MarshalPayload(accept),
+	})
+	require.NoError(t, err)
+
+	startMsg1 := readMessage(t, player1)
+	startMsg2 := readMessage(t, player2)
+	require.Equal(t, ws.ServerMsgStartGame, startMsg1.Type)
+	require.Equal(t, ws.ServerMsgStartGame, startMsg2.Type)
+
+	var p1Start ws.StartGamePayload
+	require.NoError(t, json.Unmarshal(startMsg1.Payload, &p1Start))
+	sessionID := p1Start.SessionID
+	require.NotEmpty(t, sessionID)
+	// --- End Game Setup ---
+
+	err = player1.WriteJSON(ws.Message{Type: ws.ClientMsgForfeit})
+	require.NoError(t, err)
+
+	endMsg1 := readMessage(t, player1)
+	endMsg2 := readMessage(t, player2)
+
+	require.Equal(t, ws.ServerMsgGameOver, endMsg1.Type)
+	require.Equal(t, ws.ServerMsgGameOver, endMsg2.Type)
+
+	var endPayload1, endPayload2 ws.GameOverPayload
+	require.NoError(t, json.Unmarshal(endMsg1.Payload, &endPayload1))
+	require.NoError(t, json.Unmarshal(endMsg2.Payload, &endPayload2))
+
+	require.Equal(t, player2ID, endPayload1.WinnerID)
+	require.Equal(t, player2ID, endPayload2.WinnerID)
+	require.Equal(t, sessionID, endPayload1.SessionID)
+	require.Equal(t, sessionID, endPayload2.SessionID)
+
+	inGame1, err := services.GameManager.IsPlayerInGame(player1ID)
+	require.NoError(t, err)
+	require.False(t, inGame1, "Player 1 should not be in a game after forfeiting")
+
+	inGame2, err := services.GameManager.IsPlayerInGame(player2ID)
+	require.NoError(t, err)
+	require.False(t, inGame2, "Player 2 should not be in a game after it ends")
+}
