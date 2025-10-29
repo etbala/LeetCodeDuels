@@ -37,7 +37,7 @@ export class NotificationPageComponent implements OnInit {
   }
 
   private fetchPendingInvites(): Observable<InviteNotification[]> {
-    const fullUrl = `${this.API_URL}/api/v1/me/notifications`;
+    const fullUrl = `${this.API_URL}/api/v1/users/me/notifications`;
 
     return this.http.get<NotificationsResponse>(fullUrl).pipe(
       map(response => response.invites || [])

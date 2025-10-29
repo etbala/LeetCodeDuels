@@ -9,6 +9,12 @@ export interface UserInfoResponse {
   rating: number;
 }
 
+export interface UserStatusResponse {
+	online: boolean;
+	in_game: boolean;
+	game_id: string;
+}
+
 export interface InviteNotification {
   from_user: UserInfoResponse;
   matchDetails: MatchDetails;

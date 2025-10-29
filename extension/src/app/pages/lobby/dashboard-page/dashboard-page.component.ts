@@ -2,12 +2,20 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
 import { Router } from '@angular/router';
-import { Tag } from '../../../models/tag';
+
 import { BackgroundService } from 'app/services/background/background.service';
 import { SendInvitationPayload } from 'app/models/background-actions';
 import { Difficulty } from 'app/models/match';
+
+import { Tag } from 'models/tag';
+import { UserStatusResponse } from 'models/api_responses';
+import { UserService } from 'services/user/user.service';
+
+import { Observable } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
 
 @Component({
   selector: 'app-dashboard-page',
@@ -19,9 +27,11 @@ import { Difficulty } from 'app/models/match';
 export class DashboardPageComponent implements OnInit {
   private readonly API_URL = environment.apiUrl;
   opponentUsername = '';
+  currentUserId: number | null = null;
   errorMessage: string | null = null;
   difficulties = ['Easy', 'Medium', 'Hard'] as const;
   selectedDifficulties = new Set<string>();
+  isLoading = true;
 
   tags: Tag[] = [];
   selectedTags = new Set<number>();
@@ -29,7 +39,8 @@ export class DashboardPageComponent implements OnInit {
   constructor(
     private router: Router,
     private http: HttpClient,
-    private backgroundService : BackgroundService
+    private backgroundService : BackgroundService,
+    private userService: UserService
   ) {}
 
   get selectedDifficultiesList(): string {
@@ -46,7 +57,47 @@ export class DashboardPageComponent implements OnInit {
     return Array.from(this.selectedTags);
   }
 
+  getUserIdAndRedirect() {
+    this.userService.getMyProfile().subscribe({
+      next: user => {
+        this.currentUserId = user.id;
+        this.redirectIfInGame();
+      },
+      error: err => {
+        console.error('profile fetch error', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  checkUserStatus(userId: number): Observable<UserStatusResponse> {
+    return this.http.get<UserStatusResponse>(`${this.API_URL}/api/v1/users/${userId}/status`);
+  }
+
+  redirectIfInGame() {
+    if (!this.currentUserId) {
+      this.isLoading = false;
+      return;
+    }
+
+    this.checkUserStatus(this.currentUserId).subscribe({
+      next: res => {
+        if (res.in_game && res.game_id) {
+          this.router.navigate(['/game', res.game_id]);
+        } else {
+          this.isLoading = false;
+        }
+      },
+      error: err => {
+        console.error('status check error', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
   ngOnInit() {
+    this.getUserIdAndRedirect();
+
     this.http.get<Tag[]>(`${this.API_URL}/api/v1/problems/tags`).subscribe({
       next: data => {
         this.tags = data;

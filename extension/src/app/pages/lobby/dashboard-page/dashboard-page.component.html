@@ -1,6 +1,6 @@
 <h2 class="duel-header">Start A New Duel</h2>
 
-<div class="dashboard">
+<div class="dashboard" *ngIf="!isLoading; else loadingBlock">
   <div class="left-panel">
     <input
       type="text"
@@ -52,3 +52,9 @@
   </details>
   </div>
 </div>
+
+<ng-template #loadingBlock>
+  <div class="loading-state">
+    Loading match...
+  </div>
+</ng-template>

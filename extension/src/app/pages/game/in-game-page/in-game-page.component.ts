@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
 
-import { Session, PlayerSubmission } from 'models/match';
+import { Session, PlayerSubmission, Problem } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
 
@@ -19,6 +19,7 @@ export class InGamePageComponent implements OnInit {
 
   matchID!: string;
   matchData?: Session;
+  problemTitle: string = '';
 
   // player1 / player2 info
   player1?: UserInfoResponse;
@@ -92,6 +93,7 @@ export class InGamePageComponent implements OnInit {
       this.player1Stats = this.calcStatsForPlayer(p1Id, match.submissions || []);
       this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
 
+      this.problemTitle = match.problem?.title || match.problem?.slug || 'Unknown Problem';
     } catch (err) {
       console.error('Failed to load match or player data:', err);
       this.errorText = 'Could not load game data.';
