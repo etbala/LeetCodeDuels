@@ -353,6 +353,9 @@ func (h *connManager) HandleClientMessage(c *Client, env *Message) error {
 		}
 		return h.handleSubmission(c.userID, p)
 
+	case ClientMsgForfeit:
+		return h.handleForfeit(c.userID)
+
 	default:
 		h.log.Warn().Int64("user_id", c.userID).Str("message_type", string(env.Type)).Msg("Unknown message type received")
 		c.sendError("unknown_type", "message type not recognized")
@@ -757,6 +760,73 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 		return err
 	}
 
+	return nil
+}
+
+func (cm *connManager) handleForfeit(userID int64) error {
+	cm.log.Info().Int64("user_id", userID).Msg("Processing forfeit request")
+
+	sessionID, err := services.GameManager.GetSessionIDByPlayer(userID)
+	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to get session ID for forfeiting user")
+		return err
+	}
+	if sessionID == "" {
+		cm.log.Warn().Int64("user_id", userID).Msg("User attempted to forfeit but is not in a game")
+		return nil
+	}
+
+	opponentID, err := services.GameManager.GetOpponent(sessionID, userID)
+	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Str("session_id", sessionID).Msg("Failed to get opponent for forfeit")
+		return err
+	}
+	if opponentID == 0 {
+		cm.log.Error().Int64("user_id", userID).Str("session_id", sessionID).Msg("Could not find opponent in session")
+		return fmt.Errorf("opponent not found in session %s", sessionID)
+	}
+
+	completedSession, err := services.GameManager.CompleteGame(sessionID, opponentID)
+	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Str("session_id", sessionID).Msg("Failed to complete game after forfeit")
+		return err
+	}
+	if completedSession == nil {
+		cm.log.Error().Str("session_id", sessionID).Msg("Game session not found by CompleteGame")
+		return fmt.Errorf("session %s not found", sessionID)
+	}
+
+	duration := completedSession.EndTime.Sub(completedSession.StartTime)
+	durationSecs := int64(duration.Seconds())
+
+	reply := GameOverPayload{
+		WinnerID:  opponentID,
+		SessionID: sessionID,
+		Duration:  durationSecs,
+	}
+	payload, _ := json.Marshal(reply)
+	msg := Message{Type: ServerMsgGameOver, Payload: payload}
+	b, _ := json.Marshal(msg)
+
+	err = ConnManager.SendToUser(userID, b)
+	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", userID).Msg("Failed to send game over message to forfeiting user")
+		// Continue to notify opponent
+	}
+
+	err = ConnManager.SendToUser(opponentID, b)
+	if err != nil {
+		cm.log.Error().Err(err).Int64("user_id", opponentID).Msg("Failed to send game over message to opponent (winner)")
+		// Continue to storage
+	}
+
+	cm.log.Info().Str("session_id", sessionID).Int64("winner_id", opponentID).Int64("loser_id", userID).Msg("Game ended due to forfeit")
+
+	err = store.DataStore.StoreMatch(completedSession)
+	if err != nil {
+		cm.log.Error().Err(err).Msg("Failed to store match data after forfeit")
+		return err
+	}
 	return nil
 }
 

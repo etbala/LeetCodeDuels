@@ -237,6 +237,9 @@ chrome.runtime.onMessage.addListener((message: BackgroundAction, sender, sendRes
     case BackgroundActionType.DuelSubmission:
       sendResponse(sendToServer(ServerMessageType.ClientSubmission, message.payload));
       break;
+    case BackgroundActionType.DuelForfeit:
+      sendResponse(sendToServer(ServerMessageType.ClientForfeit));
+      break;
     default:
       sendResponse({ status: "error", error: "Unknown action" });
       break;

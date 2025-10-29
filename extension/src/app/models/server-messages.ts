@@ -6,6 +6,7 @@ export enum ServerMessageType {
   ClientEnterQueue        = "enter_queue",
   ClientLeaveQueue        = "leave_queue",
   ClientSubmission        = "submission",
+  ClientForfeit           = "forfeit",
   ClientHeartbeat         = "heartbeat",
   ServerError              = "server_error",
   ServerInvitationRequest  = "invitation_request",
