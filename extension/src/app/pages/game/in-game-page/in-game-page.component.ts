@@ -93,7 +93,7 @@ export class InGamePageComponent implements OnInit {
       this.player1Stats = this.calcStatsForPlayer(p1Id, match.submissions || []);
       this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
 
-      this.problemTitle = match.problem?.title || match.problem?.slug || 'Unknown Problem';
+      this.problemTitle = match.problem?.name || match.problem?.slug || 'Unknown Problem';
     } catch (err) {
       console.error('Failed to load match or player data:', err);
       this.errorText = 'Could not load game data.';

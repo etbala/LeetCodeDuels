@@ -271,8 +271,13 @@ func TestSubmissionFlow(t *testing.T) {
 	require.NotEmpty(t, p1.SessionID)
 	require.Equal(t, p1.SessionID, p2.SessionID)
 
+	session, err := services.GameManager.GetGame(p1.SessionID)
+	require.NoError(t, err)
+	require.NotNil(t, session)
+
 	submission1 := ws.SubmissionPayload{
 		ID:              1,
+		ProblemID:       session.Problem.ID,
 		Status:          "Compile Error",
 		PassedTestCases: 3,
 		TotalTestCases:  82,
@@ -304,6 +309,7 @@ func TestSubmissionFlow(t *testing.T) {
 
 	submission2 := ws.SubmissionPayload{
 		ID:              2,
+		ProblemID:       session.Problem.ID,
 		Status:          "Accepted",
 		PassedTestCases: 82,
 		TotalTestCases:  82,

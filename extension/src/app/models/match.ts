@@ -37,10 +37,10 @@ export enum Difficulty {
 }
 
 export interface Problem {
-    title: string;
+    id: number;
+    name: string;
     slug: string;
     difficulty: Difficulty;
-    tags: number[];
 }
 
 export interface MatchDetails {

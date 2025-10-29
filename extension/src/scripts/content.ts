@@ -66,10 +66,9 @@ function mapStatusToEnum(statusString: string): SubmissionStatus {
  */
 function sendSubmissionToBackground(submission: PlayerSubmission): Promise<void> {
   return new Promise((resolve, reject) => {
-    const payload: SubmissionPayload = { submission };
     const message: BackgroundAction<SubmissionPayload> = {
       action: BackgroundActionType.DuelSubmission,
-      payload,
+      payload: submission,
     };
 
     chrome.runtime.sendMessage(message, (response) => {
