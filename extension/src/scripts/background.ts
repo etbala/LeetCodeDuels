@@ -12,10 +12,52 @@ interface ServerMessage {
 let socket: WebSocket | null = null;
 const API_BASE_URL = environment.apiUrl;
 const SOCKET_URL = API_BASE_URL.replace(/^http/, 'ws');
+
 const WEBSOCKET_KEEP_ALIVE_ALARM = 'websocket-keep-alive';
+const WEBSOCKET_RECONNECT_ALARM = 'websocket-reconnect';
+
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 60000;
+const RECONNECT_FACTOR = 2;
+
+let isIntentionalDisconnect = false;
 
 async function logout() {
   await chrome.storage.local.remove([AUTH_TOKEN_KEY, USER_KEY]);
+}
+
+// Clears any pending reconnect alarms and resets the attempt counter.
+async function resetReconnectState() {
+  await chrome.storage.local.remove('reconnectAttempt');
+  chrome.alarms.clear(WEBSOCKET_RECONNECT_ALARM);
+}
+
+// Calculates delay and schedules next reconnect attempt
+async function scheduleReconnect() {
+  try {
+    const { reconnectAttempt = 0 } = await chrome.storage.local.get('reconnectAttempt');
+
+    // Calculate delay: base * (factor ^ attempt)
+    let delayMs = RECONNECT_BASE_DELAY_MS * Math.pow(RECONNECT_FACTOR, reconnectAttempt);
+
+    // Add jitter: +/- 500ms to prevent thundering herd
+    const jitter = (Math.random() - 0.5) * 1000;
+    delayMs = delayMs + jitter;
+
+    delayMs = Math.min(delayMs, RECONNECT_MAX_DELAY_MS);
+    delayMs = Math.max(1000, delayMs);
+
+    console.log(`Scheduling reconnect attempt ${reconnectAttempt + 1} in ${Math.round(delayMs / 1000)}s`);
+    
+    await chrome.storage.local.set({ reconnectAttempt: reconnectAttempt + 1 });
+
+    chrome.alarms.create(WEBSOCKET_RECONNECT_ALARM, {
+      delayInMinutes: delayMs / 60000 
+    });
+
+  } catch (error) {
+    console.error("Error scheduling reconnect:", error);
+  }
 }
 
 async function connectWebSocket(): Promise<{ status: string; message?: string }> {
@@ -23,6 +65,8 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
     console.log("WebSocket is already connected.");
     return { status: "success", message: "WebSocket is already connected." };
   }
+
+  isIntentionalDisconnect = false;
 
   try {
     const storage = await chrome.storage.local.get(AUTH_TOKEN_KEY);
@@ -60,6 +104,7 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
 
     socket.onopen = () => {
       console.log("WebSocket connection established securely using a ticket.");
+      resetReconnectState();
       chrome.alarms.create(WEBSOCKET_KEEP_ALIVE_ALARM, {
         periodInMinutes: 0.45 // Fire every 27 seconds (prevent idle timeout)
       });
@@ -82,7 +127,9 @@ async function connectWebSocket(): Promise<{ status: string; message?: string }>
 function disconnectWebSocket() {
     if (socket && socket.readyState === WebSocket.OPEN) {
         console.log("Disconnecting WebSocket.");
+        isIntentionalDisconnect = true;
         chrome.alarms.clear(WEBSOCKET_KEEP_ALIVE_ALARM);
+        chrome.alarms.clear(WEBSOCKET_RECONNECT_ALARM);
         socket.close();
         socket = null;
     }
@@ -90,8 +137,14 @@ function disconnectWebSocket() {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WEBSOCKET_KEEP_ALIVE_ALARM) {
-    // console.log("Keep-alive alarm: Resetting service worker timer.");
     sendToServer(ServerMessageType.ClientHeartbeat);
+  } else if (alarm.name === WEBSOCKET_RECONNECT_ALARM) {
+    (async () => {
+      const result = await connectWebSocket();
+      if (result.status === 'error') {
+        scheduleReconnect();
+      }
+    })();
   }
 });
 
@@ -156,9 +209,19 @@ function setupSocketListeners() {
 
   socket.onerror = (err) => console.error("WebSocket error:", err);
   
-  socket.onclose = () => {
-    console.log("WebSocket connection closed.");
+  socket.onclose = (event) => {
+    console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
+
+    chrome.alarms.clear(WEBSOCKET_KEEP_ALIVE_ALARM);
     socket = null;
+
+    if (isIntentionalDisconnect) {
+      isIntentionalDisconnect = false;
+      return;
+    }
+
+    console.log("Unexpected disconnect. Attempting to reconnect...");
+    scheduleReconnect();
   };
 
   socket.onmessage = (event) => {
@@ -194,28 +257,35 @@ async function sendToServer(type: ServerMessageType, payload?: unknown) {
     const message = JSON.stringify({ type, payload });
     socket.send(message);
     return { status: "success", message: `Sent '${type}' to server.` };
-  } else {
-    const storage = await chrome.storage.local.get(AUTH_TOKEN_KEY);
-    const token = storage[AUTH_TOKEN_KEY];
-
-    if (!token) {
-      console.warn("Message not sent. User is unauthenticated.");
-      return { status: "error", message: "No auth token found." };
-    }
-
-    const connectResult = await connectWebSocket();
-    if (connectResult.status === "success") {
-      // wait a moment for connection to establish
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        const message = JSON.stringify({ type, payload });
-        socket.send(message);
-        return { status: "success", message: `Sent '${type}' to server.` };
-      }
-    }
-
-    return { status: "error", error: "WebSocket is not connected." };
   }
+  
+  if (type === ServerMessageType.ClientHeartbeat) {
+    return { status: "error", error: "WebSocket is not connected. Skipping heartbeat." };
+  }
+
+  console.warn(`WebSocket not open. State: ${socket?.readyState}. Attempting reconnect for action: ${type}`);
+  const storage = await chrome.storage.local.get(AUTH_TOKEN_KEY);
+  const token = storage[AUTH_TOKEN_KEY];
+
+  if (!token) {
+    console.warn("Message not sent. User is unauthenticated.");
+    return { status: "error", message: "No auth token found." };
+  }
+
+  await resetReconnectState();
+  const connectResult = await connectWebSocket();
+
+  if (connectResult.status === "success") {
+    // wait a moment for connection to establish
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const message = JSON.stringify({ type, payload });
+      socket.send(message);
+      return { status: "success", message: `Sent '${type}' to server.` };
+    }
+  }
+
+  return { status: "error", error: "WebSocket is not connected." };
 }
 
 // Listen for messages from Angular UI
