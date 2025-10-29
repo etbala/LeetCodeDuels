@@ -1,4 +1,4 @@
-import { BackgroundAction, BackgroundActionType, SubmissionPayload } from 'app/models/background-actions';
+import { BackgroundAction, BackgroundActionType } from 'app/models/background-actions';
 import { environment } from '../environments/environment';
 import { ExtensionEventType, UIMessage, StartGamePayload } from 'app/models/extension-events';
 import { ServerMessageType } from 'app/models/server-messages';
