@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
 
-import { Session, PlayerSubmission, Problem } from 'models/match';
+import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
 
@@ -19,7 +19,7 @@ export class InGamePageComponent implements OnInit {
 
   matchID!: string;
   matchData?: Session;
-  problemTitle: string = '';
+  problemTitle = '';
 
   // player1 / player2 info
   player1?: UserInfoResponse;
