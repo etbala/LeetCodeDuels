@@ -1,11 +1,15 @@
-name: Deploy to Fly.io
+name: Deploy Server
 on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+  workflow_dispatch:
+
 jobs:
   deploy:
-    name: Deploy app
+    name: Deploy
     runs-on: ubuntu-latest
     concurrency: deploy-group
     steps:

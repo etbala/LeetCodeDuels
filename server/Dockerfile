@@ -1,20 +1,19 @@
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
-
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -v -o /app/server ./cmd/server
 
-FROM scratch
+FROM alpine:latest
 
-WORKDIR /app
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
-COPY --from=builder /app/main .
+WORKDIR /home/appuser
+COPY --from=builder /app/server .
 
 EXPOSE 8080
-
-ENTRYPOINT ["/app/main"]
+CMD ["./server"]
