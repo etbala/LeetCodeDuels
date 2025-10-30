@@ -274,7 +274,7 @@ func (ds *dataStore) GetAllProblems() ([]models.Problem, error) {
 // Return all problems that have a given tag.
 func (ds *dataStore) GetProblemsByTag(tagID int) ([]models.Problem, error) {
 	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
+	SELECT p.problem_number, p.name, p.slug, p.difficulty
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = $1
@@ -355,7 +355,7 @@ func (ds *dataStore) GetRandomProblem() (*models.Problem, error) {
 // Returns a single random problem that has the specified tag.
 func (ds *dataStore) GetRandomProblemByTag(tagID int) (*models.Problem, error) {
 	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
+	SELECT p.problem_number, p.name, p.slug, p.difficulty
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = $1
@@ -374,7 +374,7 @@ func (ds *dataStore) GetRandomProblemByTags(tagIDs []int) (*models.Problem, erro
 		return ds.GetRandomProblem()
 	}
 	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
+	SELECT p.problem_number, p.name, p.slug, p.difficulty
 	FROM problems p
 	JOIN problem_tags pt ON p.id = pt.problem_id
 	WHERE pt.tag_id = ANY($1)
@@ -393,7 +393,7 @@ func (ds *dataStore) GetRandomProblemByDifficulties(difficulties []models.Diffic
 		return ds.GetRandomProblem() // no filter if no difficulties provided
 	}
 	query := `
-	SELECT p.id, p.name, p.slug, p.difficulty
+	SELECT p.problem_number, p.name, p.slug, p.difficulty
 	FROM problems p
 	WHERE p.difficulty = ANY($1)
 		AND p.is_paid = false
@@ -434,7 +434,7 @@ func (ds *dataStore) GetRandomProblemByTagsAndDifficulties(
 	}
 
 	query := fmt.Sprintf(`
-	SELECT p.id, p.name, p.slug, p.difficulty
+	SELECT p.problem_number, p.name, p.slug, p.difficulty
 	FROM problems p
 	WHERE p.is_paid = false
 		AND p.difficulty = ANY($1)
