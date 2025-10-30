@@ -21,7 +21,7 @@ CREATE TABLE users (
 
 CREATE TABLE problems (
     id SERIAL PRIMARY KEY,
-    problem_num INTEGER UNIQUE NOT NULL,
+    problem_number INTEGER UNIQUE NOT NULL,
     name       TEXT NOT NULL,
     slug       TEXT NOT NULL,
     difficulty problem_difficulty NOT NULL,
