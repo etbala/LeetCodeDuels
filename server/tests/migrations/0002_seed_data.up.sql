@@ -33,7 +33,7 @@ INSERT INTO users (
 ;
 
 -- problems
-INSERT INTO problems (id, problem_num, name, slug, difficulty) VALUES
+INSERT INTO problems (id, problem_number, name, slug, difficulty) VALUES
   (1, 1, 'Two Sum', 'two-sum', 'Easy'),
   (2, 2, 'Add Two Numbers', 'add-two-numbers', 'Medium'),
   (4, 4, 'Median of Two Sorted Arrays', 'median-of-two-sorted-arrays', 'Hard'),
