@@ -41,13 +41,9 @@
             </div>
 
             <div class="meta">
-              {{ session.problem.name || session.problem.slug || 'Untitled Problem' }} ·
-              {{ session.startTime | date:'short' }} – {{ session.endTime | date:'short' }}
+              {{ session.startTime | date:'MM/dd/yy' }}
             </div>
           </div>
-
-          <!-- Right: chevron or placeholder for affordance -->
-          <div class="chevron" aria-hidden="true">›</div>
         </div>
       </a>
 
