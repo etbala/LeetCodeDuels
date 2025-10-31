@@ -176,5 +176,4 @@ def sync_problems_to_db():
         print("Sync complete. Database connection closed.")
 
 if __name__ == "__main__":
-    os.environ['DB_URL'] = 'postgresql://neondb_owner:npg_yQ1tjhOurba3@ep-divine-breeze-adnuajh4-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require'
     sync_problems_to_db()
