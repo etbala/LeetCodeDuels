@@ -67,10 +67,10 @@ type SubmissionPayload struct {
 	Status            models.SubmissionStatus `json:"status"`
 	PassedTestCases   int                     `json:"passedTestCases"`
 	TotalTestCases    int                     `json:"totalTestCases"`
-	Runtime           int                     `json:"runtime"`
-	RuntimePercentile float32                 `json:"runtimePercentile"`
-	Memory            int                     `json:"memory"`
-	MemoryPercentile  float32                 `json:"memoryPercentile"`
+	Runtime           int32                   `json:"runtime,omitempty"`
+	RuntimePercentile float64                 `json:"runtimePercentile,omitempty"`
+	Memory            int32                   `json:"memory,omitempty"`
+	MemoryPercentile  float64                 `json:"memoryPercentile,omitempty"`
 	Language          models.LanguageType     `json:"language"`
 	Time              time.Time               `json:"time"`
 }

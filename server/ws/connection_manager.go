@@ -690,15 +690,17 @@ func (c *connManager) handleSubmission(userID int64, p SubmissionPayload) error 
 
 	submissionID := p.ID
 	submission := models.PlayerSubmission{
-		ID:              submissionID,
-		PlayerID:        userID,
-		PassedTestCases: p.PassedTestCases,
-		TotalTestCases:  p.TotalTestCases,
-		Status:          p.Status,
-		Runtime:         p.Runtime,
-		Memory:          p.Memory,
-		Lang:            p.Language,
-		Time:            p.Time,
+		ID:                submissionID,
+		PlayerID:          userID,
+		PassedTestCases:   p.PassedTestCases,
+		TotalTestCases:    p.TotalTestCases,
+		Status:            p.Status,
+		Runtime:           &p.Runtime,
+		RuntimePercentile: &p.RuntimePercentile,
+		Memory:            &p.Memory,
+		MemoryPercentile:  &p.MemoryPercentile,
+		Lang:              p.Language,
+		Time:              p.Time,
 	}
 
 	err = services.GameManager.AddSubmission(sessionID, submission)
