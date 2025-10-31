@@ -20,8 +20,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE problems (
-    id SERIAL PRIMARY KEY,
-    problem_number INTEGER UNIQUE NOT NULL,
+    id         INTEGER PRIMARY KEY,
     name       TEXT NOT NULL,
     slug       TEXT NOT NULL,
     difficulty problem_difficulty NOT NULL,
@@ -34,14 +33,14 @@ CREATE TABLE tags (
 );
 
 CREATE TABLE problem_tags (
-    problem_id INT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+    problem_id INTEGER NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
     tag_id     INT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (problem_id, tag_id)
 );
 
 CREATE TABLE matches (
     id          UUID PRIMARY KEY,
-    problem_id  INT NOT NULL REFERENCES problems(id) ON DELETE RESTRICT,
+    problem_id  INTEGER NOT NULL REFERENCES problems(id) ON DELETE RESTRICT,
     is_rated    BOOLEAN NOT NULL DEFAULT false,
     status      match_status NOT NULL,
     winner_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,

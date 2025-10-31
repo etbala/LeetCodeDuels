@@ -36,7 +36,7 @@ def get_leetcode_problems():
     processed_problems = []
     for problem in problems:
         processed_problems.append({
-            'problem_number': int(problem.get('questionFrontendId')),
+            'id': int(problem.get('questionFrontendId')),
             'name': problem.get('title'),
             'slug': problem.get('titleSlug'),
             'difficulty': problem.get('difficulty'),
@@ -54,32 +54,51 @@ def get_db_connection():
         print(f"Error connecting to the database: {e}")
         return None
 
-def setup_database_schema(cur):
-    """Creates the necessary tables if they don't exist."""
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS problems (
-            id SERIAL PRIMARY KEY,
-            problem_number INT NOT NULL UNIQUE,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL UNIQUE,
-            difficulty TEXT NOT NULL,
-            is_paid BOOLEAN NOT NULL
-        );
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS tags (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL UNIQUE
-        );
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS problem_tags (
-            problem_id INT REFERENCES problems(id) ON DELETE CASCADE,
-            tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
-            PRIMARY KEY (problem_id, tag_id)
-        );
-    """)
-    print("Database schema verified.")
+def setup_database_schema(conn):
+    """Creates the necessary tables/enum if they don't exist."""
+    # Transaction 1: Create ENUM
+    try:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TYPE problem_difficulty AS ENUM ('Easy', 'Medium', 'Hard');")
+            print("Created 'problem_difficulty' ENUM type.")
+    except psycopg2.errors.DuplicateObject:
+        # Type already exists
+        conn.rollback()
+    except Exception as e:
+        print(f"Error creating ENUM: {e}")
+        conn.rollback()
+        raise e # Re-raise the unexpected error to stop the script
+
+    # Transaction 2: Create Tables (this will now run in a fresh transaction)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS problems (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    slug TEXT NOT NULL UNIQUE,
+                    difficulty problem_difficulty NOT NULL,
+                    is_paid BOOLEAN NOT NULL
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS tags (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS problem_tags (
+                    problem_id INTEGER REFERENCES problems(id) ON DELETE CASCADE,
+                    tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
+                    PRIMARY KEY (problem_id, tag_id)
+                );
+            """)
+            print("Database schema verified.")
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+        conn.rollback()
+        raise e
 
 def sync_problems_to_db():
     """Main function to sync LeetCode problems with the relational database."""
@@ -89,9 +108,9 @@ def sync_problems_to_db():
         return
 
     try:
-        with conn.cursor() as cur:
-            setup_database_schema(cur)
+        setup_database_schema(conn)
 
+        with conn.cursor() as cur:
             cur.execute("SELECT slug, id FROM problems")
             problem_map = dict(cur.fetchall())
             
@@ -120,10 +139,10 @@ def sync_problems_to_db():
             if new_problems:
                 print(f"Found {len(new_problems)} new problems to insert.")
                 insert_query = """
-                    INSERT INTO problems (problem_number, name, slug, difficulty, is_paid) 
+                    INSERT INTO problems (id, name, slug, difficulty, is_paid) 
                     VALUES %s RETURNING id, slug;
                 """
-                data_to_insert = [(p['problem_number'], p['name'], p['slug'], p['difficulty'], p['is_paid']) for p in new_problems]
+                data_to_insert = [(p['id'], p['name'], p['slug'], p['difficulty'], p['is_paid']) for p in new_problems]
                 inserted_problems = execute_values(cur, insert_query, data_to_insert, fetch=True)
                 problem_map.update(dict(reversed(p) for p in inserted_problems)) # (slug, id)
                 print(f"Successfully inserted {len(inserted_problems)} new problems.")
@@ -157,4 +176,5 @@ def sync_problems_to_db():
         print("Sync complete. Database connection closed.")
 
 if __name__ == "__main__":
+    os.environ['DB_URL'] = 'postgresql://neondb_owner:npg_yQ1tjhOurba3@ep-divine-breeze-adnuajh4-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require'
     sync_problems_to_db()
