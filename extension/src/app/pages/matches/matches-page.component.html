@@ -1,0 +1,43 @@
+<h1 class="header">Match Details</h1>
+
+<div *ngIf="errorText" class="error-message">{{ errorText }}</div>
+
+<div *ngIf="match as m">
+  <div class="match-card"
+       [ngClass]="{
+         win: m.winner === userId,
+         loss: m.winner > 0 && m.winner !== userId,
+         neutral: m.winner <= 0
+       }">
+
+    <div class="match-headline">
+      <strong>{{ m.problem.name || m.problem.slug || 'Untitled Problem' }}</strong>
+      <span class="status">· {{ m.status }}</span>
+    </div>
+
+    <div class="times">
+      {{ m.startTime | date:'short' }} – {{ m.endTime | date:'short' }}
+    </div>
+
+    <div class="players">
+      <div class="player" *ngFor="let pid of m.players">
+        <img class="avatar"
+             [src]="players[pid].avatar_url || '/assets/avatar-placeholder.png'"
+             [alt]="players[pid].username || ('User ' + pid)" />
+        <span class="name">
+          {{ players[pid].username || ('User ' + pid) }}
+          <ng-container *ngIf="pid === userId">(you)</ng-container>
+        </span>
+      </div>
+    </div>
+
+    <div class="verdict" *ngIf="m.winner > 0">
+      {{ m.winner === userId ? 'Victory' : 'Defeat' }}:
+      <strong>{{ players[m.winner].username || m.winner }}</strong> won
+    </div>
+  </div>
+</div>
+
+<ng-template #loading>
+  <p class="loading-message">Loading match…</p>
+</ng-template>

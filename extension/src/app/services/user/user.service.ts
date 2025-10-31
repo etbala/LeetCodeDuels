@@ -78,5 +78,4 @@ export class UserService {
 
     return this.http.get<Session[]>(`${this.apiUrl}/${id}/matches`, { params });
   }
-
 }

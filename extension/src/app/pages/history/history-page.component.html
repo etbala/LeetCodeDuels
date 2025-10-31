@@ -10,6 +10,7 @@
       <a
         *ngFor="let session of sessions"
         class="session-card"
+        [routerLink]="['/matches', session.sessionID]"
         [ngClass]="{
           win: session.winner > 0 && session.winner === userId,
           loss: session.winner > 0 && session.winner !== userId,
@@ -40,7 +41,7 @@
             </div>
 
             <div class="meta">
-              {{ session.problem.title || 'Untitled Problem' }} ·
+              {{ session.problem.name || session.problem.slug || 'Untitled Problem' }} ·
               {{ session.startTime | date:'short' }} – {{ session.endTime | date:'short' }}
             </div>
           </div>

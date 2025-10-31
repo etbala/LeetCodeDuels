@@ -1,8 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 
-import { BackgroundService } from 'app/services/background/background.service';
 import { UserService } from 'services/user/user.service';
 import { User } from 'models/user.model';
 import { Session } from 'models/match';
@@ -17,7 +16,7 @@ type EnrichedSession = Session & { opponent?: User };
   templateUrl: './history-page.component.html',
   styleUrls: ['./history-page.component.scss'],
   standalone: true,
-  imports: [CommonModule]
+  imports: [CommonModule, RouterModule]
 })
 export class HistoryPageComponent implements OnInit {
   userId: number | null = null;
@@ -25,8 +24,6 @@ export class HistoryPageComponent implements OnInit {
   errorText: string | null = null;
 
   constructor(
-    private router: Router,
-    private backgroundService: BackgroundService,
     private userService: UserService
   ) {}
 
