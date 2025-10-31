@@ -488,3 +488,243 @@ func TestAllTags(t *testing.T) {
 	}
 	assert.True(t, found, "expected tag 'array' not found")
 }
+
+func TestMyNotifications(t *testing.T) {
+	// User IDs from seed data for context
+	inviterID := int64(87902)   // Bob
+	inviteeID := int64(12345)   // Alice
+	otherUserID := int64(61539) // Zoe
+
+	// Setup: Create a pending invite from Bob to Alice
+	details := models.MatchDetails{
+		IsRated:      false,
+		Difficulties: []models.Difficulty{models.Easy},
+		Tags:         []int{1}, // Assuming 'Array' tag has ID 1
+	}
+	// The CreateInvite function returns (bool, error)
+	success, err := services.InviteManager.CreateInvite(inviterID, inviteeID, details)
+	assert.NoError(t, err)
+	assert.True(t, success, "Invite should be created successfully")
+
+	// Teardown: Ensure the invite is removed after the test using RemoveInvite
+	defer services.InviteManager.RemoveInvite(inviterID)
+
+	t.Run("Get notifications with pending invites", func(t *testing.T) {
+		token, err := services.GenerateJWT(inviteeID) // Alice's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/users/me/notifications", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		// Unmarshal directly into the correct response model
+		var response models.NotificationsResponse
+		err = json.NewDecoder(res.Body).Decode(&response)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(response.Invites), "Expected one notification for Alice")
+		notification := response.Invites[0]
+		assert.Equal(t, inviterID, notification.FromUser.ID, "Notification should be from Bob")
+		assert.False(t, notification.MatchDetails.IsRated)
+		assert.Equal(t, []models.Difficulty{models.Easy}, notification.MatchDetails.Difficulties)
+		assert.Equal(t, []int{1}, notification.MatchDetails.Tags)
+		assert.False(t, notification.CreatedAt.IsZero())
+	})
+
+	t.Run("Get notifications with no pending invites", func(t *testing.T) {
+		token, err := services.GenerateJWT(otherUserID) // Zoe's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/users/me/notifications", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var response models.NotificationsResponse
+		err = json.NewDecoder(res.Body).Decode(&response)
+		assert.NoError(t, err)
+
+		assert.Empty(t, response.Invites, "Expected no notifications for Zoe")
+	})
+
+	t.Run("Fail without authorization", func(t *testing.T) {
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/users/me/notifications", nil)
+		assert.NoError(t, err)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+	})
+}
+
+func TestInviteEndpoints(t *testing.T) {
+	inviterID := int64(12345)   // Alice
+	inviteeID := int64(87902)   // Bob
+	unrelatedID := int64(61539) // Zoe
+
+	details := models.MatchDetails{
+		IsRated:      true,
+		Difficulties: []models.Difficulty{models.Medium},
+	}
+	success, err := services.InviteManager.CreateInvite(inviterID, inviteeID, details)
+	assert.NoError(t, err)
+	assert.True(t, success, "Invite should be created successfully")
+
+	defer services.InviteManager.RemoveInvite(inviterID)
+
+	// --- /invites/can_send ---
+	t.Run("CanSendInvite - cannot send while invite is active", func(t *testing.T) {
+		token, err := services.GenerateJWT(inviterID) // Alice's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/can_send", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var canSendResp models.CanSendInviteResponse
+		err = json.NewDecoder(res.Body).Decode(&canSendResp)
+		assert.NoError(t, err)
+		assert.False(t, canSendResp.CanSend, "Expected CanSend to be false")
+	})
+
+	t.Run("CanSendInvite - can send when no active invite", func(t *testing.T) {
+		token, err := services.GenerateJWT(unrelatedID) // Zoe's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/can_send", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var canSendResp models.CanSendInviteResponse
+		err = json.NewDecoder(res.Body).Decode(&canSendResp)
+		assert.NoError(t, err)
+		assert.True(t, canSendResp.CanSend, "Expected CanSend to be true")
+	})
+
+	// --- /invites/sent ---
+	t.Run("SentInvites - user has a sent invite", func(t *testing.T) {
+		token, err := services.GenerateJWT(inviterID) // Alice's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/sent", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var invites []models.Invite
+		err = json.NewDecoder(res.Body).Decode(&invites)
+		assert.NoError(t, err)
+		assert.Len(t, invites, 1, "Expected one sent invite")
+		assert.Equal(t, inviterID, invites[0].InviterID)
+		assert.Equal(t, inviteeID, invites[0].InviteeID)
+		assert.True(t, invites[0].MatchDetails.IsRated)
+		assert.Equal(t, []models.Difficulty{models.Medium}, invites[0].MatchDetails.Difficulties)
+	})
+
+	t.Run("SentInvites - user has no sent invites", func(t *testing.T) {
+		token, err := services.GenerateJWT(unrelatedID) // Zoe's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/sent", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var invites []models.Invite
+		err = json.NewDecoder(res.Body).Decode(&invites)
+		assert.NoError(t, err)
+		assert.Empty(t, invites, "Expected no sent invites")
+	})
+
+	// --- /invites/received ---
+	t.Run("ReceivedInvites - user has a received invite", func(t *testing.T) {
+		token, err := services.GenerateJWT(inviteeID) // Bob's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/received", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var invites []models.Invite
+		err = json.NewDecoder(res.Body).Decode(&invites)
+		assert.NoError(t, err)
+		assert.Len(t, invites, 1, "Expected one received invite")
+		assert.Equal(t, inviterID, invites[0].InviterID)
+	})
+
+	t.Run("ReceivedInvites - user has no received invites", func(t *testing.T) {
+		token, err := services.GenerateJWT(unrelatedID) // Zoe's token
+		assert.NoError(t, err)
+
+		req, err := http.NewRequest("GET", ts.URL+"/api/v1/invites/received", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		res, err := ts.Client().Do(req)
+		assert.NoError(t, err)
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
+		var invites []models.Invite
+		err = json.NewDecoder(res.Body).Decode(&invites)
+		assert.NoError(t, err)
+		assert.Empty(t, invites, "Expected no received invites")
+	})
+
+	t.Run("Fail invite endpoints without authorization", func(t *testing.T) {
+		endpoints := []string{
+			"/api/v1/invites/can_send",
+			"/api/v1/invites/sent",
+			"/api/v1/invites/received",
+		}
+
+		for _, endpoint := range endpoints {
+			req, err := http.NewRequest("GET", ts.URL+endpoint, nil)
+			assert.NoError(t, err)
+
+			res, err := ts.Client().Do(req)
+			assert.NoError(t, err)
+			defer res.Body.Close()
+
+			assert.Equal(t, http.StatusUnauthorized, res.StatusCode, "Endpoint "+endpoint+" should be protected")
+		}
+	})
+}

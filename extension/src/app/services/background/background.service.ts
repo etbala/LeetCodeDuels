@@ -43,4 +43,8 @@ export class BackgroundService {
   cancelInvitation() {
     return this.sendMessage(BackgroundActionType.DuelCancelInvitation);
   }
+
+  forfeitDuel() {
+    return this.sendMessage(BackgroundActionType.DuelForfeit);
+  }
 }

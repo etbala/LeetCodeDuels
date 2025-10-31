@@ -17,7 +17,7 @@ cd LeetCodeDuels
 ## Extension
 
 ### 1. Install Dependencies
-Install Node.js (v22+) and Angular CLI
+Install Node.js (v22+) and Angular CLI.
 ```bash
 npm install -g @angular/cli
 ```
@@ -29,7 +29,7 @@ npm install
 ng build
 ```
 
-Note: Build using `-c local` if you are trying to run the server locally:
+Note: Build using `-c local` if you are running the server locally:
 ```bash
 ng build -c local
 ```
@@ -44,7 +44,7 @@ Load Unpacked Extension from Directory: `/extension/dist/browser`
 ## Server
 
 ### 1. Install Dependencies
-Go (v1.24+)
+Install Go (v1.24+).
 
 ### 2. Set up .env
 Create a `.env` file in the `/server` directory by copying the template file: [`/server/.env.template`](./server/.env.template).
@@ -59,7 +59,7 @@ go run ./cmd/server
 ## Testing
 
 ### Server Tests
-Install Docker.
+Install and run Docker.
 
 ```bash
 cd server
@@ -67,12 +67,14 @@ go test ./... -v
 ```
 
 ### Server Stress Tests
-Install Grafana k6
+Install Grafana k6 and Powershell.
 
 ```bash
 cd server/tests/k6
 ./stress-test.ps1
 ```
+
+<!-- TODO: Add more detailed information about extension structure (frontend) in HLA -->
 
 ## High Level Architecture
 ```mermaid
@@ -85,7 +87,7 @@ graph TD
         B2[Backend Instance]
     end
 
-    Postgres[PostgreSQL DB]
+    Postgres[Postgres]
     Redis[Redis]
 
     Frontend -- "REST API" --> Cluster
@@ -93,24 +95,24 @@ graph TD
 
     Cluster -- "SQL Queries" --> Postgres
 
-    Cluster <--> |"Session & State Storage"| Redis
+    Cluster --> |"Session & State Storage"| Redis
     Cluster <--> |"Horizontal Communication (Pub/Sub)"| Redis
 ```
 
 ### Architecture Breakdown
 
-* **Frontend**: This is the client-side application that the user interacts with. It communicates with the backend using two methods:
+* **Frontend**: This is the client-side application that the user interacts with. It communicates with the backend via:
 
-    * *REST API*: Used for standard actions like user login, registration, fetching user profiles, etc. Generally, if a REST endpoint is used, it will query the Postgres DB.
+    * *REST API*: Used for standard actions like user login, registration, fetching user profiles, etc. Generally, REST endpoints are used by Angular when loading webpage information.
 
     * *WebSockets*: Used for real-time, two-way communication required for gameplay, invitations, and live online status updates.
 
 * **Backend Cluster**: The core application logic resides in a horizontally scalable cluster of backend instances. Designing the server to be stateless allows us to run multiple instances behind a load balancer so the backend can automatically scale to meet demand.
 
-* **PostgreSQL DB**: Long-term storage. Handles account information, game history, and mirrors a simplified version of leetcode's problem database. Generally accessed via REST endpoints.
+* **Postgres**: Long-term storage. Handles account information, game history, and mirrors a simplified version of leetcode's problem database. Generally accessed via REST endpoints.
 
 * **Redis**:
 
-    * *Session & State Storage*: Stores ephemeral (temporary) data like active game sessions, pending user invites, and which users are currently online.
+    * *Session & State Storage*: Stores temporary data like active game sessions, pending user invites, and which users are currently online (and which server instance they are connected to).
 
-    * *Horizontal Communication (Pub/Sub)*: Redis acts as a message bus that allows the different backend instances to communicate with each other. For example, if a user connected to Instance A sends a game invite to a user connected to Instance B, the message is published to a Redis channel, which instantly delivers it to the correct instance.
+    * *Horizontal Communication (Pub/Sub)*: Redis acts as a message bus for backend instances to communicate with each other. For example, if a user connected to Instance A sends a game invite to a user connected to Instance B, the message is published to a Redis channel, which  delivers it to the correct instance.

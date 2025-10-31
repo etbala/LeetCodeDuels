@@ -9,6 +9,7 @@ export enum BackgroundActionType {
   DuelDeclineInvitation = 'duel:decline-invitation',
   DuelCancelInvitation = 'duel:cancel-invitation',
   DuelSubmission = 'duel:submission',
+  DuelForfeit = 'duel:forfeit',
   // QueueEnter = 'queue:enter',
   // QueueLeave = 'queue:leave',
 }
@@ -26,9 +27,7 @@ export interface DeclineInvitationPayload {
   inviterID: number;
 }
 
-export interface SubmissionPayload {
-  submission: PlayerSubmission
-}
+export type SubmissionPayload = PlayerSubmission;
 
 export interface BackgroundAction<T = string> {
   action: BackgroundActionType;

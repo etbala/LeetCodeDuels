@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: leetcodeduels-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: leetcodeduels
+  template:
+    metadata:
+      labels:
+        app: leetcodeduels
+    spec:
+      containers:
+      - name: leetcodeduels-server
+        image: us-central1-docker.pkg.dev/leetcodeduels/leetcodeduels-repo/leetcodeduels-image:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+          - configMapRef:
+              name: leetcodeduels-config
+          - secretRef:
+              name: leetcodeduels-secret
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10

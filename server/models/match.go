@@ -48,7 +48,7 @@ func (s *SubmissionStatus) UnmarshalJSON(data []byte) error {
 	}
 
 	switch statusStr {
-	case "Accepted", "Compile Error", "Memory Limit Exceeded", "Runtime Error", "Time Limit Exceeded", "Wrong Answer":
+	case "Accepted", "Compile Error", "Memory Limit Exceeded", "Output Limit Exceeded", "Runtime Error", "Time Limit Exceeded", "Wrong Answer":
 		*s = SubmissionStatus(statusStr)
 		return nil
 	default:
@@ -215,6 +215,7 @@ type MatchDetails struct {
 }
 
 type Invite struct {
+	InviterID    int64        `json:"inviterID"`
 	InviteeID    int64        `json:"inviteeID"`
 	MatchDetails MatchDetails `json:"matchDetails"`
 	CreatedAt    time.Time    `json:"createdAt"`

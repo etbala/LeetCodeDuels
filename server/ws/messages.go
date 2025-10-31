@@ -15,6 +15,7 @@ const (
 	ClientMsgEnterQueue        = "enter_queue"
 	ClientMsgLeaveQueue        = "leave_queue" // No Payload
 	ClientMsgSubmission        = "submission"
+	ClientMsgForfeit           = "forfeit"   // No Payload
 	ClientMsgHeartbeat         = "heartbeat" // No Payload
 )
 
@@ -62,6 +63,7 @@ type EnterQueuePayload struct {
 
 type SubmissionPayload struct {
 	ID                int64                   `json:"submissionID"`
+	ProblemID         int                     `json:"problemID"`
 	Status            models.SubmissionStatus `json:"status"`
 	PassedTestCases   int                     `json:"passedTestCases"`
 	TotalTestCases    int                     `json:"totalTestCases"`
