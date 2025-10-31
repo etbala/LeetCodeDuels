@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"leetcodeduels/models"
+	"slices"
 	"strconv"
 	"time"
 
@@ -20,10 +21,32 @@ type gameManager struct {
 	ctx    context.Context
 }
 
+type gameSession struct {
+	ID        string `redis:"id"`
+	Status    string `redis:"status"`
+	IsRated   bool   `redis:"isRated"`
+	Problem   string `redis:"problem"`
+	Players   string `redis:"players"`
+	Winner    int64  `redis:"winner"`
+	StartTime string `redis:"startTime"`
+	EndTime   string `redis:"endTime"`
+}
+
 const (
-	gameKeyPrefix       = "game:"
-	playerGameKeyPrefix = "player_game:"
+	gameKeyPrefix       = "game:"        // Hash containing session metadata
+	playerGameKeyPrefix = "player_game:" // String mapping playerID -> sessionID
+	submissionsSuffix   = ":submissions" // List appended to gameKey
 )
+
+func gameKey(sessionID string) string {
+	return gameKeyPrefix + sessionID
+}
+func submissionsKey(sessionID string) string {
+	return gameKeyPrefix + sessionID + submissionsSuffix
+}
+func playerGameKey(playerID int64) string {
+	return playerGameKeyPrefix + strconv.FormatInt(playerID, 10)
+}
 
 func InitGameManager(redisURL string) error {
 	opts, err := redis.ParseURL(redisURL)
@@ -43,23 +66,28 @@ func InitGameManager(redisURL string) error {
 
 // Returns the session for the given ID (or nil if not found)
 func (gm *gameManager) GetGame(sessionID string) (*models.Session, error) {
-	key := gameKeyPrefix + sessionID
-	data, err := gm.client.Get(gm.ctx, key).Result()
-	if err == redis.Nil {
-		return nil, nil
-	} else if err != nil {
-		return nil, fmt.Errorf("redis get failed: %w", err)
+	key := gameKey(sessionID)
+	subKey := submissionsKey(sessionID)
+
+	var gs gameSession
+	if err := gm.client.HGetAll(gm.ctx, key).Scan(&gs); err != nil {
+		return nil, fmt.Errorf("redis hgetall/scan failed: %w", err)
 	}
-	var session models.Session
-	if err := json.Unmarshal([]byte(data), &session); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
+	if gs.ID == "" {
+		return nil, nil // Not found
 	}
-	return &session, nil
+
+	submissionsData, err := gm.client.LRange(gm.ctx, subKey, 0, -1).Result()
+	if err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("redis lrange failed: %w", err)
+	}
+
+	return gm.assembleSession(&gs, submissionsData)
 }
 
-// Returns session ID associated with given playerID. Returns empty string if no associated session.
+// Returns sessionID associated with playerID, or empty string if no associated session.
 func (gm *gameManager) GetSessionIDByPlayer(playerID int64) (string, error) {
-	key := playerGameKeyPrefix + strconv.FormatInt(playerID, 10)
+	key := playerGameKey(playerID)
 	sessionID, err := gm.client.Get(gm.ctx, key).Result()
 	if err == redis.Nil {
 		return "", nil
@@ -75,136 +103,175 @@ func (gm *gameManager) IsPlayerInGame(playerID int64) (bool, error) {
 	return sid != "", err
 }
 
+// Finds the opponent of a player in a given session.
 func (gm *gameManager) GetOpponent(sessionID string, userID int64) (int64, error) {
-	session, err := gm.GetGame(sessionID)
-	if err != nil {
-		return 0, err
+	key := gameKey(sessionID)
+	playersData, err := gm.client.HGet(gm.ctx, key, "players").Result()
+	if err == redis.Nil {
+		return 0, errors.New("no session associated with provided sessionID")
+	} else if err != nil {
+		return 0, fmt.Errorf("redis hget failed: %w", err)
 	}
-	if session == nil {
-		return 0, errors.New("No session associated with provided userID")
+
+	var players []int64
+	if err := json.Unmarshal([]byte(playersData), &players); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal players: %w", err)
 	}
-	for i := 0; i < len(session.Players); i++ {
-		if session.Players[i] != userID {
-			return session.Players[i], nil
+
+	for _, pid := range players {
+		if pid != userID {
+			return pid, nil
 		}
 	}
-	return 0, errors.New("Unknown error retrieving opponent")
+
+	return 0, errors.New("unknown error retrieving opponent")
 }
 
-// Creates a new session, stores it in Redis, and returns its ID
+// Creates a new session, stores it in Redis, and returns its ID.
 func (gm *gameManager) StartGame(players []int64, problem models.Problem) (string, error) {
 	sessionID := uuid.NewString()
-	session := &models.Session{
-		ID:          sessionID,
-		Status:      models.MatchActive,
-		IsRated:     false,
-		Problem:     problem,
-		Players:     players,
-		Submissions: make([]models.PlayerSubmission, 0),
-		Winner:      0,
-		StartTime:   time.Now(),
-	}
-	data, err := json.Marshal(session)
+	key := gameKey(sessionID)
+
+	problemData, err := json.Marshal(problem)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal session: %w", err)
+		return "", fmt.Errorf("failed to marshal problem: %w", err)
 	}
-	if err := gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 0).Err(); err != nil {
-		return "", fmt.Errorf("failed to store session: %w", err)
+	playersData, err := json.Marshal(players)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal players: %w", err)
 	}
+
+	sessionMap := map[string]interface{}{
+		"id":        sessionID,
+		"status":    string(models.MatchActive),
+		"isRated":   false,
+		"problem":   string(problemData),
+		"players":   string(playersData),
+		"winner":    0,
+		"startTime": time.Now().Format(time.RFC3339Nano),
+		"endTime":   "",
+	}
+
+	if err := gm.client.HSet(gm.ctx, key, sessionMap).Err(); err != nil {
+		return "", fmt.Errorf("failed to store session hash: %w", err)
+	}
+
 	for _, pid := range players {
-		key := playerGameKeyPrefix + strconv.FormatInt(pid, 10)
-		if err := gm.client.Set(gm.ctx, key, sessionID, 0).Err(); err != nil {
+		if err := gm.client.Set(gm.ctx, playerGameKey(pid), sessionID, 0).Err(); err != nil {
 			fmt.Printf("warning: could not set player_game for %d: %v\n", pid, err)
 		}
 	}
 	return sessionID, nil
 }
 
-// Appends a player's submission to the session and updates Redis
+// AddSubmission appends a player's submission to the session.
 func (gm *gameManager) AddSubmission(sessionID string, submission models.PlayerSubmission) error {
-	session, err := gm.GetGame(sessionID)
+	subKey := submissionsKey(sessionID)
+
+	playersData, err := gm.client.HGet(gm.ctx, gameKey(sessionID), "players").Result()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get players for session: %w", err)
 	}
-	if session == nil {
-		return fmt.Errorf("session %s not found", sessionID)
+	var players []int64
+	if err := json.Unmarshal([]byte(playersData), &players); err != nil {
+		return fmt.Errorf("failed to unmarshal players: %w", err)
 	}
-	idx := -1
-	for i, pid := range session.Players {
-		if pid == submission.PlayerID {
-			idx = i
-			break
-		}
+
+	isParticipant := slices.Contains(players, submission.PlayerID)
+	if !isParticipant {
+		return errors.New("player is not a participant in this session")
 	}
-	if idx < 0 {
-		return fmt.Errorf("player %d not part of session", submission.PlayerID)
-	}
-	session.Submissions = append(session.Submissions, submission)
-	data, err := json.Marshal(session)
+
+	data, err := json.Marshal(submission)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal submission: %w", err)
 	}
-	return gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 0).Err()
+
+	return gm.client.RPush(gm.ctx, subKey, data).Err()
 }
 
-// Marks the session as completed, sets its end time, and expires it in 3 minutes
-// Returns the final session state
+// Mark session as completed and sets a 3-minute expiry.
 func (gm *gameManager) CompleteGame(sessionID string, winnerID int64) (*models.Session, error) {
-	session, err := gm.GetGame(sessionID)
-	if err != nil {
-		return nil, err
-	}
-	if session == nil {
-		return nil, fmt.Errorf("session %s not found", sessionID)
-	}
-	session.Status = models.MatchWon
-	session.EndTime = time.Now()
-	session.Winner = winnerID // TODO: Verify winner is in session.Players
-	data, err := json.Marshal(session)
-	if err != nil {
-		return nil, err
-	}
-
-	err = gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, pid := range session.Players {
-		key := playerGameKeyPrefix + strconv.FormatInt(pid, 10)
-		_ = gm.client.Del(gm.ctx, key).Err()
-	}
-	return session, nil
+	return gm.finalizeGame(sessionID, models.MatchWon, winnerID, 3*time.Minute)
 }
 
-// Marks the session as canceled, sets its end time, and expires it in 3 minutes
-func (gm *gameManager) CancelGame(sessionID string) error {
-	session, err := gm.GetGame(sessionID)
-	if err != nil {
-		return err
-	}
-	if session == nil {
-		return fmt.Errorf("session %s not found", sessionID)
-	}
-	session.Status = models.MatchCanceled
-	session.EndTime = time.Now()
-	data, err := json.Marshal(session)
-	if err != nil {
-		return err
-	}
-
-	err = gm.client.Set(gm.ctx, gameKeyPrefix+sessionID, data, 3*time.Minute).Err()
-	if err != nil {
-		return err
-	}
-
-	for _, pid := range session.Players {
-		key := playerGameKeyPrefix + strconv.FormatInt(pid, 10)
-		_ = gm.client.Del(gm.ctx, key).Err()
-	}
-	return nil
+// Mark session as canceled and sets a 3-minute expiry.
+func (gm *gameManager) CancelGame(sessionID string) (*models.Session, error) {
+	return gm.finalizeGame(sessionID, models.MatchCanceled, 0, 3*time.Minute)
 }
 
 func (gm *gameManager) Close() error {
 	return gm.client.Close()
+}
+
+// finalizeGame is a common helper for completing or canceling a game.
+func (gm *gameManager) finalizeGame(sessionID string, status models.MatchStatus, winnerID int64, expiry time.Duration) (*models.Session, error) {
+	key := gameKey(sessionID)
+	subKey := submissionsKey(sessionID)
+
+	playersData, err := gm.client.HGet(gm.ctx, key, "players").Result()
+	if err != nil {
+		fmt.Printf("warning: could not get players for game %s: %v\n", sessionID, err)
+		// Proceed with finalization anyway
+	}
+
+	updates := map[string]interface{}{
+		"status":  string(status),
+		"winner":  winnerID,
+		"endTime": time.Now().Format(time.RFC3339Nano),
+	}
+	if err := gm.client.HSet(gm.ctx, key, updates).Err(); err != nil {
+		return nil, fmt.Errorf("failed to finalize game hash: %w", err)
+	}
+
+	_ = gm.client.Expire(gm.ctx, key, expiry).Err()
+	_ = gm.client.Expire(gm.ctx, subKey, expiry).Err()
+
+	if playersData != "" {
+		var players []int64
+		if json.Unmarshal([]byte(playersData), &players) == nil {
+			for _, pid := range players {
+				_ = gm.client.Del(gm.ctx, playerGameKey(pid)).Err()
+			}
+		}
+	}
+
+	return gm.GetGame(sessionID)
+}
+
+// Helper to build models.Session struct from raw data fetched from Redis
+func (gm *gameManager) assembleSession(gs *gameSession, submissionsData []string) (*models.Session, error) {
+	var session models.Session
+	var err error
+
+	session.ID = gs.ID
+	session.Status, _ = models.ParseMatchStatus(gs.Status)
+	session.IsRated = gs.IsRated
+	session.Winner = gs.Winner
+
+	if gs.StartTime != "" {
+		session.StartTime, _ = time.Parse(time.RFC3339Nano, gs.StartTime)
+	}
+	if gs.EndTime != "" {
+		session.EndTime, _ = time.Parse(time.RFC3339Nano, gs.EndTime)
+	}
+
+	if err = json.Unmarshal([]byte(gs.Problem), &session.Problem); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal problem: %w", err)
+	}
+	if err = json.Unmarshal([]byte(gs.Players), &session.Players); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal players: %w", err)
+	}
+
+	session.Submissions = make([]models.PlayerSubmission, 0, len(submissionsData))
+	for _, subData := range submissionsData {
+		var sub models.PlayerSubmission
+		if err := json.Unmarshal([]byte(subData), &sub); err == nil {
+			session.Submissions = append(session.Submissions, sub)
+		} else {
+			fmt.Printf("warning: could not unmarshal submission: %v\n", err)
+		}
+	}
+
+	return &session, nil
 }
