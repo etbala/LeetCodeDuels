@@ -36,7 +36,7 @@ def get_leetcode_problems():
     processed_problems = []
     for problem in problems:
         processed_problems.append({
-            'id': int(problem.get('questionFrontendId')),
+            'id': int(problem.get('questionId')),
             'name': problem.get('title'),
             'slug': problem.get('titleSlug'),
             'difficulty': problem.get('difficulty'),
