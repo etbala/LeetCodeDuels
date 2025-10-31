@@ -177,8 +177,7 @@ func (gm *gameManager) AddSubmission(sessionID string, submission models.PlayerS
 		return fmt.Errorf("failed to unmarshal players: %w", err)
 	}
 
-	isParticipant := slices.Contains(players, submission.PlayerID)
-	if !isParticipant {
+	if !slices.Contains(players, submission.PlayerID) {
 		return errors.New("player is not a participant in this session")
 	}
 
