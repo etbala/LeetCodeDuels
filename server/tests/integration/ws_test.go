@@ -275,14 +275,16 @@ func TestSubmissionFlow(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, session)
 
+	runtime1 := int32(30)
+	memory1 := int32(5000)
 	submission1 := ws.SubmissionPayload{
 		ID:              1,
 		ProblemID:       session.Problem.ID,
 		Status:          "Compile Error",
 		PassedTestCases: 3,
 		TotalTestCases:  82,
-		Runtime:         30,
-		Memory:          5000,
+		Runtime:         &runtime1,
+		Memory:          &memory1,
 		Language:        "c",
 		Time:            time.Now(),
 	}
@@ -307,14 +309,16 @@ func TestSubmissionFlow(t *testing.T) {
 	require.Equal(t, submission1.Status, oppSub.Status)
 	require.Equal(t, submission1.Language, oppSub.Language)
 
+	runtime2 := int32(70)
+	memory2 := int32(10000)
 	submission2 := ws.SubmissionPayload{
 		ID:              2,
 		ProblemID:       session.Problem.ID,
 		Status:          "Accepted",
 		PassedTestCases: 82,
 		TotalTestCases:  82,
-		Runtime:         70,
-		Memory:          10000,
+		Runtime:         &runtime2,
+		Memory:          &memory2,
 		Language:        "java",
 		Time:            time.Now(),
 	}
