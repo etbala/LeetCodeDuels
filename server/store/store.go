@@ -451,14 +451,52 @@ func (ds *dataStore) GetRandomProblemByTagsAndDifficulties(
 
 // Stores a new match record in the database.
 func (ds *dataStore) StoreMatch(match *models.Session) error {
-	query := `
-	INSERT INTO matches (id, problem_id, is_rated, status, winner_id, start_time, end_time)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	tx, err := ds.db.Begin()
+	if err != nil {
+		return fmt.Errorf("StoreMatch: failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-	_, err := ds.db.Exec(query, match.ID, match.Problem.ID, match.IsRated,
+	matchQuery := `
+    INSERT INTO matches (id, problem_id, is_rated, status, winner_id, start_time, end_time)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+	_, err = tx.Exec(matchQuery, match.ID, match.Problem.ID, match.IsRated,
 		match.Status, match.Winner, match.StartTime, match.EndTime)
 	if err != nil {
-		return fmt.Errorf("StoreMatch: %w", err)
+		return fmt.Errorf("StoreMatch: failed to insert match: %w", err)
+	}
+
+	if len(match.Players) > 0 {
+		playerQuery := `INSERT INTO match_players (match_id, player_id) VALUES ($1, $2)`
+		for _, playerID := range match.Players {
+			_, err = tx.Exec(playerQuery, match.ID, playerID)
+			if err != nil {
+				return fmt.Errorf("StoreMatch: failed to insert player %d: %w", playerID, err)
+			}
+		}
+	}
+
+	if len(match.Submissions) > 0 {
+		submissionQuery := `
+		INSERT INTO submissions (match_id, submission_id, player_id, passed_test_cases, 
+			total_test_cases, status, runtime, runtime_percentile, memory, 
+			memory_percentile, lang, submitted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+
+		for _, sub := range match.Submissions {
+			_, err = tx.Exec(submissionQuery, match.ID, sub.ID, sub.PlayerID,
+				sub.PassedTestCases, sub.TotalTestCases, sub.Status,
+				sub.Runtime, sub.RuntimePercentile, sub.Memory,
+				sub.MemoryPercentile, sub.Lang, sub.Time)
+			if err != nil {
+				return fmt.Errorf("StoreMatch: failed to insert submission %d: %w", sub.ID, err)
+			}
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("StoreMatch: failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -639,7 +677,7 @@ func (ds *dataStore) GetPlayerMatches(userID int64, page int, limit int) ([]mode
 func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubmission, error) {
 	query := `
 	SELECT submission_id, player_id, passed_test_cases, total_test_cases, 
-		status, runtime, memory, lang, submitted_at
+		status, runtime, runtime_percentile, memory, memory_percentile, lang, submitted_at
 	FROM submissions
 	WHERE match_id = $1`
 
@@ -656,12 +694,15 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 		var passedTestCases int
 		var totalTestCases int
 		var status string
-		var runtime int
-		var memory int
 		var lang string
 		var submittedAt time.Time
+		var runtime sql.NullInt32
+		var runtimePercentile sql.NullFloat64
+		var memory sql.NullInt32
+		var memoryPercentile sql.NullFloat64
 
-		err = rows.Scan(&id, &playerID, &passedTestCases, &totalTestCases, &status, &runtime, &memory, &lang, &submittedAt)
+		err = rows.Scan(&id, &playerID, &passedTestCases, &totalTestCases, &status,
+			&runtime, &runtimePercentile, &memory, &memoryPercentile, &lang, &submittedAt)
 		if err != nil {
 			return nil, fmt.Errorf("GetMatchSubmissions scan: %w", err)
 		}
@@ -676,16 +717,38 @@ func (ds *dataStore) GetMatchSubmissions(matchID uuid.UUID) ([]models.PlayerSubm
 			return nil, fmt.Errorf("GetMatchSubmissions parse: %w", err)
 		}
 
+		var pRuntime *int32
+		if runtime.Valid {
+			pRuntime = &runtime.Int32
+		}
+
+		var pRuntimePercentile *float64
+		if runtimePercentile.Valid {
+			pRuntimePercentile = &runtimePercentile.Float64
+		}
+
+		var pMemory *int32
+		if memory.Valid {
+			pMemory = &memory.Int32
+		}
+
+		var pMemoryPercentile *float64
+		if memoryPercentile.Valid {
+			pMemoryPercentile = &memoryPercentile.Float64
+		}
+
 		submission := models.PlayerSubmission{
-			ID:              id,
-			PlayerID:        playerID,
-			PassedTestCases: passedTestCases,
-			TotalTestCases:  totalTestCases,
-			Status:          parsedStatus,
-			Runtime:         runtime,
-			Memory:          memory,
-			Lang:            parsedLang,
-			Time:            submittedAt,
+			ID:                id,
+			PlayerID:          playerID,
+			PassedTestCases:   passedTestCases,
+			TotalTestCases:    totalTestCases,
+			Status:            parsedStatus,
+			Runtime:           pRuntime,
+			RuntimePercentile: pRuntimePercentile,
+			Memory:            pMemory,
+			MemoryPercentile:  pMemoryPercentile,
+			Lang:              parsedLang,
+			Time:              submittedAt,
 		}
 		submissions = append(submissions, submission)
 	}

@@ -185,15 +185,17 @@ func (s *MatchStatus) UnmarshalJSON(data []byte) error {
 
 // Submission attached to Game Session
 type PlayerSubmission struct {
-	ID              int64            `json:"submissionID"`
-	PlayerID        int64            `json:"playerID"`
-	PassedTestCases int              `json:"passedTestCases"`
-	TotalTestCases  int              `json:"totalTestCases"`
-	Status          SubmissionStatus `json:"status"`
-	Runtime         int              `json:"runtime"`
-	Memory          int              `json:"memory"`
-	Lang            LanguageType     `json:"lang"`
-	Time            time.Time        `json:"time"`
+	ID                int64            `json:"submissionID"`
+	PlayerID          int64            `json:"playerID"`
+	PassedTestCases   int              `json:"passedTestCases"`
+	TotalTestCases    int              `json:"totalTestCases"`
+	Status            SubmissionStatus `json:"status"`
+	Runtime           *int32           `json:"runtime,omitempty"`
+	RuntimePercentile *float64         `json:"runtimePercentile,omitempty"`
+	Memory            *int32           `json:"memory,omitempty"`
+	MemoryPercentile  *float64         `json:"memoryPercentile,omitempty"`
+	Lang              LanguageType     `json:"lang"`
+	Time              time.Time        `json:"time"`
 }
 
 type Session struct {
