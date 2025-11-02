@@ -5,88 +5,73 @@
   color: theme.$text-header;
 }
 
-.error-message {
+.match-wrapper {
+  padding: 20px;
+}
+
+.match-card {
   text-align: center;
-  color: theme.$state-bad;
-  font-size: 14px;
-  margin-top: 5px;
-}
-
-.history-container {
-  padding: 10px;
-}
-
-.session-scroll-area {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.session-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: theme.$bg-tertiary;
   color: theme.$text-body;
-  padding: 12px 16px;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
+  font-size: 18px;
+  background: theme.$bg-secondary;
+  border: 4px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
 
-  &.win {
-    border-left: 5px solid theme.$state-good;
-  }
-
-  &.loss {
-    border-left: 5px solid theme.$state-bad;
-  }
-
-  &.neutral {
-    border-left: 5px solid theme.$state-warn;
-  }
-
-  &:hover {
-    background-color: theme.$bg-secondary;
-    cursor: pointer;
-  }
+  &.win   { border-color: rgba(theme.$state-good, .5); }
+  &.loss  { border-color: rgba(theme.$state-bad,  .45); }
+  &.neutral { border-color: rgba(255,255,255,.08); }
 }
 
-.session-content {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
 
-.avatar {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
+.match-header {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
 
-.verdict {
-  display: flex;
-  flex-direction: column;
-
-  .headline {
-    font-weight: 600;
+  .result {
+    font-weight: 700;
     color: theme.$text-header;
+
+    .match-card.win &  { color: theme.$state-good; }
+    .match-card.loss & { color: theme.$state-bad; }
   }
 
-  .meta {
-    font-size: 12px;
+  .title {
+    color: theme.$text-header;
+    font-weight: 600;
+  }
+
+  .date {
     color: theme.$text-muted;
+    font-size: 16px;
   }
 }
 
-.chevron {
-  font-size: 20px;
-  color: theme.$text-muted;
-  margin-left: auto;
-}
+.players {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
 
-.no-sessions {
-  text-align: center;
-  color: theme.$text-muted;
-  margin-top: 10px;
+  .player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+
+    .avatar {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,.12);
+      background: theme.$bg-tertiary;
+    }
+
+    .name {
+      color: theme.$text-header;
+      font-size: 18px;
+    }
+  }
 }
