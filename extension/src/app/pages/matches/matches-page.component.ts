@@ -64,7 +64,7 @@ export class MatchesPageComponent implements OnInit {
     return reqs.length ? forkJoin(reqs) : of([]);
   }
 
-  private setPlayers(entries: ReadonlyArray<readonly [number, User]>) {
+  private setPlayers(entries: readonly (readonly [number, User])[]) {
     entries.forEach(([id, u]) => (this.players[id] = u));
   }
 }
