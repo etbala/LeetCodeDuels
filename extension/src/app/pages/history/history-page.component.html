@@ -1,0 +1,56 @@
+<h1 class="header">Past Duels</h1>
+
+<div *ngIf="errorText" class="error-message">{{ errorText }}</div>
+
+<div class="history-container">
+  <div *ngIf="sessions.length > 0; else noSessions">
+    <div class="session-scroll-area">
+
+      <!-- One card per match -->
+      <a
+        *ngFor="let session of sessions"
+        class="session-card"
+        [routerLink]="['/matches', session.sessionID]"
+        [ngClass]="{
+          win: session.winner > 0 && session.winner === userId,
+          loss: session.winner > 0 && session.winner !== userId,
+          neutral: session.winner <= 0
+        }"
+      >
+        <div class="session-content">
+          <!-- Left: opponent avatar -->
+          <img
+            class="avatar"
+            [src]="session.opponent?.avatar_url || '/assets/avatar-placeholder.png'"
+            [alt]="'Avatar of ' + (session.opponent?.username || 'opponent')"
+          />
+
+          <!-- Middle: verdict + winner -->
+          <div class="verdict">
+            <div class="headline">
+              <ng-container *ngIf="session.winner > 0; else noResult">
+                {{ session.winner === userId ? 'Victory' : 'Defeat' }}:
+                <strong>
+                  {{ session.winner === userId ? 'You' : (session.opponent?.username || 'Opponent') }}
+                </strong>
+                won
+              </ng-container>
+              <ng-template #noResult>
+                <strong>{{ session.status }}</strong>
+              </ng-template>
+            </div>
+
+            <div class="meta">
+              {{ session.startTime | date:'MM/dd/yy' }}
+            </div>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <ng-template #noSessions>
+    <p class="no-sessions">No past matches found.</p>
+  </ng-template>
+</div>

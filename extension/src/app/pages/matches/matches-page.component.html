@@ -1,0 +1,52 @@
+<h1 class="header">Match Details</h1>
+
+<div *ngIf="errorText" class="error-message">{{ errorText }}</div>
+
+<div *ngIf="match as m" class="match-wrapper">
+  <div class="match-card"
+       [ngClass]="{
+         win: m.winner === userId,
+         loss: m.winner > 0 && m.winner !== userId,
+         neutral: m.winner <= 0
+       }">
+
+    <!-- Header: Result, Problem, Date -->
+    <div class="match-header">
+      <div class="result">
+        {{ m.winner > 0 ? (m.winner === userId ? 'Victory' : 'Defeat') : m.status }}
+      </div>
+
+      <div class="title">
+        {{ m.problem.name || m.problem.slug || 'Untitled Problem' }}
+      </div>
+
+      <div class="date">
+        {{ m.startTime | date:'MM/dd/yy, h:mm a' }}
+        <ng-container *ngIf="m.endTime"> – {{ m.endTime | date:'MM/dd/yy, h:mm a' }}</ng-container>
+      </div>
+    </div>
+
+    <!-- Players: Opponent first, then You -->
+    <div class="players">
+      <div class="player" *ngFor="let pid of m.players">
+        <ng-container *ngIf="pid !== userId; else youBlock">
+          <img class="avatar"
+               [src]="players[pid]?.avatar_url || '/assets/avatar-placeholder.png'"
+               [alt]="players[pid]?.username || 'Opponent'" />
+          <div class="name">{{ players[pid]?.username || 'Opponent' }}</div>
+        </ng-container>
+
+        <ng-template #youBlock>
+          <img class="avatar"
+               [src]="players[pid]?.avatar_url || '/assets/avatar-placeholder.png'"
+               [alt]="players[pid]?.username || 'You'" />
+          <div class="name">You</div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #loading>
+  <p class="loading-message">Loading match…</p>
+</ng-template>

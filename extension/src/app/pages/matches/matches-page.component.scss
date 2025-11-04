@@ -1,0 +1,77 @@
+@use '../../theme/styles/_variables' as theme;
+
+.header {
+  text-align: center;
+  color: theme.$text-header;
+}
+
+.match-wrapper {
+  padding: 20px;
+}
+
+.match-card {
+  text-align: center;
+  color: theme.$text-body;
+  font-size: 18px;
+  background: theme.$bg-secondary;
+  border: 4px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+
+  &.win   { border-color: rgba(theme.$state-good, .5); }
+  &.loss  { border-color: rgba(theme.$state-bad,  .45); }
+  &.neutral { border-color: rgba(255,255,255,.08); }
+}
+
+
+.match-header {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+
+  .result {
+    font-weight: 700;
+    color: theme.$text-header;
+
+    .match-card.win &  { color: theme.$state-good; }
+    .match-card.loss & { color: theme.$state-bad; }
+  }
+
+  .title {
+    color: theme.$text-header;
+    font-weight: 600;
+  }
+
+  .date {
+    color: theme.$text-muted;
+    font-size: 16px;
+  }
+}
+
+.players {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+
+  .player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+
+    .avatar {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,.12);
+      background: theme.$bg-tertiary;
+    }
+
+    .name {
+      color: theme.$text-header;
+      font-size: 18px;
+    }
+  }
+}
