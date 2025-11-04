@@ -38,6 +38,11 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "content.css",
+                "input": "src",
+                "output": "."
               }
             ],
             "styles": [

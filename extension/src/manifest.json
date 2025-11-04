@@ -30,7 +30,7 @@
         {
             "matches": ["https://leetcode.com/problems/*"],
             "js": ["content.js"],
-            "run_at": "document_start"
+            "css": ["content.css"]
         }
     ],
     "web_accessible_resources": [
@@ -39,7 +39,12 @@
             "matches": ["https://leetcode.com/*"]
         },
         {
-            "resources": ["index.html"],
+            "resources": [
+                "index.html",
+                "*.js",
+                "*.css",
+                "assets/*"
+            ],
             "matches": ["<all_urls>"]
         }
     ]

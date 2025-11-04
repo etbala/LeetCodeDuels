@@ -21,6 +21,8 @@ interface LeetCodeSubmissionData {
   FinishTime: number;
 }
 
+let appFrame: HTMLIFrameElement | null = null;
+
 function main() {
   console.log("[Code Duels] Content script injected.");
 
@@ -38,6 +40,30 @@ function main() {
       handleSubmissionResult(event.data.data);
     }
   });
+
+  appFrame = document.createElement('iframe');
+  appFrame.id = 'leetcode-duels-iframe';
+  appFrame.src = chrome.runtime.getURL('index.html');
+  document.body.appendChild(appFrame);
+
+  chrome.runtime.onMessage.addListener(
+    (message, sender, sendResponse) => {
+      if (message.action === "toggle_ui") {
+        toggleAppFrame();
+        sendResponse({ status: "success" });
+      }
+      return true;
+    }
+  );
+}
+
+function toggleAppFrame() {
+  if (!appFrame) {
+    console.error("App frame does not exist.");
+    return;
+  }
+  
+  appFrame.classList.toggle('visible');
 }
 
 /**

@@ -1,0 +1,19 @@
+#leetcode-duels-iframe {
+  width: 400px;
+  height: 400px;
+  
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999999;
+  
+  border: 1px solid #222;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  display: none;
+}
+
+#leetcode-duels-iframe.visible {
+  display: block;
+}
