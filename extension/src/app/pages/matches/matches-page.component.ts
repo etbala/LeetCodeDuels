@@ -19,7 +19,7 @@ import { User } from 'models/user.model';
 export class MatchesPageComponent implements OnInit {
   userId: number | null = null;
   match?: Session;
-  players: Record<number, User> = {};
+  players: Record<number, User | undefined> = {};
   errorText: string | null = null;
 
   constructor(
