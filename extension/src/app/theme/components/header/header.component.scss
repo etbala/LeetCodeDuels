@@ -32,4 +32,8 @@
             object-fit: contain;
         }
     }
+
+    .minimize-icon {
+        filter: invert(1);
+    }
 }

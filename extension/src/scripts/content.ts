@@ -21,6 +21,7 @@ interface LeetCodeSubmissionData {
   FinishTime: number;
 }
 
+let triggerButton: HTMLButtonElement | null = null;
 let appFrame: HTMLIFrameElement | null = null;
 
 function main() {
@@ -46,6 +47,13 @@ function main() {
   appFrame.src = chrome.runtime.getURL('index.html');
   document.body.appendChild(appFrame);
 
+  triggerButton = document.createElement('button');
+  triggerButton.id = 'leetcode-duels-trigger';
+  triggerButton.innerText = 'D'; // Placeholder, can use icon
+  document.body.appendChild(triggerButton);
+
+  triggerButton.addEventListener('click', toggleAppFrame);
+
   chrome.runtime.onMessage.addListener(
     (message, sender, sendResponse) => {
       if (message.action === "toggle_ui") {
@@ -55,15 +63,22 @@ function main() {
       return true;
     }
   );
+
+  window.addEventListener('message', (event) => {
+    if (event.source === appFrame?.contentWindow && event.data?.action === 'toggleUI') {
+      toggleAppFrame();
+    }
+  });
 }
 
 function toggleAppFrame() {
-  if (!appFrame) {
-    console.error("App frame does not exist.");
+  if (!appFrame || !triggerButton) {
+    console.error("App frame or trigger button does not exist.");
     return;
   }
   
-  appFrame.classList.toggle('visible');
+  const isNowVisible = appFrame.classList.toggle('visible');
+  triggerButton.style.display = isNowVisible ? 'none' : 'block';
 }
 
 /**

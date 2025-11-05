@@ -10,4 +10,8 @@ import { RouterLink } from '@angular/router';
   styleUrls: ['./header.component.scss'],
 })
 export class HeaderComponent {
+  minimize() {
+    window.parent.postMessage({ action: 'toggleUI' }, '*');
+    window.close();
+  }
 }
