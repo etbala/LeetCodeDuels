@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
@@ -7,6 +7,7 @@ import { lastValueFrom } from 'rxjs';
 import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
+import { BackgroundService } from 'services/background/background.service';
 
 @Component({
   selector: 'app-in-game-page',
@@ -34,7 +35,9 @@ export class InGamePageComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private http: HttpClient,
+    private backgroundService: BackgroundService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -99,6 +102,17 @@ export class InGamePageComponent implements OnInit {
       this.errorText = 'Could not load game data.';
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async forfeitDuel(): Promise<void> {
+    this.errorText = null;
+    try {
+      await this.backgroundService.forfeitDuel();
+      this.router.navigate(['/']);
+    } catch (err) {
+      console.error('Failed to forfeitDuel:', err);
+      this.errorText = 'Could not forfeit duel. Please try again.';
     }
   }
 }

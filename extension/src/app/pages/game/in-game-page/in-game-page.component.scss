@@ -1,4 +1,5 @@
 @use '../../../theme/styles/_variables' as theme;
+@use "sass:math";
 
 :host {
   display: flex;
@@ -73,4 +74,15 @@
   &.failed {
     background-color: theme.$bad;
   }
+}
+
+.forfeit-button {
+  background: theme.$bad;
+  color: theme.$input-text;
+  border-radius: .25rem; // TODO: Update to gloabal
+  margin: 0.2rem auto;
+  display: block;
+  border: none;
+  cursor: pointer;
+  width: math.div(theme.$box-width, 1.5);
 }

@@ -11,11 +11,27 @@ import { Difficulty } from 'app/models/match';
 import { Tag } from 'models/tag';
 import { UserStatusResponse } from 'models/api_responses';
 import { UserService } from 'services/user/user.service';
+import { MatchService } from 'services/game-session/game-sessions.service';
 
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
+import { Session } from 'app/models/match';
 
+// TODO: Put this elsewere----
+
+declare const chrome: any;
+
+const isSessionCompleted = (s?: Session | null) =>
+  !!s && (
+    s.status === 'Won' ||
+    s.status === 'Canceled' ||
+    s.status === 'Reverted' ||
+    s.winner > 0 ||
+    !!s.endTime
+  );
+
+// ----------------------------
 
 @Component({
   selector: 'app-dashboard-page',
@@ -40,7 +56,8 @@ export class DashboardPageComponent implements OnInit {
     private router: Router,
     private http: HttpClient,
     private backgroundService : BackgroundService,
-    private userService: UserService
+    private userService: UserService,
+    private matchService: MatchService,
   ) {}
 
   get selectedDifficultiesList(): string {
@@ -74,6 +91,33 @@ export class DashboardPageComponent implements OnInit {
     return this.http.get<UserStatusResponse>(`${this.API_URL}/api/v1/users/${userId}/status`);
   }
 
+  async checkJustFinishedMatch() {
+    try {
+      const { lastSession } = await chrome.storage.local.get('lastSession') as {
+        lastSession?: Session;
+      };
+
+      if (!lastSession) return;
+
+      const current = await firstValueFrom(
+        this.matchService.getMatch(lastSession.sessionID)
+      );
+      console.log('lastSession from storage', lastSession);
+      console.log('current from API', current);
+      console.log('isSessionCompleted(current)', isSessionCompleted(current));
+
+
+      if (isSessionCompleted(current)) {
+        await chrome.storage.local.remove('lastSession'); // so we don't loop forever
+        this.router.navigate(['/match-over', current.sessionID]);
+      }
+    } catch (err) {
+      console.error('checkJustFinishedMatch error', err);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
   redirectIfInGame() {
     if (!this.currentUserId) {
       this.isLoading = false;
@@ -81,10 +125,17 @@ export class DashboardPageComponent implements OnInit {
     }
 
     this.checkUserStatus(this.currentUserId).subscribe({
-      next: res => {
+      next: async res => {
         if (res.in_game && res.game_id) {
+          console.log('in game? ', res.in_game);
+          const current = await firstValueFrom(
+            this.matchService.getMatch(res.game_id)
+          );
+          await chrome.storage.local.set({ lastSession: current });
+
           this.router.navigate(['/game', res.game_id]);
         } else {
+          await this.checkJustFinishedMatch();
           this.isLoading = false;
         }
       },
@@ -104,7 +155,10 @@ export class DashboardPageComponent implements OnInit {
       },
       error: err => console.error('tags fetch error', err)
     });
+
+    this.isLoading = false;
   }
+
 
   toggleDiff(d: string, checked: boolean) {
     if (checked) {
