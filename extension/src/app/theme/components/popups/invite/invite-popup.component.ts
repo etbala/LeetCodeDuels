@@ -6,7 +6,7 @@ import { BackgroundService } from 'services/background/background.service';
 import { InvitationRequestPayload, ExtensionEventType } from 'models/extension-events';
 import { AcceptInvitationPayload, DeclineInvitationPayload } from 'models/background-actions';
 import { CommonModule } from '@angular/common';
-import { UserService } from 'app/services/user/user.service';
+import { UserService } from 'services/api/user.service';
 
 @Component({
   selector: 'app-invite-popup',

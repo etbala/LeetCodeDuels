@@ -4,8 +4,8 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin, of, switchMap, map } from 'rxjs';
 
-import { MatchService } from 'services/game-session/game-sessions.service';
-import { UserService } from 'services/user/user.service';
+import { MatchService } from 'services/api/game-sessions.service';
+import { UserService } from 'services/api/user.service';
 import { Session } from 'models/match';
 import { User } from 'models/user.model';
 

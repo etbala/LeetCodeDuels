@@ -9,7 +9,7 @@ import { SettingsPageComponent } from './pages/settings-page/settings-page.compo
 import { NotificationPageComponent } from './pages/notifications-page/notifications-page.component';
 import { HistoryPageComponent } from 'pages/history/history-page.component';
 import { MatchesPageComponent } from 'pages/matches/matches-page.component';
-import { MatchOverPageComponet } from './pages/match-over-page/match-over-page.component';
+import { MatchOverPageComponent } from './pages/match-over-page/match-over-page.component';
 import { AuthGuard } from './services/auth/auth.guard';
 
 export const appRoutes: Route[] = [
@@ -18,7 +18,7 @@ export const appRoutes: Route[] = [
   { path: 'settings', component: SettingsPageComponent, canActivate: [AuthGuard] },
   { path: 'notifications', component: NotificationPageComponent, canActivate: [AuthGuard] },
   { path: 'history', component: HistoryPageComponent, canActivate: [AuthGuard] },
-  { path: 'match-over/:id', component: MatchOverPageComponet, canActivate: [AuthGuard] },
+  { path: 'match-over/:id', component: MatchOverPageComponent, canActivate: [AuthGuard] },
   { path: 'matches/:id', component: MatchesPageComponent, canActivate: [AuthGuard] },
   { path: 'queue/:inviteeID', component: QueuePageComponent, canActivate: [AuthGuard] },
   { path: 'challenge', component: ChallengePageComponent, canActivate: [AuthGuard] },

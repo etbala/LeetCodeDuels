@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
 import { AuthService } from '../../services/auth/auth.service';
-import { UserService } from '../../services/user/user.service';
+import { UserService } from '../../services/api/user.service';
 import { User } from 'app/models/user.model';
 
 @Component({
