@@ -1,5 +1,6 @@
 @use '../../../theme/styles/_variables' as theme;
 @use "sass:math";
+@use "sass:color";
 
 :host {
   display: flex;
@@ -11,6 +12,17 @@
 
 .match-header {
   text-align: center;
+}
+
+.problem-link {
+  color: #0070f3;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #0051a8;
+    text-decoration: underline;
+  }
 }
 
 .players-container {
@@ -79,10 +91,38 @@
 .forfeit-button {
   background: theme.$bad;
   color: theme.$input-text;
-  border-radius: .25rem; // TODO: Update to gloabal
-  margin: 0.2rem auto;
-  display: block;
   border: none;
+  border-radius: 0.3rem;
+  padding: 0.4rem 0.6rem;
+  margin: 0.3rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   cursor: pointer;
-  width: math.div(theme.$box-width, 1.5);
+  font-weight: 500;
+  transition: all 0.25s ease;
+  min-width: 2rem;
+  text-align: center;
+
+  &:hover {
+    background: color.scale(theme.$bad, $lightness: -10%);
+  }
+
+  &.confirming {
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+.forfeit-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  filter: brightness(0) invert(1);
+}
+
+.confirm-text {
+  font-size: 0.9rem;
+  color: theme.$input-text;
+  white-space: nowrap;
+  text-align: center;
 }

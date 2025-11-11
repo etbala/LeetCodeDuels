@@ -11,7 +11,18 @@
     <ng-container>
         <h1>Duel In Progress</h1>
 
-        <h2>{{ problemTitle }}</h2>
+        <h2 *ngIf="problemTitle">
+          <a
+            *ngIf="problemLink"
+            [href]="problemLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="problem-link"
+          >
+            {{ problemTitle }}
+          </a>
+          <span *ngIf="!problemLink">{{ problemTitle }}</span>
+        </h2>
     </ng-container>
 </div>
 
@@ -92,9 +103,12 @@
   </div>
 </div>
 
-<div >
-  <button class="forfeit-button" type="button" (click)="forfeitDuel()">Forfeit Duel?</button>
-</div>
+<button class="forfeit-button" (click)="forfeitDuel()"
+  [class.confirming]="isConfirmingForfeit">
+  <img src="assets/surrender.svg" alt="Forfeit" class="forfeit-icon" />
+  <span *ngIf="isConfirmingForfeit" class="confirm-text">Confirm forfeit?</span>
+</button>
+
 
 <ng-template #loadingBlock>
   <div class="loading-state">

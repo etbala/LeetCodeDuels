@@ -21,6 +21,7 @@ export class InGamePageComponent implements OnInit {
   matchID!: string;
   matchData?: Session;
   problemTitle = '';
+  problemLink: string | null = null;
 
   // player1 / player2 info
   player1?: UserInfoResponse;
@@ -30,6 +31,7 @@ export class InGamePageComponent implements OnInit {
   player1Stats = { submissions: 0, passed: 0, failed: 0 };
   player2Stats = { submissions: 0, passed: 0, failed: 0 };
 
+  isConfirmingForfeit = false;
   isLoading = false;
   errorText: string | null = null;
 
@@ -97,6 +99,9 @@ export class InGamePageComponent implements OnInit {
       this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
 
       this.problemTitle = match.problem?.name || match.problem?.slug || 'Unknown Problem';
+      this.problemLink = match.problem?.slug
+        ? `https://leetcode.com/problems/${match.problem.slug}/`
+        : null;
     } catch (err) {
       console.error('Failed to load match or player data:', err);
       this.errorText = 'Could not load game data.';
@@ -106,13 +111,21 @@ export class InGamePageComponent implements OnInit {
   }
 
   async forfeitDuel(): Promise<void> {
+    if (!this.isConfirmingForfeit) {
+      this.isConfirmingForfeit = true;
+      setTimeout(() => (this.isConfirmingForfeit = false), 4000); // auto-reset
+      return;
+    }
+
     this.errorText = null;
     try {
       await this.backgroundService.forfeitDuel();
       this.router.navigate(['/']);
     } catch (err) {
-      console.error('Failed to forfeitDuel:', err);
+      console.error('Failed to forfeit duel:', err);
       this.errorText = 'Could not forfeit duel. Please try again.';
+    } finally {
+      this.isConfirmingForfeit = false;
     }
   }
 }
