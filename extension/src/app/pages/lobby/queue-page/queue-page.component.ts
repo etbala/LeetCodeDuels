@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { lastValueFrom, Subject, takeUntil } from 'rxjs';
+import { lastValueFrom, Subject, merge, Subscription, timer } from 'rxjs';
+import { map, takeUntil, tap, switchMap } from 'rxjs/operators';
 
 import { UserInfoResponse } from 'app/models/api_responses';
 import { environment } from 'environments/environment';
@@ -20,6 +21,7 @@ import { ExtensionEventsService } from 'services/background/extension-events.ser
 export class QueuePageComponent implements OnInit, OnDestroy {
   private readonly API_URL = environment.apiUrl;
   private destroy$ = new Subject<void>();
+  private queueTimeoutSub?: Subscription;
   errorText: string | null = null;
   isLoading = true;
 
@@ -45,16 +47,69 @@ export class QueuePageComponent implements OnInit, OnDestroy {
     }
 
     this.loadOpponentProfile(this.inviteeID);
+    this.handleStartGameEvents();
+    this.handleInviteTerminalEvents();
+    this.startQueueTimeout(); // 2-minute safety fallback
+  }
 
+  // Navigate to /game when StartGame arrives (and matches invitee if present).
+  private handleStartGameEvents(): void {
     this.events
       .listenFor<{ opponentID?: number; matchId?: string }>(ExtensionEventType.StartGame)
       .pipe(takeUntil(this.destroy$))
       .subscribe(({ opponentID, matchId }) => {
-        // If inviteeID is known, ensure it matches; otherwise accept any.
         if (!this.inviteeID || opponentID === this.inviteeID) {
+          this.clearQueueTimeout();
           this.router.navigate(matchId ? ['/game', matchId] : ['/game']);
         }
       });
+  }
+
+  // Show message for invitation decline / fail, then return to dashboard.
+  private handleInviteTerminalEvents(): void {
+    merge(
+      this.events
+        .listenFor<void>(ExtensionEventType.InvitationDeclined)
+        .pipe(map(() => 'Your invitation was declined.')),
+      this.events
+        .listenFor<void>(ExtensionEventType.InvitationCanceled)
+        .pipe(map(() => 'Your invitation was canceled.')),
+      this.events
+        .listenFor<void>(ExtensionEventType.UserOffline)
+        .pipe(map(() => 'User went offline.')),
+      this.events
+        .listenFor<void>(ExtensionEventType.InvitationNonexistant)
+        .pipe(map(() => 'Invitation no longer exists.'))
+    )
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(msg => {
+          this.clearQueueTimeout();
+          this.errorText = msg;
+          this.isLoading = false;
+        }),
+        switchMap(() => timer(1200)) // brief notice, then bounce
+      )
+      .subscribe(() => this.router.navigate(['/']));
+  }
+
+  // Start a 2-minute safety timeout to avoid waiting forever.
+  private startQueueTimeout(): void {
+    this.clearQueueTimeout();
+    this.queueTimeoutSub = timer(120000) // 2 minutes
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.errorText = 'No response — taking you back to the dashboard.';
+        this.isLoading = false;
+        this.router.navigate(['/']);
+      });
+  }
+
+  private clearQueueTimeout(): void {
+    if (this.queueTimeoutSub) {
+      this.queueTimeoutSub.unsubscribe();
+      this.queueTimeoutSub = undefined;
+    }
   }
 
   private async loadOpponentProfile(id: number): Promise<void> {

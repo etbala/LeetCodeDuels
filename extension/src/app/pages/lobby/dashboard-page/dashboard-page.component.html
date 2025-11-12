@@ -1,17 +1,18 @@
 <h2 class="duel-header">Start A New Duel</h2>
 
 <div class="dashboard" *ngIf="!isLoading; else loadingBlock">
-  <div class="left-panel">
+  <form (ngSubmit)="startDuel()" class="left-panel">
     <input
       type="text"
       id="opponentUsername"
       placeholder="Opponent's Username"
       [(ngModel)]="opponentUsername"
+      name="opponentUsername"
     />
 
-    <button type="button" (click)="startDuel()">Send Duel!</button>
+    <button type="submit">Send Duel!</button>
     <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
-  </div>
+  </form>
 
   <div class="right-panel">
   <h3 class="box-label">Difficulty</h3>
