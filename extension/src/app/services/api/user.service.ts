@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from 'environments/environment';
 import { User } from 'app/models/user.model';
+import { UserStatusResponse } from 'models/api_responses';
 import { Session } from 'models/match';
 
 export interface UpdateUserRequest {
@@ -77,5 +78,39 @@ export class UserService {
       .set('limit', limit.toString());
 
     return this.http.get<Session[]>(`${this.apiUrl}/${id}/matches`, { params });
+  }
+
+  /**
+   * Fetches the status information for a specific user by ID.
+   * @param id - The user's ID.
+   * @returns An Observable of the user's status.
+   * @description Hits the `GET /api/v1/users/{id}/status` endpoint.
+   */
+  getUserStatus(id: string | number): Observable<UserStatusResponse> {
+    return this.http.get<UserStatusResponse>(`${this.apiUrl}/${id}/status`);
+  }
+
+  /**
+   * Resolves a username (optionally username#discriminator) to a user ID.
+   * @param input - e.g. "alice" or "alice#1234".
+   * @returns An Observable of the user ID, or null if not found.
+   * @description Hits `GET /api/v1/users?username=...&discriminator=...&limit=1`.
+   */
+  findUserId(input: string): Observable<number | null> {
+    const [username, discriminator] = input.split('#');
+
+    let params = new HttpParams()
+      .set('username', username.trim())
+      .set('limit', '1');
+
+    if (discriminator) {
+      params = params.set('discriminator', discriminator.trim());
+    }
+
+    return this.http
+      .get<{ id: number }[]>(this.apiUrl, { params })
+      .pipe(
+        map((users: { id: number }[]) => users?.[0]?.id ?? null)
+      );
   }
 }

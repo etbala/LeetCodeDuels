@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
@@ -7,6 +7,7 @@ import { lastValueFrom } from 'rxjs';
 import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
+import { BackgroundService } from 'services/background/background.service';
 
 @Component({
   selector: 'app-in-game-page',
@@ -20,6 +21,7 @@ export class InGamePageComponent implements OnInit {
   matchID!: string;
   matchData?: Session;
   problemTitle = '';
+  problemLink: string | null = null;
 
   // player1 / player2 info
   player1?: UserInfoResponse;
@@ -29,12 +31,15 @@ export class InGamePageComponent implements OnInit {
   player1Stats = { submissions: 0, passed: 0, failed: 0 };
   player2Stats = { submissions: 0, passed: 0, failed: 0 };
 
+  isConfirmingForfeit = false;
   isLoading = false;
   errorText: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private http: HttpClient,
+    private backgroundService: BackgroundService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -94,11 +99,39 @@ export class InGamePageComponent implements OnInit {
       this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
 
       this.problemTitle = match.problem?.name || match.problem?.slug || 'Unknown Problem';
+      this.problemLink = match.problem?.slug
+        ? `https://leetcode.com/problems/${match.problem.slug}/`
+        : null;
     } catch (err) {
       console.error('Failed to load match or player data:', err);
       this.errorText = 'Could not load game data.';
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async forfeitDuel(): Promise<void> {
+    this.errorText = null;
+
+    // grab the session id before forfeiting
+    const { lastSession } = await chrome.storage.local.get('lastSession') as { lastSession?: Session };
+    const sessionId = lastSession?.sessionID;
+
+    try {
+      await this.backgroundService.forfeitDuel();
+
+      // prevent future auto-redirects
+      await chrome.storage.local.remove('lastSession');
+
+      // go straight to match-over
+      if (sessionId) {
+        await this.router.navigate(['/match-over', sessionId]);
+      } else {
+        await this.router.navigate(['/']);
+      }
+    } catch (err) {
+      console.error('Failed to forfeitDuel:', err);
+      this.errorText = 'Could not forfeit duel. Please try again.';
     }
   }
 }

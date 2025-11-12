@@ -1,4 +1,3 @@
-// match-page.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
@@ -10,13 +9,14 @@ import { Session } from 'models/match';
 import { User } from 'models/user.model';
 
 @Component({
-  selector: 'app-match-page',
-  templateUrl: './matches-page.component.html',
-  styleUrls: ['./matches-page.component.scss'],
+  selector: 'app-match-over-page',
+  templateUrl: './match-over-page.component.html',
+  styleUrls: ['./match-over-page.component.scss'],
   standalone: true,
   imports: [CommonModule]
 })
-export class MatchesPageComponent implements OnInit {
+
+export class MatchOverPageComponent implements OnInit {
   userId: number | null = null;
   match?: Session;
   players: Record<number, User | undefined> = {};
@@ -43,7 +43,10 @@ export class MatchesPageComponent implements OnInit {
 
   private loadMe() {
     return this.userService.getMyProfile().pipe(
-      map(({ id }) => (this.userId = id, id))
+      map(({ id }) => {
+        this.userId = id;
+        return id;
+      })
     );
   }
 
@@ -53,7 +56,10 @@ export class MatchesPageComponent implements OnInit {
 
   private getMatch(id: string) {
     return this.matchService.getMatch(id).pipe(
-      map(m => (this.match = m, m))
+      map(m => {
+        this.match = m;
+        return m;
+      })
     );
   }
 

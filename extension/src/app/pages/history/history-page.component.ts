@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
-import { UserService } from 'services/user/user.service';
+import { UserService } from 'services/api/user.service';
 import { User } from 'models/user.model';
 import { Session } from 'models/match';
 

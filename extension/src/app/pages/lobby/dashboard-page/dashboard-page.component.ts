@@ -1,21 +1,27 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 import { BackgroundService } from 'app/services/background/background.service';
 import { SendInvitationPayload } from 'app/models/background-actions';
-import { Difficulty } from 'app/models/match';
+import { Difficulty, Session } from 'app/models/match';
 
 import { Tag } from 'models/tag';
-import { UserStatusResponse } from 'models/api_responses';
-import { UserService } from 'services/user/user.service';
+import { UserService } from 'services/api/user.service';
+import { MatchService } from 'services/api/game-sessions.service';
+import { ProblemsService } from 'services/api/problems.service';
 
-import { Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
-
+const isSessionCompleted = (s?: Session | null) =>
+  !!s && (
+    s.status === 'Won' ||
+    s.status === 'Canceled' ||
+    s.status === 'Reverted' ||
+    s.winner > 0 ||
+    !!s.endTime
+  );
 
 @Component({
   selector: 'app-dashboard-page',
@@ -25,7 +31,6 @@ import { environment } from '../../../../environments/environment';
   styleUrl: './dashboard-page.component.scss'
 })
 export class DashboardPageComponent implements OnInit {
-  private readonly API_URL = environment.apiUrl;
   opponentUsername = '';
   currentUserId: number | null = null;
   errorMessage: string | null = null;
@@ -38,9 +43,10 @@ export class DashboardPageComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private http: HttpClient,
-    private backgroundService : BackgroundService,
-    private userService: UserService
+    private backgroundService: BackgroundService,
+    private userService: UserService,
+    private matchService: MatchService,
+    private problemsService: ProblemsService,
   ) {}
 
   get selectedDifficultiesList(): string {
@@ -57,6 +63,17 @@ export class DashboardPageComponent implements OnInit {
     return Array.from(this.selectedTags);
   }
 
+  ngOnInit() {
+    this.getUserIdAndRedirect();
+
+    this.problemsService.getTags().subscribe({
+      next: tags => {
+        this.tags = tags;
+      },
+      error: err => console.error('tags fetch error', err)
+    });
+  }
+
   getUserIdAndRedirect() {
     this.userService.getMyProfile().subscribe({
       next: user => {
@@ -70,8 +87,25 @@ export class DashboardPageComponent implements OnInit {
     });
   }
 
-  checkUserStatus(userId: number): Observable<UserStatusResponse> {
-    return this.http.get<UserStatusResponse>(`${this.API_URL}/api/v1/users/${userId}/status`);
+  async checkJustFinishedMatch() {
+    try {
+      const { lastSession } = await chrome.storage.local.get('lastSession') as {
+        lastSession?: Session;
+      };
+
+      if (!lastSession) return;
+
+      const current = await firstValueFrom(
+        this.matchService.getMatch(lastSession.sessionID)
+      );
+
+      if (isSessionCompleted(current)) {
+        await chrome.storage.local.remove('lastSession');
+        this.router.navigate(['/match-over', current.sessionID]);
+      }
+    } catch (err) {
+      console.error('checkJustFinishedMatch error', err);
+    }
   }
 
   redirectIfInGame() {
@@ -80,29 +114,25 @@ export class DashboardPageComponent implements OnInit {
       return;
     }
 
-    this.checkUserStatus(this.currentUserId).subscribe({
-      next: res => {
+    this.userService.getUserStatus(this.currentUserId).subscribe({
+      next: async res => {
         if (res.in_game && res.game_id) {
+          const current = await firstValueFrom(
+            this.matchService.getMatch(res.game_id)
+          );
+          await chrome.storage.local.set({ lastSession: current });
+
           this.router.navigate(['/game', res.game_id]);
         } else {
-          this.isLoading = false;
+          await this.checkJustFinishedMatch();
         }
+
+        this.isLoading = false;
       },
       error: err => {
         console.error('status check error', err);
         this.isLoading = false;
       }
-    });
-  }
-
-  ngOnInit() {
-    this.getUserIdAndRedirect();
-
-    this.http.get<Tag[]>(`${this.API_URL}/api/v1/problems/tags`).subscribe({
-      next: data => {
-        this.tags = data;
-      },
-      error: err => console.error('tags fetch error', err)
     });
   }
 
@@ -122,29 +152,12 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  private async getUserIdFromUsername(input: string): Promise<number | null> {
-    const [username, discriminator] = input.split('#');
-
-    try {
-      // build query params
-      const params = new URLSearchParams();
-      params.set('username', username.trim());
-      if (discriminator) params.set('discriminator', discriminator.trim());
-      params.set('limit', '1'); // only need 1 match
-
-      const userList = await this.http
-        .get<{ id: number }[]>(`${this.API_URL}/api/v1/users?${params.toString()}`)
-        .toPromise();
-
-      return userList?.[0]?.id ?? null;
-    } catch (err) {
-      console.error('Error fetching user ID:', err);
-      return null;
-    }
+  private getUserIdFromUsername(input: string): Promise<number | null> {
+    return firstValueFrom(this.userService.findUserId(input));
   }
 
   private buildMatchPayload(inviteeID: number): SendInvitationPayload {
-    const payload: SendInvitationPayload = {
+    return {
       inviteeID,
       matchDetails: {
         isRated: false,
@@ -152,9 +165,6 @@ export class DashboardPageComponent implements OnInit {
         tags: Array.from(this.selectedTags),
       },
     };
-
-    // Return the Message wrapper object
-    return payload;
   }
 
   private sendInvitation(payload: SendInvitationPayload) {
@@ -162,7 +172,7 @@ export class DashboardPageComponent implements OnInit {
   }
 
   async startDuel() {
-    this.errorMessage = null; // reset before each attempt
+    this.errorMessage = null;
 
     const trimmedUsername = this.opponentUsername.trim();
     if (!trimmedUsername) {
@@ -186,7 +196,6 @@ export class DashboardPageComponent implements OnInit {
         this.errorMessage = 'Failed to send duel invitation. Please try again.';
         console.error('Error sending invitation:', inviteErr);
       }
-
     } catch (err) {
       this.errorMessage = 'An unexpected error occurred. Please try again.';
       console.error('Error starting duel:', err);
