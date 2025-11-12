@@ -111,21 +111,27 @@ export class InGamePageComponent implements OnInit {
   }
 
   async forfeitDuel(): Promise<void> {
-    if (!this.isConfirmingForfeit) {
-      this.isConfirmingForfeit = true;
-      setTimeout(() => (this.isConfirmingForfeit = false), 4000); // auto-reset
-      return;
-    }
-
     this.errorText = null;
+
+    // grab the session id before forfeiting
+    const { lastSession } = await chrome.storage.local.get('lastSession') as { lastSession?: Session };
+    const sessionId = lastSession?.sessionID;
+
     try {
       await this.backgroundService.forfeitDuel();
-      this.router.navigate(['/']);
+
+      // prevent future auto-redirects
+      await chrome.storage.local.remove('lastSession');
+
+      // go straight to match-over
+      if (sessionId) {
+        await this.router.navigate(['/match-over', sessionId]);
+      } else {
+        await this.router.navigate(['/']);
+      }
     } catch (err) {
-      console.error('Failed to forfeit duel:', err);
+      console.error('Failed to forfeitDuel:', err);
       this.errorText = 'Could not forfeit duel. Please try again.';
-    } finally {
-      this.isConfirmingForfeit = false;
     }
   }
 }

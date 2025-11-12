@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatchOverPageComponent } from './match-over-page.component';
 
-import { MatchesPageComponent } from './matches-page.component';
 
-describe('SettingsPageComponent', () => {
-  let component: MatchesPageComponent;
-  let fixture: ComponentFixture<MatchesPageComponent>;
+describe('MatchOverPageComponent', () => {
+  let component: MatchOverPageComponent;
+  let fixture: ComponentFixture<MatchOverPageComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MatchesPageComponent]
+      imports: [MatchOverPageComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(MatchesPageComponent);
+    fixture = TestBed.createComponent(MatchOverPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

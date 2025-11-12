@@ -1,4 +1,3 @@
-// match-page.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
@@ -44,7 +43,10 @@ export class MatchOverPageComponent implements OnInit {
 
   private loadMe() {
     return this.userService.getMyProfile().pipe(
-      map(({ id }) => (this.userId = id, id))
+      map(({ id }) => {
+        this.userId = id;
+        return id;
+      })
     );
   }
 
@@ -54,7 +56,10 @@ export class MatchOverPageComponent implements OnInit {
 
   private getMatch(id: string) {
     return this.matchService.getMatch(id).pipe(
-      map(m => (this.match = m, m))
+      map(m => {
+        this.match = m;
+        return m;
+      })
     );
   }
 
