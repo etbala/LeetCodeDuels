@@ -22,10 +22,12 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 
 	code := r.URL.Query().Get("code")
 	errorParam := r.URL.Query().Get("error")
+	extensionOrigin := r.URL.Query().Get("extension_origin")
 
 	l.Info().
 		Str("code", code).
 		Str("error", errorParam).
+		Str("extension_origin", extensionOrigin).
 		Msg("Received AuthGitHubCallback")
 
 	var title, message, codeJS, errorJS string
@@ -47,6 +49,15 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		codeJS = ""
 		errorJS = "no_code"
 		l.Warn().Msg("GitHub auth callback received without an authorization code")
+	}
+
+	safeOrigin := extensionOrigin
+	if extensionOrigin == "" ||
+		(!strings.HasPrefix(extensionOrigin, "chrome-extension://") &&
+			!strings.HasPrefix(extensionOrigin, "moz-extension://") &&
+			!strings.HasPrefix(extensionOrigin, "safari-web-extension://")) {
+		l.Warn().Str("origin", extensionOrigin).Msg("Invalid or missing extension origin")
+		safeOrigin = "*" // Fallback for development
 	}
 
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
@@ -94,41 +105,44 @@ func AuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
         <p>%s</p>
     </div>
     <script>
-        // Post message to all possible extension origins
         const message = {
             type: 'github-oauth-callback',
             code: %q,
             error: %q
         };
         
-        // Try posting to different extension origins
-        const extensionOrigins = [
-            'chrome-extension://*',
-            'moz-extension://*',
-            'safari-web-extension://*'
-        ];
+        const extensionOrigin = %q;
         
         // Post to opener (the extension tab that opened this)
         if (window.opener) {
-            extensionOrigins.forEach(origin => {
-                try {
-                    window.opener.postMessage(message, origin);
-                } catch (e) {
-                    // Ignore errors for invalid origins
+            try {
+                // Try the specific extension origin first (required for Firefox)
+                if (extensionOrigin && extensionOrigin !== '*') {
+                    console.log('Posting message to extension origin:', extensionOrigin);
+                    window.opener.postMessage(message, extensionOrigin);
+                } else {
+                    // Fallback to wildcard (works in Chrome for development)
+                    console.log('Posting message with wildcard origin');
+                    window.opener.postMessage(message, '*');
                 }
-            });
-            
-            // Also try wildcard for development
-            window.opener.postMessage(message, '*');
+            } catch (e) {
+                console.error('Failed to post message:', e);
+                // Try wildcard as last resort
+                try {
+                    window.opener.postMessage(message, '*');
+                } catch (e2) {
+                    console.error('Wildcard post also failed:', e2);
+                }
+            }
         }
         
-        // Auto-close after 2 seconds
+        // Auto-close after 1 seconds
         setTimeout(() => {
             window.close();
-        }, 2000);
+        }, 1000);
     </script>
 </body>
-</html>`, title, message, codeJS, errorJS)
+</html>`, title, message, codeJS, errorJS, safeOrigin)
 
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, htmlContent)

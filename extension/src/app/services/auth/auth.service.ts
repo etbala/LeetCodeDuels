@@ -79,13 +79,17 @@ export class AuthService {
   async login(): Promise<void> {
     return new Promise((resolve, reject) => {
       const state = this.generateState();
+      const extensionOrigin = window.location.origin;
+
       sessionStorage.setItem('oauth_state', state);
+      sessionStorage.setItem('oauth_origin', extensionOrigin);
       
       const params = new URLSearchParams({
         client_id: this.GITHUB_CLIENT_ID,
         redirect_uri: `${this.API_URL}/auth/github/callback`,
         scope: 'user:email',
-        state: state
+        state: state,
+        extension_origin: extensionOrigin
       });
       
       const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
