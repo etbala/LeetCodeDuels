@@ -18,20 +18,33 @@ cd LeetCodeDuels
 
 ### 1. Install Dependencies
 Install Node.js (v22+) and Angular CLI.
-```bash
+```ps
 npm install -g @angular/cli
 ```
 
 ### 2. Build Extension
-```bash
+#### Chromium Based
+```ps
 cd extension
 npm install
 ng build
 ```
 
 Note: Build using `-c local` if you are running the server locally:
-```bash
+```ps
 ng build -c local
+```
+
+#### Firefox Based
+```ps
+cd extension
+npm install
+npm run build:firefox
+```
+
+Note: Build using `--config=local` if you are running the server locally:
+```ps
+npm run build:firefox --config=local
 ```
 
 ### 3. Load Extension in Browser
