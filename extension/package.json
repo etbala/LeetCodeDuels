@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "build": "ng build",
+    "build:firefox": "node build-firefox.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint"

@@ -1,0 +1,51 @@
+{
+    "manifest_version": 3,
+    "name": "LeetCode Duels",
+    "version": "1.0",
+    "description": "Head-to-head LeetCode against your friends.",
+    "permissions": [
+        "scripting",
+        "tabs",
+        "storage",
+        "alarms",
+        "identity",
+        "webNavigation"
+    ],
+    "host_permissions": [
+        "https://leetcode.com/*",
+        "https://github.com/*",
+        "https://lc-duels-development.fly.dev/*",
+        "http://localhost:8080/*"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' ws://localhost:8080 wss://lc-duels-development.fly.dev http://localhost:8080 https://lc-duels-development.fly.dev https://github.com https://api.github.com"
+    },
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "action": {
+        "default_popup": "index.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://leetcode.com/problems/*"],
+            "js": ["content.js"],
+            "run_at": "document_start"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["networkMonitor.js"],
+            "matches": ["https://leetcode.com/*"]
+        },
+        {
+            "resources": ["index.html"],
+            "matches": ["<all_urls>"]
+        }
+    ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "lcduels@gmail.com"
+        }
+    }
+}
