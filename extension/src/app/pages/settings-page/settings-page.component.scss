@@ -154,6 +154,8 @@
 }
 
 .loading-container {
-  color: $body-text;
+  color: $text-muted;
+  text-align: center;
   font-style: italic;
+  font-size: 14px;
 }

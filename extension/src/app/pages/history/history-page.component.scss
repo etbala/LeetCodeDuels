@@ -97,6 +97,13 @@
 
 .no-sessions {
   text-align: center;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.loading-text {
   color: theme.$text-muted;
-  margin-top: 10px;
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
 }

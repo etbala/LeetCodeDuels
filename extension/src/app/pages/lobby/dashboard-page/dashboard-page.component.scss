@@ -36,6 +36,13 @@
   margin-top: 5px;
 }
 
+.loading-state {
+  color: $text-muted;
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
+}
+
 #opponentUsername {
   border-radius: $border-radius;
   border: 1px solid $input-bg;

@@ -13,6 +13,13 @@
 }
 
 .loading-message {
+  color: theme.$text-muted;
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.no-invites {
   text-align: center;
   font-size: 14px;
   margin-top: 5px;

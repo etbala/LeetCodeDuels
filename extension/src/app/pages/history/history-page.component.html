@@ -2,7 +2,7 @@
 
 <div *ngIf="errorText" class="error-message">{{ errorText }}</div>
 
-<div class="history-container">
+<div *ngIf="!isLoading" class="history-container">
   <div *ngIf="sessions.length > 0; else noSessions">
     <div class="session-scroll-area">
 
@@ -53,4 +53,8 @@
   <ng-template #noSessions>
     <p class="no-sessions">No past matches found.</p>
   </ng-template>
+</div>
+
+<div *ngIf="isLoading" class="loading-text">
+  Loading your past duels...
 </div>
