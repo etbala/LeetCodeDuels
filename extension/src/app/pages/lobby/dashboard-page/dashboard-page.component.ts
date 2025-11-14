@@ -86,6 +86,12 @@ export class DashboardPageComponent implements OnInit {
     this.userService.getMyProfile().subscribe({
       next: user => {
         this.currentUserId = user.id;
+
+        if (!user.lc_username) {
+          this.errorMessage =
+            'Heads up: your LeetCode username is not configured. Submissions may not be tracked.';
+        }
+
         this.redirectIfInGame();
       },
       error: err => {

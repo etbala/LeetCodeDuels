@@ -64,8 +64,7 @@ export class NotificationPageComponent implements OnInit {
 
     try {
       await this.backgroundService.declineInvitation(payload);
-      console.log(`Declined invite from ${invite.from_user.username}`);
-      // optionally remove card in UI here
+      this.invites$ = this.fetchPendingInvites();
     } catch (err) {
       console.error('Failed to decline invite:', err);
       this.errorText = 'Could not decline invite. Please try again.';

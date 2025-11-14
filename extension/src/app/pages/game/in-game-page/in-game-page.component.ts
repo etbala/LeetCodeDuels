@@ -8,6 +8,7 @@ import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
 import { BackgroundService } from 'services/background/background.service';
+import { MatchService } from 'services/api/game-sessions.service';
 
 @Component({
   selector: 'app-in-game-page',
@@ -40,6 +41,7 @@ export class InGamePageComponent implements OnInit {
     private router: Router,
     private http: HttpClient,
     private backgroundService: BackgroundService,
+    private matchService: MatchService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -54,11 +56,9 @@ export class InGamePageComponent implements OnInit {
   }
 
   private calcStatsForPlayer(playerId: number, subs: PlayerSubmission[]) {
-    // passed / failed from passedTestCases / totalTestCases if present
-    const playerSubs = subs.filter(s => s && s.problemID && s);
+    const playerSubs = subs.filter(s => s.playerID === playerId);
 
     const submissions = playerSubs.length;
-
     let passed = 0;
     let failed = 0;
 
@@ -77,16 +77,14 @@ export class InGamePageComponent implements OnInit {
     this.errorText = null;
 
     try {
-      // get match info
-      const match = await lastValueFrom(
-        this.http.get<Session>(`${this.API_URL}/api//v1/matches/${this.matchID}`)
-      );
-      this.matchData = match;
+      const [match, submissions] = await Promise.all([
+        lastValueFrom(this.matchService.getMatch(this.matchID)),
+        lastValueFrom(this.matchService.getMatchSubmissions(this.matchID)),
+      ]);
 
-      // assume match.players[0] and match.players[1] exist
+      this.matchData = match;
       const [p1Id, p2Id] = match.players;
 
-      // load both players' profiles
       const [p1, p2] = await Promise.all([
         this.loadUserProfile(p1Id),
         this.loadUserProfile(p2Id),
@@ -95,8 +93,8 @@ export class InGamePageComponent implements OnInit {
       this.player1 = p1;
       this.player2 = p2;
 
-      this.player1Stats = this.calcStatsForPlayer(p1Id, match.submissions || []);
-      this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
+      this.player1Stats = this.calcStatsForPlayer(p1Id, submissions);
+      this.player2Stats = this.calcStatsForPlayer(p2Id, submissions);
 
       this.problemTitle = match.problem?.name || match.problem?.slug || 'Unknown Problem';
       this.problemLink = match.problem?.slug
