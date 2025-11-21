@@ -42,6 +42,21 @@
                [alt]="players[pid]?.username || 'You'" />
           <div class="name">You</div>
         </ng-template>
+        <div class="stats" *ngIf="statsByPlayerId[pid] as s">
+
+          <!-- If at least 1 submission -->
+          <ng-container *ngIf="s.submissions > 0; else noSubs">
+            <div class="stat-line">Submissions: {{ s.submissions }}</div>
+            <div class="stat-line">
+              Cases: {{ s.passed }} / {{ s.passed + s.failed }} passed
+            </div>
+          </ng-container>
+
+          <!-- Fallback when no submissions -->
+          <ng-template #noSubs>
+            <div class="stat-line empty">No submissions</div>
+          </ng-template>
+        </div>
       </div>
     </div>
   </div>

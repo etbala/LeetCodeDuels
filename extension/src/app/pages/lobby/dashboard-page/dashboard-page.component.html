@@ -1,17 +1,18 @@
-<h2 class="duel-header">Start A New Duel</h2>
+<h1 class="duel-header">Start A New Duel</h1>
 
 <div class="dashboard" *ngIf="!isLoading; else loadingBlock">
-  <div class="left-panel">
+  <form (ngSubmit)="startDuel()" class="left-panel">
     <input
       type="text"
       id="opponentUsername"
       placeholder="Opponent's Username"
       [(ngModel)]="opponentUsername"
+      name="opponentUsername"
     />
 
-    <button type="button" (click)="startDuel()">Send Duel!</button>
+    <button type="submit">Send Duel!</button>
     <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
-  </div>
+  </form>
 
   <div class="right-panel">
   <h3 class="box-label">Difficulty</h3>
@@ -34,20 +35,40 @@
 
 
   <h3 class="box-label">Tags</h3>
-  <details name="dropdown">
+  <details name="dropdown" class="tag-picker" (toggle)="onDropdownToggle($event)">
     <summary>
-      {{ selectedTags.size ? selectedTagsNames : 'Select tags...' }}
+      <ng-container *ngIf="selectedTags.size; else placeholder">
+        <span class="chip" *ngFor="let name of selectedTagsNames">{{ name }}</span>
+      </ng-container>
+      <ng-template #placeholder>Select tags...</ng-template>
     </summary>
+
+
     <div class="dropdown-content">
-      <label class="dropdown-label" *ngFor="let t of tags">
-        <input
-          #cb
-          type="checkbox"
-          [checked]="selectedTags.has(t.id)"
-          (change)="toggleTag(t.id, cb.checked)"
-        />
-        {{ t.name }}
-      </label>
+      <input
+        #filterInput
+        type="text"
+        [(ngModel)]="tagFilter"
+        (keydown)="$event.stopPropagation()"
+        placeholder="Filter tags"
+        class="filter-input"
+      />
+
+      <div class="options">
+        <label class="dropdown-label" *ngFor="let t of filteredTags">
+          <input
+            #cb
+            type="checkbox"
+            [checked]="selectedTags.has(t.id)"
+            (change)="toggleTag(t.id, cb.checked)"
+          />
+          {{ t.name }}
+        </label>
+      </div>
+
+      <div *ngIf="filteredTags.length === 0" class="no-results">
+        No results
+      </div>
     </div>
   </details>
   </div>

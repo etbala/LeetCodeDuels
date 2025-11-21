@@ -73,5 +73,20 @@
       color: theme.$text-header;
       font-size: 18px;
     }
+
+    .stats {
+      margin-top: 2px;
+      text-align: center;
+      font-size: 14px;
+      color: theme.$text-muted;
+
+      .stat-line {
+
+        &.empty {
+          color: rgba(255, 255, 255, 0.25);
+          font-style: italic;
+        }
+      }
+    }
   }
 }

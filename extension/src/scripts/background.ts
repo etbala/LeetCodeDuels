@@ -48,11 +48,11 @@ async function scheduleReconnect() {
     delayMs = Math.max(1000, delayMs);
 
     console.log(`Scheduling reconnect attempt ${reconnectAttempt + 1} in ${Math.round(delayMs / 1000)}s`);
-    
+
     await chrome.storage.local.set({ reconnectAttempt: reconnectAttempt + 1 });
 
     chrome.alarms.create(WEBSOCKET_RECONNECT_ALARM, {
-      delayInMinutes: delayMs / 60000 
+      delayInMinutes: delayMs / 60000
     });
 
   } catch (error) {
@@ -184,7 +184,7 @@ function handleServerMessage(serverMsgData: ServerMessage) {
     case ExtensionEventType.UserOffline:
       forwardToUI(eventType, serverMsgData.payload);
       break;
-    
+
     case ExtensionEventType.InvitationNonexistant:
     case ExtensionEventType.OtherLogon:
       forwardToUI(eventType, null); // Events with no payload
@@ -192,7 +192,7 @@ function handleServerMessage(serverMsgData: ServerMessage) {
         disconnectWebSocket();
       }
       break;
-    
+
     case ExtensionEventType.ServerError:
       console.error("Server-side error:", serverMsgData.payload);
       forwardToUI(eventType, serverMsgData.payload);
@@ -208,7 +208,7 @@ function setupSocketListeners() {
   if (!socket) return;
 
   socket.onerror = (err) => console.error("WebSocket error:", err);
-  
+
   socket.onclose = (event) => {
     console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
 
@@ -258,7 +258,7 @@ async function sendToServer(type: ServerMessageType, payload?: unknown) {
     socket.send(message);
     return { status: "success", message: `Sent '${type}' to server.` };
   }
-  
+
   if (type === ServerMessageType.ClientHeartbeat) {
     return { status: "error", error: "WebSocket is not connected. Skipping heartbeat." };
   }

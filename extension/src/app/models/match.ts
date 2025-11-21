@@ -51,6 +51,7 @@ export interface MatchDetails {
 
 export interface PlayerSubmission {
     submissionID: number;
+    playerID?: number;
     problemID: number;
     time: string; // ISO 8601 date string
     status: SubmissionStatus;

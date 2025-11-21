@@ -19,13 +19,14 @@ export class SettingsPageComponent implements OnInit {
   lcUsernameControl: FormControl;
 
   currentUser: User | null = null;
-  
+
   isLoading = true;
+  copied = false;
   isEditingUsername = false;
   isEditingLcUsername = false;
   isSavingUsername = false;
   isSavingLcUsername = false;
-  
+
   message: { type: 'success' | 'error', text: string } | null = null;
 
   constructor(
@@ -53,6 +54,20 @@ export class SettingsPageComponent implements OnInit {
       });
   }
 
+  async copyHandle(): Promise<void> {
+    if (!this.currentUser) return; // nothing to copy if user not loaded
+
+    const handle = `${this.currentUser.username ?? ''}#${this.currentUser.discriminator ?? ''}`;
+
+    try {
+      await navigator.clipboard.writeText(handle);
+      this.copied = true;
+      setTimeout(() => (this.copied = false), 1500);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  }
+
   editUsername(): void {
     this.isEditingUsername = true;
     this.message = null;
@@ -67,10 +82,10 @@ export class SettingsPageComponent implements OnInit {
     if (this.usernameControl.invalid || this.isSavingUsername) {
       return;
     }
-    
+
     this.isSavingUsername = true;
     this.message = null;
-    
+
     this.userService.updateUser({ username: this.usernameControl.value })
       .pipe(finalize(() => this.isSavingUsername = false))
       .subscribe({

@@ -5,6 +5,7 @@ import { ExtensionEventsService } from 'services/background/extension-events.ser
 import { BackgroundService } from 'services/background/background.service';
 import { InvitationRequestPayload, ExtensionEventType } from 'models/extension-events';
 import { AcceptInvitationPayload, DeclineInvitationPayload } from 'models/background-actions';
+import { User } from 'models/user.model';
 import { CommonModule } from '@angular/common';
 import { UserService } from 'services/api/user.service';
 
@@ -15,9 +16,9 @@ import { UserService } from 'services/api/user.service';
   styleUrls: ['./invite-popup.component.scss'],
 })
 export class InvitePopupComponent implements OnInit, OnDestroy {
-
   private destroy$ = new Subject<void>();
   public receivedInvitation: InvitationRequestPayload | null = null;
+  public inviterProfile: User | null = null;
 
   constructor(
     private extensionEvents: ExtensionEventsService,
@@ -32,7 +33,16 @@ export class InvitePopupComponent implements OnInit, OnDestroy {
       .subscribe((payload) => {
         console.log('Invitation received in component:', payload);
         this.receivedInvitation = payload;
-        // todo: get user info for inviterID and display username/discriminator/avatar
+        this.userService
+          .getUserProfile(payload.inviterID)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (user) => (this.inviterProfile = user),
+            error: (err) => {
+              console.error('Failed to load inviter profile', err);
+              this.inviterProfile = null;
+            }
+          });
       });
 
     this.extensionEvents
