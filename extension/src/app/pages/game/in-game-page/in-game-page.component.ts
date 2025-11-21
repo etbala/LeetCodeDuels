@@ -2,13 +2,15 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject, takeUntil } from 'rxjs';
 
 import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
 import { BackgroundService } from 'services/background/background.service';
 import { MatchService } from 'services/api/game-sessions.service';
+import { ExtensionEventsService } from 'services/background/extension-events.service';
+import { ExtensionEventType } from 'models/extension-events';
 
 @Component({
   selector: 'app-in-game-page',
@@ -18,6 +20,7 @@ import { MatchService } from 'services/api/game-sessions.service';
 })
 export class InGamePageComponent implements OnInit {
   private readonly API_URL = environment.apiUrl;
+  private destroy$ = new Subject<void>();
 
   matchID!: string;
   matchData?: Session;
@@ -42,11 +45,48 @@ export class InGamePageComponent implements OnInit {
     private http: HttpClient,
     private backgroundService: BackgroundService,
     private matchService: MatchService,
+    private extensionEvents: ExtensionEventsService,
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.matchID = this.route.snapshot.paramMap.get('matchID')!;
+    this.setupEventListeners();
     await this.loadMatchAndPlayers();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupEventListeners(): void {
+    // Any submission event from server -> refresh stats / match data
+    this.extensionEvents
+      .listenFor<any>(ExtensionEventType.OpponentSubmission)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(payload => {
+        // only react if it's for THIS match
+        const sessionId = (payload as any)?.sessionID ?? (payload as any)?.matchID;
+        if (sessionId && String(sessionId) !== String(this.matchID)) {
+          return;
+        }
+
+        this.loadMatchAndPlayers();
+      });
+
+    // Game over so go to match-over page
+    this.extensionEvents
+      .listenFor<any>(ExtensionEventType.GameOver)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async payload => {
+        const sessionId = (payload as any)?.sessionID ?? this.matchID;
+        try {
+          await chrome.storage.local.remove('lastSession');
+        } catch (e) {
+          console.warn('[InGame] Failed to clear lastSession from storage:', e);
+        }
+        this.router.navigate(['/match-over', sessionId]);
+      });
   }
 
   private async loadUserProfile(id: number): Promise<UserInfoResponse> {
@@ -56,18 +96,29 @@ export class InGamePageComponent implements OnInit {
   }
 
   private calcStatsForPlayer(playerId: number, subs: PlayerSubmission[]) {
-    const playerSubs = subs.filter(s => s.playerID === playerId);
-
-    const submissions = playerSubs.length;
-    let passed = 0;
-    let failed = 0;
-
-    for (const s of playerSubs) {
-      if (s.passedTestCases !== undefined && s.totalTestCases !== undefined) {
-        passed += s.passedTestCases;
-        failed += (s.totalTestCases - s.passedTestCases);
-      }
+    if (!Array.isArray(subs)) {
+      return { submissions: 0, passed: 0, failed: 0 };
     }
+
+    const playerSubs = subs.filter(s => s.playerID === playerId);
+    const submissions = playerSubs.length;
+
+    if (submissions === 0) {
+      return { submissions: 0, passed: 0, failed: 0 };
+    }
+
+    // sort by time and take the latest with test case info
+    const withCases = playerSubs
+      .filter(s => s.passedTestCases !== undefined && s.totalTestCases !== undefined)
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    if (withCases.length === 0) {
+      return { submissions, passed: 0, failed: 0 };
+    }
+
+    const latest = withCases[withCases.length - 1];
+    const passed = latest.passedTestCases!;
+    const failed = latest.totalTestCases! - latest.passedTestCases!;
 
     return { submissions, passed, failed };
   }

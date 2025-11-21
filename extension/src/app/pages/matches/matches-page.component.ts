@@ -8,6 +8,7 @@ import { MatchService } from 'services/api/game-sessions.service';
 import { UserService } from 'services/api/user.service';
 import { Session } from 'models/match';
 import { User } from 'models/user.model';
+import { PlayerSubmission } from 'models/match';
 
 @Component({
   selector: 'app-match-page',
@@ -21,6 +22,11 @@ export class MatchesPageComponent implements OnInit {
   match?: Session;
   players: Record<number, User | undefined> = {};
   errorText: string | null = null;
+  statsByPlayerId: Record<number, {
+    submissions: number;
+    passed: number;
+    failed: number
+  }> = {};
 
   constructor(
     private route: ActivatedRoute,
@@ -53,7 +59,11 @@ export class MatchesPageComponent implements OnInit {
 
   private getMatch(id: string) {
     return this.matchService.getMatch(id).pipe(
-      map(m => (this.match = m, m))
+      map(m => {
+        this.match = m;
+        this.computeStats(m);
+        return m;
+      })
     );
   }
 
@@ -66,5 +76,41 @@ export class MatchesPageComponent implements OnInit {
 
   private setPlayers(entries: readonly (readonly [number, User])[]) {
     entries.forEach(([id, u]) => (this.players[id] = u));
+  }
+
+  private computeStats(match: Session) {
+    const subs = match.submissions || [];
+    this.statsByPlayerId = {};
+
+    for (const pid of match.players) {
+      this.statsByPlayerId[pid] = this.calcStatsForPlayer(pid, subs);
+    }
+  }
+
+  private calcStatsForPlayer(playerId: number, subs: PlayerSubmission[]) {
+    if (!Array.isArray(subs)) {
+      return { submissions: 0, passed: 0, failed: 0 };
+    }
+
+    const playerSubs = subs.filter(s => s.playerID === playerId);
+    const submissions = playerSubs.length;
+
+    if (submissions === 0) {
+      return { submissions: 0, passed: 0, failed: 0 };
+    }
+
+    const withCases = playerSubs
+      .filter(s => s.passedTestCases !== undefined && s.totalTestCases !== undefined)
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    if (withCases.length === 0) {
+      return { submissions, passed: 0, failed: 0 };
+    }
+
+    const latest = withCases[withCases.length - 1];
+    const passed = latest.passedTestCases!;
+    const failed = latest.totalTestCases! - latest.passedTestCases!;
+
+    return { submissions, passed, failed };
   }
 }

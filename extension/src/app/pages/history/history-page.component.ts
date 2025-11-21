@@ -24,21 +24,34 @@ export class HistoryPageComponent implements OnInit {
   errorText: string | null = null;
   isLoading = false;
 
+  currentPage = 1;
+  pageSize = 10;
+  hasMore = true;
+
   constructor(
     private userService: UserService
   ) {}
 
   ngOnInit(): void {
+    this.loadPage(1);
+  }
+
+  loadPage(page: number): void {
     this.isLoading = true;
+    this.errorText = null;
+    this.currentPage = page;
 
     this.userService
       .getMyProfile()
       .pipe(
         switchMap(({ id }) => {
           this.userId = id;
-          return this.getSessions(id);
+          return this.getSessions(id, page, this.pageSize);
         }),
-        switchMap((sessions) => this.addOpponents(sessions)),
+        switchMap((sessions) => {
+          this.hasMore = sessions.length === this.pageSize;
+          return this.addOpponents(sessions);
+        }),
         finalize(() => (this.isLoading = false))
       )
       .subscribe({
@@ -47,8 +60,8 @@ export class HistoryPageComponent implements OnInit {
       });
   }
 
-  private getSessions(userId: number) {
-    return this.userService.getUserMatches(userId, 1, 10);
+  private getSessions(userId: number, page: number, limit: number) {
+    return this.userService.getUserMatches(userId, page, limit);
   }
 
   private addOpponents(sessions: Session[]) {

@@ -107,3 +107,33 @@
   font-style: italic;
   font-size: 14px;
 }
+
+.pagination {
+  margin-top: 12px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+
+  .page-btn {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1.2;
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+
+  .page-number {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+  }
+}
