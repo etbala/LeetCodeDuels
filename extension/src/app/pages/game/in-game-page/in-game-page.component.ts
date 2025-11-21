@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -10,7 +10,7 @@ import { environment } from 'environments/environment';
 import { BackgroundService } from 'services/background/background.service';
 import { MatchService } from 'services/api/game-sessions.service';
 import { ExtensionEventsService } from 'services/background/extension-events.service';
-import { ExtensionEventType } from 'models/extension-events';
+import { ExtensionEventType, GameOverPayload, OpponentSubmissionPayload } from 'models/extension-events';
 
 @Component({
   selector: 'app-in-game-page',
@@ -18,7 +18,7 @@ import { ExtensionEventType } from 'models/extension-events';
   templateUrl: './in-game-page.component.html',
   styleUrls: ['./in-game-page.component.scss'],
 })
-export class InGamePageComponent implements OnInit {
+export class InGamePageComponent implements OnInit, OnDestroy {
   private readonly API_URL = environment.apiUrl;
   private destroy$ = new Subject<void>();
 
@@ -62,24 +62,20 @@ export class InGamePageComponent implements OnInit {
   private setupEventListeners(): void {
     // Any submission event from server -> refresh stats / match data
     this.extensionEvents
-      .listenFor<any>(ExtensionEventType.OpponentSubmission)
+      .listenFor<OpponentSubmissionPayload>(ExtensionEventType.OpponentSubmission)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(payload => {
+      .subscribe(() => {
         // only react if it's for THIS match
-        const sessionId = (payload as any)?.sessionID ?? (payload as any)?.matchID;
-        if (sessionId && String(sessionId) !== String(this.matchID)) {
-          return;
-        }
-
         this.loadMatchAndPlayers();
       });
 
+
     // Game over so go to match-over page
     this.extensionEvents
-      .listenFor<any>(ExtensionEventType.GameOver)
+      .listenFor<GameOverPayload>(ExtensionEventType.GameOver)
       .pipe(takeUntil(this.destroy$))
       .subscribe(async payload => {
-        const sessionId = (payload as any)?.sessionID ?? this.matchID;
+        const sessionId = payload.sessionID;
         try {
           await chrome.storage.local.remove('lastSession');
         } catch (e) {
