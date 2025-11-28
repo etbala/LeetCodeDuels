@@ -29,6 +29,21 @@
   color: $body-text;
 }
 
+.stopwatch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 6px;
+  font-size: 12px;
+  color: $body-text;
+
+  input[type="checkbox"] {
+    accent-color: $good;
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .error-message {
   color: $bad;
   font-size: 12px;

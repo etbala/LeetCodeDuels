@@ -40,6 +40,7 @@ export class DashboardPageComponent implements OnInit {
 
   tags: Tag[] = [];
   selectedTags = new Set<number>();
+  enableStopwatch = false;
 
   constructor(
     private router: Router,
@@ -150,6 +151,10 @@ export class DashboardPageComponent implements OnInit {
     } else {
       this.selectedTags.delete(id);
     }
+  }
+
+  toggleStopwatch(checked: boolean): void {
+    this.enableStopwatch = checked;
   }
 
   private getUserIdFromUsername(input: string): Promise<number | null> {

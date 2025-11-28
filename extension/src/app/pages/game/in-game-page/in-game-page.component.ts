@@ -34,6 +34,7 @@ export class InGamePageComponent implements OnInit {
   isConfirmingForfeit = false;
   isLoading = false;
   errorText: string | null = null;
+  enableStopwatch = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -43,6 +44,10 @@ export class InGamePageComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    const { enableStopwatch } = await chrome.storage.local.get('enableStopwatch');
+    await chrome.storage.local.remove('enableStopwatch');
+
+    this.enableStopwatch = Boolean(enableStopwatch);
     this.matchID = this.route.snapshot.paramMap.get('matchID')!;
     await this.loadMatchAndPlayers();
   }
