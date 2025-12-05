@@ -1,4 +1,5 @@
 @use '../../theme/styles/_variables' as theme;
+@use '../../theme/styles/scrollbar';
 
 .header {
   text-align: center;
@@ -12,6 +13,13 @@
 }
 
 .loading-message {
+  color: theme.$text-muted;
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.no-invites {
   text-align: center;
   font-size: 14px;
   margin-top: 5px;
@@ -19,6 +27,13 @@
 
 .notifications-container {
   padding: 10px;
+}
+
+.invite-scroll-area {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
 }
 
 .invite-card {

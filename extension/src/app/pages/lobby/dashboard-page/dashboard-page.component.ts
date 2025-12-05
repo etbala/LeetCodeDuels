@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -40,6 +40,8 @@ export class DashboardPageComponent implements OnInit {
 
   tags: Tag[] = [];
   selectedTags = new Set<number>();
+  tagFilter = '';
+  @ViewChild('filterInput') filterInput!: ElementRef<HTMLInputElement>;
 
   constructor(
     private router: Router,
@@ -63,6 +65,12 @@ export class DashboardPageComponent implements OnInit {
     return Array.from(this.selectedTags);
   }
 
+  get filteredTags() {
+    const q = this.tagFilter.trim().toLowerCase();
+    if (!q) return this.tags;
+    return this.tags.filter(t => t.name.toLowerCase().includes(q));
+  }
+
   ngOnInit() {
     this.getUserIdAndRedirect();
 
@@ -78,6 +86,12 @@ export class DashboardPageComponent implements OnInit {
     this.userService.getMyProfile().subscribe({
       next: user => {
         this.currentUserId = user.id;
+
+        if (!user.lc_username) {
+          this.errorMessage =
+            'Heads up: your LeetCode username is not configured. Submissions may not be tracked.';
+        }
+
         this.redirectIfInGame();
       },
       error: err => {
@@ -149,6 +163,14 @@ export class DashboardPageComponent implements OnInit {
       this.selectedTags.add(id);
     } else {
       this.selectedTags.delete(id);
+    }
+  }
+
+  onDropdownToggle(event: Event) {
+    const details = event.target as HTMLDetailsElement;
+    if (details.open) {
+      // wait a tick to let the dropdown render before focusing
+      setTimeout(() => this.filterInput?.nativeElement.focus(), 50);
     }
   }
 

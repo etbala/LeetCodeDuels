@@ -4,13 +4,19 @@
 
 <ng-template #pageContent>
   <div class="profile-card">
-    
+
     <div *ngIf="currentUser" class="profile-header">
       <div class="profile-info">
         <img [src]="currentUser.avatar_url" alt="Profile Avatar" class="profile-avatar">
         <div class="user-identity">
-          <span class="username">{{ currentUser.username }}</span>
-          <span class="discriminator">#{{ currentUser.discriminator }}</span>
+          <div class="handle">
+            <span class="username">{{ currentUser.username }}</span><span class="discriminator">#{{ currentUser.discriminator }}</span>
+          </div>
+          <button type="button" class="copy-button" title="Copy Handle"
+            (click)="copyHandle()" [class.copied]="copied" >
+            <img *ngIf="!copied" src="assets/copy.svg" alt="Copy" class="copy-icon" />
+            <img *ngIf="copied" src="assets/check.svg" alt="Copied" class="copy-icon" />
+          </button>
         </div>
       </div>
       <button type="button" class="btn btn-secondary" (click)="logout()">Logout</button>
@@ -56,5 +62,5 @@
         </div>
     </div>
   </div>
-  
+
   </ng-template>

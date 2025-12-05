@@ -1,13 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject, takeUntil } from 'rxjs';
 
 import { Session, PlayerSubmission } from 'models/match';
 import { UserInfoResponse } from 'models/api_responses';
 import { environment } from 'environments/environment';
 import { BackgroundService } from 'services/background/background.service';
+import { MatchService } from 'services/api/game-sessions.service';
+import { ExtensionEventsService } from 'services/background/extension-events.service';
+import { ExtensionEventType, GameOverPayload, OpponentSubmissionPayload } from 'models/extension-events';
 
 @Component({
   selector: 'app-in-game-page',
@@ -15,8 +18,9 @@ import { BackgroundService } from 'services/background/background.service';
   templateUrl: './in-game-page.component.html',
   styleUrls: ['./in-game-page.component.scss'],
 })
-export class InGamePageComponent implements OnInit {
+export class InGamePageComponent implements OnInit, OnDestroy {
   private readonly API_URL = environment.apiUrl;
+  private destroy$ = new Subject<void>();
 
   matchID!: string;
   matchData?: Session;
@@ -40,11 +44,45 @@ export class InGamePageComponent implements OnInit {
     private router: Router,
     private http: HttpClient,
     private backgroundService: BackgroundService,
+    private matchService: MatchService,
+    private extensionEvents: ExtensionEventsService,
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.matchID = this.route.snapshot.paramMap.get('matchID')!;
+    this.setupEventListeners();
     await this.loadMatchAndPlayers();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupEventListeners(): void {
+    // Any submission event from server -> refresh stats / match data
+    this.extensionEvents
+      .listenFor<OpponentSubmissionPayload>(ExtensionEventType.OpponentSubmission)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // only react if it's for THIS match
+        this.loadMatchAndPlayers();
+      });
+
+
+    // Game over so go to match-over page
+    this.extensionEvents
+      .listenFor<GameOverPayload>(ExtensionEventType.GameOver)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async payload => {
+        const sessionId = payload.sessionID;
+        try {
+          await chrome.storage.local.remove('lastSession');
+        } catch (e) {
+          console.warn('[InGame] Failed to clear lastSession from storage:', e);
+        }
+        this.router.navigate(['/match-over', sessionId]);
+      });
   }
 
   private async loadUserProfile(id: number): Promise<UserInfoResponse> {
@@ -54,20 +92,29 @@ export class InGamePageComponent implements OnInit {
   }
 
   private calcStatsForPlayer(playerId: number, subs: PlayerSubmission[]) {
-    // passed / failed from passedTestCases / totalTestCases if present
-    const playerSubs = subs.filter(s => s && s.problemID && s);
+    if (!Array.isArray(subs)) {
+      return { submissions: 0, passed: 0, failed: 0 };
+    }
 
+    const playerSubs = subs.filter(s => s.playerID === playerId);
     const submissions = playerSubs.length;
 
-    let passed = 0;
-    let failed = 0;
-
-    for (const s of playerSubs) {
-      if (s.passedTestCases !== undefined && s.totalTestCases !== undefined) {
-        passed += s.passedTestCases;
-        failed += (s.totalTestCases - s.passedTestCases);
-      }
+    if (submissions === 0) {
+      return { submissions: 0, passed: 0, failed: 0 };
     }
+
+    // sort by time and take the latest with test case info
+    const withCases = playerSubs
+      .filter(s => s.passedTestCases !== undefined && s.totalTestCases !== undefined)
+      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    if (withCases.length === 0) {
+      return { submissions, passed: 0, failed: 0 };
+    }
+
+    const latest = withCases[withCases.length - 1];
+    const passed = latest.passedTestCases!;
+    const failed = latest.totalTestCases! - latest.passedTestCases!;
 
     return { submissions, passed, failed };
   }
@@ -77,16 +124,14 @@ export class InGamePageComponent implements OnInit {
     this.errorText = null;
 
     try {
-      // get match info
-      const match = await lastValueFrom(
-        this.http.get<Session>(`${this.API_URL}/api//v1/matches/${this.matchID}`)
-      );
-      this.matchData = match;
+      const [match, submissions] = await Promise.all([
+        lastValueFrom(this.matchService.getMatch(this.matchID)),
+        lastValueFrom(this.matchService.getMatchSubmissions(this.matchID)),
+      ]);
 
-      // assume match.players[0] and match.players[1] exist
+      this.matchData = match;
       const [p1Id, p2Id] = match.players;
 
-      // load both players' profiles
       const [p1, p2] = await Promise.all([
         this.loadUserProfile(p1Id),
         this.loadUserProfile(p2Id),
@@ -95,8 +140,8 @@ export class InGamePageComponent implements OnInit {
       this.player1 = p1;
       this.player2 = p2;
 
-      this.player1Stats = this.calcStatsForPlayer(p1Id, match.submissions || []);
-      this.player2Stats = this.calcStatsForPlayer(p2Id, match.submissions || []);
+      this.player1Stats = this.calcStatsForPlayer(p1Id, submissions);
+      this.player2Stats = this.calcStatsForPlayer(p2Id, submissions);
 
       this.problemTitle = match.problem?.name || match.problem?.slug || 'Unknown Problem';
       this.problemLink = match.problem?.slug

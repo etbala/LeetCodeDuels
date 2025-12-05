@@ -74,8 +74,9 @@ export class UserService {
    */
   getUserMatches(id: string | number, pageNum = 1, limit = 10): Observable<Session[]> {
     const params = new HttpParams()
-      .set('page_num', pageNum.toString())
+      .set('page', pageNum.toString())
       .set('limit', limit.toString());
+
 
     return this.http.get<Session[]>(`${this.apiUrl}/${id}/matches`, { params });
   }

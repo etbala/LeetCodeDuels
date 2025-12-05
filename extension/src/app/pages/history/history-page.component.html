@@ -2,7 +2,7 @@
 
 <div *ngIf="errorText" class="error-message">{{ errorText }}</div>
 
-<div class="history-container">
+<div *ngIf="!isLoading" class="history-container">
   <div *ngIf="sessions.length > 0; else noSessions">
     <div class="session-scroll-area">
 
@@ -48,9 +48,31 @@
       </a>
 
     </div>
+    <!-- Pagination Controls -->
+    <div class="pagination" *ngIf="sessions.length > 0">
+      <button
+        class="page-btn"
+        [disabled]="currentPage === 1"
+        (click)="loadPage(currentPage - 1)">
+        ‹ Prev
+      </button>
+
+      <span class="page-number">Page {{ currentPage }}</span>
+
+      <button
+        class="page-btn"
+        [disabled]="!hasMore"
+        (click)="loadPage(currentPage + 1)">
+        Next ›
+      </button>
+    </div>
   </div>
 
   <ng-template #noSessions>
     <p class="no-sessions">No past matches found.</p>
   </ng-template>
+</div>
+
+<div *ngIf="isLoading" class="loading-text">
+  Loading your past duels...
 </div>
