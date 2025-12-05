@@ -174,12 +174,6 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  clearAllTags(e: Event) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.selectedTags.clear();
-  }
-
   private getUserIdFromUsername(input: string): Promise<number | null> {
     return firstValueFrom(this.userService.findUserId(input));
   }

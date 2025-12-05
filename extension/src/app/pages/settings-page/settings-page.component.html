@@ -12,7 +12,7 @@
           <div class="handle">
             <span class="username">{{ currentUser.username }}</span><span class="discriminator">#{{ currentUser.discriminator }}</span>
           </div>
-          <button type="button" class="copy-button" title="Copy Username"
+          <button type="button" class="copy-button" title="Copy Handle"
             (click)="copyHandle()" [class.copied]="copied" >
             <img *ngIf="!copied" src="assets/copy.svg" alt="Copy" class="copy-icon" />
             <img *ngIf="copied" src="assets/check.svg" alt="Copied" class="copy-icon" />
